@@ -6,6 +6,7 @@ import axios from 'axios';
 export class HomeController {
   @Get('/')
   async home() {
+    process.stdout.write('requesting\n');
     axios
       .get(
         'https://api.mercari.jp/search_index/search?sort=score&order=desc&limit=120&keyword=anohana&status=on_sale&page=0'
