@@ -9,7 +9,13 @@ export class HomeController {
     process.stdout.write('requesting\n');
     axios
       .get(
-        'https://api.mercari.jp/search_index/search?sort=score&order=desc&limit=120&keyword=anohana&status=on_sale&page=0'
+        'https://api.mercari.jp/search_index/search?sort=score&order=desc&limit=120&keyword=anohana&status=on_sale&page=0',
+        {
+          proxy: {
+            host: '127.0.0.1',
+            port: 1218,
+          },
+        }
       )
       .then(data => {
         process.stdout.write(data.data);
