@@ -8,7 +8,7 @@ export class HomeController {
   @Get('/')
   async home() {
     process.stdout.write('requesting\n');
-    const agent = new HttpsProxyAgent('"http://localhost:1218');
+    const agent = new HttpsProxyAgent('http://localhost:1218');
 
     axios
       .get(
