@@ -10,7 +10,8 @@
     "@midwayjs/web": "^2.3.0",
     "axios": "^0.24.0",
     "egg": "^2.0.0",
-    "egg-scripts": "^2.10.0"
+    "egg-scripts": "^2.10.0",
+    "https-proxy-agent": "^5.0.0"
   },
   "devDependencies": {
     "@midwayjs/cli": "^1.0.0",
