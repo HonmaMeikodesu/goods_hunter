@@ -19,6 +19,9 @@ export class HomeController {
       )
       .then(data => {
         process.stdout.write(data.data);
+      })
+      .catch(e => {
+        process.stderr.write(e.message);
       });
     return 'Hello Midwayjs!';
   }
