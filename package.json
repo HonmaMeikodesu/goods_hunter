@@ -22,6 +22,7 @@
     "@types/node": "14",
     "axios": "^0.24.0",
     "cross-env": "^6.0.0",
+    "husky": "^7.0.4",
     "jest": "^26.4.0",
     "mwts": "^1.0.5",
     "ts-jest": "^26.2.0",
@@ -34,14 +35,15 @@
     "start": "egg-scripts start --daemon --title=my-midway-project --framework=@midwayjs/web",
     "stop": "egg-scripts stop --title=my-midway-project",
     "start_build": "npm run build && cross-env NODE_ENV=development midway-bin dev",
-    "dev": "cross-env ets && cross-env NODE_ENV=local midway-bin dev --ts",
+    "dev": "cross-env ets && cross-env proxyInbound='http://localhost:1218' cross-env NODE_ENV=local midway-bin dev --ts",
     "test": "midway-bin test --ts",
     "cov": "midway-bin cov --ts",
     "lint": "mwts check",
     "lint:fix": "mwts fix",
     "ci": "npm run cov",
     "build": "midway-bin build -c",
-    "check": "luckyeye"
+    "check": "luckyeye",
+    "prepare": "husky install"
   },
   "midway-bin-clean": [
     ".vscode/.tsbuildinfo",
