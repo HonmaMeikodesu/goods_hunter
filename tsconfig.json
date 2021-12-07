@@ -8,7 +8,7 @@
     "emitDecoratorMetadata": true,
     "inlineSourceMap":true,
     "noImplicitThis": true,
-    "noUnusedLocals": true,
+    "noUnusedLocals": false,
     "stripInternal": true,
     "skipLibCheck": false,
     "pretty": true,
