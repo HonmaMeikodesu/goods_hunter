@@ -1,14 +1,14 @@
 import { App, Configuration } from '@midwayjs/decorator';
 import { ILifeCycle } from '@midwayjs/core';
+import * as task from '@midwayjs/task';
 import * as axios from "@midwayjs/axios";
+import * as redis from '@midwayjs/redis';
 import { Application } from 'egg';
 import { join } from 'path';
-import * as all from "./api/request";
-console.log(all);
 
 @Configuration({
   imports: [
-    axios
+    axios, redis, task
   ],
   importConfigs: [join(__dirname, './config')],
   conflictCheck: true,

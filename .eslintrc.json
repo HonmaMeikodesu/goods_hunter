@@ -8,6 +8,7 @@
     "quotes": 0,
     "prettier/prettier": 0,
     "@typescript-eslint/no-unused-vars": 0,
-    "node/no-unpublished-import": 0
+    "node/no-unpublished-import": 0,
+    "eol-last": 0
   }
 }
