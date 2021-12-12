@@ -5,18 +5,19 @@ import { proxyInbound } from '../const';
 const HttpsProxyAgent = require('https-proxy-agent');
 
 export declare interface ProxyGet {
-  <T>(url: string, headers?: Record<string, string>): Promise<AxiosResponse<T>>;
+  <T>(url: string, headers?: Record<string, string>): Promise<T>;
 }
 export function proxyGet<T>(container: IMidwayContainer) {
   return async (url: string, headers?: AxiosRequestConfig['headers']) => {
     const httpService = await container.getAsync<HttpService>(HttpService);
     const httpsAgent = new HttpsProxyAgent(proxyInbound);
-    return httpService
+    const resp = await httpService
       .get<T>(url, {
         headers,
         httpsAgent,
         proxy: false,
       });
+    return resp.data;
   };
 }
 

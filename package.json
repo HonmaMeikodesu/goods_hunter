@@ -15,6 +15,7 @@
     "cron-validator": "^1.2.1",
     "egg": "^2.0.0",
     "egg-scripts": "^2.10.0",
+    "generate-mercari-jwt": "^1.0.2",
     "https-proxy-agent": "^5.0.0",
     "lodash": "^4.17.21",
     "uuid": "^8.3.2"

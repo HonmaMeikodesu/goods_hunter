@@ -7,6 +7,7 @@ import { isValidCron } from "cron-validator";
 import { cloneDeep } from "lodash";
 import isValidUrl from "../utils/isValidUrl";
 import { GoodsHunter, MercariHunter, CronDeail, CronDetailInDb } from "../types";
+import { MercariApi } from "../api/site/mercari";
 
 const HUNTERINFO = "hunterInfo";
 
@@ -35,6 +36,9 @@ export class HunterCronManager {
 
   @Logger()
   logger: ILogger;
+
+  @Inject()
+  mercariApi: MercariApi;
 
   @Inject("redis:redisService")
   redisClient: RedisService;
@@ -65,8 +69,9 @@ export class HunterCronManager {
       const { url, schedule } = hunterInfo;
       if (!isValidCron(schedule) || !isValidUrl(url)) throw new Error("Invalid cron format!");
       const cronId = existedId || uuid();
-      const newCronJob = new CronJob("*/3 * * * * *", (() => {
-        this.logger.info("hahahahaha!!");
+      const newCronJob = new CronJob(schedule, (async () => {
+        const resp = await this.mercariApi.fetchGoodsList(url);
+        const goodsList = resp.data;
       }), null, true);
       const cronDetail: CronDeail<typeof hunterInfo> = {
         id: cronId,
