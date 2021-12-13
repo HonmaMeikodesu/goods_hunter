@@ -4,12 +4,13 @@ import { RedisService } from "@midwayjs/redis";
 import { v4 as uuid } from "uuid";
 import { CronJob } from "cron";
 import { isValidCron } from "cron-validator";
-import { cloneDeep } from "lodash";
+import { cloneDeep, toNumber, toString } from "lodash";
 import isValidUrl from "../utils/isValidUrl";
 import { GoodsHunter, MercariHunter, CronDeail, CronDetailInDb } from "../types";
 import { MercariApi } from "../api/site/mercari";
 
 const HUNTERINFO = "hunterInfo";
+const SHOTRECORD = "shotRecord";
 
 function hunterCognition<T extends GoodsHunter>(hunterInfo: GoodsHunter, cognitionFunc: (info: typeof hunterInfo) => boolean): hunterInfo is T {
   return cognitionFunc(hunterInfo);
@@ -72,6 +73,13 @@ export class HunterCronManager {
       const newCronJob = new CronJob(schedule, (async () => {
         const resp = await this.mercariApi.fetchGoodsList(url);
         const goodsList = resp.data;
+        const nextLatestTime = resp.data.reduce((max, current) => current.updated > max ? current.updated : max, goodsList[0].updated);
+        const prevLatestTime = toNumber(await this.redisClient.hget(SHOTRECORD, cronId));
+        if (isNaN(prevLatestTime)) {
+          // first time for this cron shot record
+          await this.redisClient.hset(SHOTRECORD, cronId, toString(nextLatestTime));
+        }
+
       }), null, true);
       const cronDetail: CronDeail<typeof hunterInfo> = {
         id: cronId,
