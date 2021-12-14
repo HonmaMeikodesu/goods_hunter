@@ -26,4 +26,10 @@ export class MercariApi {
       "DPoP": jwt
     })
   }
+
+  async fetchThumbNailsAndConvertToBase64(url: string) {
+    const imgArrayBuffer: any = await this.proxyGet(url, {}, { responseType: "arraybuffer" });
+    const base64Url = Buffer.from(imgArrayBuffer, "binary").toString("base64");
+    return `data:image/jpg;base64,${base64Url}`;
+  }
 }
