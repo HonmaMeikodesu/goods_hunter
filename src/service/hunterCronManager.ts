@@ -8,6 +8,12 @@ import { cloneDeep, toNumber, toString, first } from "lodash";
 import isValidUrl from "../utils/isValidUrl";
 import { GoodsHunter, MercariHunter, CronDeail, CronDetailInDb } from "../types";
 import { MercariApi } from "../api/site/mercari";
+import { render } from "ejs";
+import moment from "moment";
+import { mercariGoodsList } from "../template";
+import { EmailService } from "../service/emailService";
+import Mail from "nodemailer/lib/mailer";
+import emailConfig from "../config/mail";
 
 const HUNTERINFO = "hunterInfo";
 const SHOTRECORD = "shotRecord";
@@ -43,6 +49,9 @@ export class HunterCronManager {
 
   @Inject("redis:redisService")
   redisClient: RedisService;
+
+  @Inject()
+  emailService: EmailService;
 
   @TaskLocal('*/10 * * * * *')
   private async selfPingPong() {
@@ -86,8 +95,18 @@ export class HunterCronManager {
         filteredGoods.forEach(async (good) => {
           const imgBase64Url = await this.mercariApi.fetchThumbNailsAndConvertToBase64(first(good.thumbnails));
           good.thumbnails = [imgBase64Url];
-        })
+        });
+        const html = render(mercariGoodsList, { data: filteredGoods});
+        const keyword = new URL(hunterInfo.url).searchParams.get("keyword");
 
+        const emailMessage: Mail.Options = {
+          from: emailConfig.emailOptions.from,
+          to: "whonmameikom@gmail.com",
+          subject: `New update on mercari goods of your interest, keyword:${keyword}`,
+          html,
+        }
+        await this.emailService.sendEmail(emailMessage);
+        this.logger.info(`task ${cronId} executed steady and sound at ${moment().format("YYYY:MM:DD hh:mm:ss")}`);
       }), null, true);
       const cronDetail: CronDeail<typeof hunterInfo> = {
         id: cronId,

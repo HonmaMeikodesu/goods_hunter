@@ -13,4 +13,4 @@ run/
 *.un~
 .tsbuildinfo
 .tsbuildinfo.*
-src/utils/mail.ts
+src/config/mail.ts
