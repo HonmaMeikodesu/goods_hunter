@@ -8,6 +8,7 @@
     "@midwayjs/bootstrap": "^2.3.0",
     "@midwayjs/core": "^2.3.0",
     "@midwayjs/decorator": "^2.3.0",
+    "@midwayjs/orm": "^2.14.0",
     "@midwayjs/redis": "^2.14.0",
     "@midwayjs/task": "^2.14.0",
     "@midwayjs/web": "^2.3.0",
@@ -20,7 +21,9 @@
     "https-proxy-agent": "^5.0.0",
     "lodash": "^4.17.21",
     "moment": "^2.29.1",
+    "mysql2": "^2.3.3",
     "nodemailer": "^6.7.2",
+    "typeorm": "^0.2.41",
     "uuid": "^8.3.2"
   },
   "devDependencies": {

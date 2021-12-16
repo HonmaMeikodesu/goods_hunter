@@ -12,6 +12,8 @@ export class RegisterGoodsController {
   @Post('/registerGoodsWatcher')
   async registerGoodsWatcher(@Body() url: string, @Body() schedule: string) {
     await this.hunterCronManager.addCronTask({ url,schedule });
-    return '123!';
+    return {
+      code: "200",
+    };
   }
 }

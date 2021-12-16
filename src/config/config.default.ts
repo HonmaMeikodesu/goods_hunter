@@ -44,5 +44,17 @@ export default (appInfo: EggAppInfo) => {
     },
   }
 
+  config.orm = {
+    type: 'mysql',
+    host: '127.0.01',
+    port: 3306,
+    username: 'honmameiko',
+    password: 'honmameiko',
+    database: 'goods_hunter',
+    logging: true,
+    synchronize: true,
+    timezone: '+08:00',
+  }
+
   return config;
 };
