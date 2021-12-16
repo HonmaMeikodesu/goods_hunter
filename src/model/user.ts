@@ -1,12 +1,13 @@
 import { EntityModel } from "@midwayjs/orm";
-import { Column, PrimaryColumn, UpdateDateColumn, CreateDateColumn } from "typeorm";
+import { Column, PrimaryColumn, UpdateDateColumn, CreateDateColumn, OneToMany } from "typeorm";
+import { LoginState } from "./loginState";
 
 @EntityModel()
 export class User {
     @PrimaryColumn("varchar")
     email: string;
 
-    @Column("varchar", { nullable: false,  })
+    @Column("varchar", { nullable: false, unique: true })
     password: string;
 
     @CreateDateColumn()
@@ -15,4 +16,6 @@ export class User {
     @UpdateDateColumn()
     updatedAt: string;
 
+    @OneToMany(() => LoginState,"user")
+    loginState: LoginState;
 }

@@ -1,0 +1,38 @@
+import { Provide, Logger } from '@midwayjs/decorator';
+import { ILogger } from "@midwayjs/logger";
+import { IWebMiddleware, IMidwayWebNext } from '@midwayjs/web';
+import { Context } from 'egg';
+import { InjectEntityModel } from "@midwayjs/orm";
+import { Repository } from "typeorm";
+import { LoginState } from '../model/loginState';
+import errorCode from "../errorCode";
+import moment from 'moment';
+
+@Provide()
+export class ErrorCatchMiddleware implements IWebMiddleware {
+
+  @InjectEntityModel(LoginState)
+  loginStateModel: Repository<LoginState>;
+
+  @Logger()
+  logger: ILogger;
+
+  resolve() {
+    return async (ctx: Context, next: IMidwayWebNext) => {
+      const loginState = ctx.request.headers?.loginState as string | undefined;
+      if (!loginState) throw new Error(errorCode.loginStateMiddleware.missingLoginState);
+      const record = await this.loginStateModel.findOne({
+        loginState,
+      }, {
+        relations: [ "user" ]
+      });
+      if (!record?.user?.email) throw new Error(errorCode.loginStateMiddleware.invalidLoginState);
+      if (moment().isAfter(record?.expiredAt)) throw new Error(errorCode.loginStateMiddleware.expiredLoginState);
+      // check passed
+      ctx.user = {
+        email: record.user.email
+      };
+      await next();
+    };
+  }
+}
