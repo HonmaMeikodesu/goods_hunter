@@ -22,6 +22,8 @@ export class LoginService {
     const record = await this.userModel.findOne({
       email,
       password,
+    }, {
+      relations: ["loginStates"]
     });
     if (isEmpty(record)) throw new Error(errorCode.loginService.wrongEmailOrPassword);
     const loginState = await this.generateLoginStateAndSaveInDB(record);
@@ -34,11 +36,7 @@ export class LoginService {
     const loginState = new LoginState();
     loginState.loginState = uuid;
     loginState.expiredAt = expiredAt;
-    if (isArray(user.loginStates)) { // todo 查询优化
-      user.loginStates.push(loginState)
-    } else {
-      user.loginStates = [loginState];
-    }
+    user.loginStates.push(loginState)
     await this.userModel.save(user);
     return uuid;
   }
