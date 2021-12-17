@@ -7,9 +7,10 @@ import { Repository } from "typeorm";
 import { LoginState } from '../model/loginState';
 import errorCode from "../errorCode";
 import moment from 'moment';
+import { UserInfo } from "../types";
 
 @Provide()
-export class ErrorCatchMiddleware implements IWebMiddleware {
+export class LoginStateCheck implements IWebMiddleware {
 
   @InjectEntityModel(LoginState)
   loginStateModel: Repository<LoginState>;
@@ -19,7 +20,7 @@ export class ErrorCatchMiddleware implements IWebMiddleware {
 
   resolve() {
     return async (ctx: Context, next: IMidwayWebNext) => {
-      const loginState = ctx.request.headers?.loginState as string | undefined;
+      const loginState = ctx.cookies.get("loginState")  as string | undefined;
       if (!loginState) throw new Error(errorCode.loginStateMiddleware.missingLoginState);
       const record = await this.loginStateModel.findOne({
         loginState,
@@ -31,7 +32,7 @@ export class ErrorCatchMiddleware implements IWebMiddleware {
       // check passed
       ctx.user = {
         email: record.user.email
-      };
+      } as UserInfo;
       await next();
     };
   }

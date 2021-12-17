@@ -16,6 +16,6 @@ export class User {
     @UpdateDateColumn()
     updatedAt: string;
 
-    @OneToMany(() => LoginState,"user")
-    loginState: LoginState;
+    @OneToMany(() => LoginState,"user", { cascade: true })
+    loginStates: LoginState[];
 }

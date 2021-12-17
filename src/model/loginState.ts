@@ -4,13 +4,13 @@ import { User } from "./user";
 
 @EntityModel()
 export class LoginState {
-  @ManyToOne(() => User, "loginState", { primary: true, cascade: true })
+  @ManyToOne(() => User, "loginState", { primary: true })
   user: User;
 
   @PrimaryColumn("varchar", { nullable: false })
   loginState: string;
 
   @Column("datetime", { nullable: false })
-  expiredAt: number;
+  expiredAt: string;
 
 }

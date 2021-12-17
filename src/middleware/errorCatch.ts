@@ -13,6 +13,11 @@ export class ErrorCatchMiddleware implements IWebMiddleware {
     return async (ctx: Context, next: IMidwayWebNext) => {
       try {
         await next();
+        ctx.res.statusCode = 200;
+        ctx.body = {
+          code : "200",
+          data: { ...ctx.body }
+        }
       } catch (e) {
         this.logger.error(e.msg);
         if (/\d{6}/.test(e.message)) {

@@ -76,7 +76,8 @@ export class HunterCronManager {
   }
   async addCronTask(hunterInfo: GoodsHunter, existedId?: string) {
     if(hunterCognition<MercariHunter>(hunterInfo, (info) => !!info.url)) {
-      const { url, schedule } = hunterInfo;
+      const { url, schedule, user } = hunterInfo;
+      const { email } = user;
       if (!isValidCron(schedule) || !isValidUrl(url)) throw new Error("Invalid cron format!");
       const cronId = existedId || uuid();
       const newCronJob = new CronJob(schedule, (async () => {
@@ -101,7 +102,7 @@ export class HunterCronManager {
 
         const emailMessage: Mail.Options = {
           from: emailConfig.emailOptions.from,
-          to: "whonmameikom@gmail.com",
+          to: email,
           subject: `New update on mercari goods of your interest, keyword:${keyword}`,
           html,
         }

@@ -1,6 +1,11 @@
 import { CronJob } from "cron";
 
+export interface UserInfo {
+  email: string;
+}
+
 export interface GoodsHunter {
+  user: UserInfo;
   url: string;
   schedule: string;
 }

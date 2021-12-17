@@ -3,9 +3,10 @@ import { InjectEntityModel } from "@midwayjs/orm";
 import { Repository } from "typeorm";
 import { User } from "../model/user";
 import errorCode from "../errorCode";
-import { isEmpty } from "lodash";
+import { isArray, isEmpty } from "lodash";
 import { v4 } from "uuid";
 import { LoginState } from "../model/loginState";
+import moment from "moment";
 
 
 @Provide()
@@ -17,16 +18,28 @@ export class LoginService {
   @InjectEntityModel(LoginState)
   loginStateModel: Repository<LoginState>;
 
-  async checkValid(email: string, password: string) {
+  async checkValidAndGenerateLoginState(email: string, password: string) {
     const record = await this.userModel.findOne({
       email,
       password,
     });
     if (isEmpty(record)) throw new Error(errorCode.loginService.wrongEmailOrPassword);
-    return;
+    const loginState = await this.generateLoginStateAndSaveInDB(record);
+    return loginState;
   }
 
-  async generateLoginStateAndSaveInDB(email: string) {
+  async generateLoginStateAndSaveInDB(user: User) {
+    const uuid = v4();
+    const expiredAt = moment().add(1, "week").format("YYYY-MM-DD HH:mm:ss");
     const loginState = new LoginState();
+    loginState.loginState = uuid;
+    loginState.expiredAt = expiredAt;
+    if (isArray(user.loginStates)) { // todo 查询优化
+      user.loginStates.push(loginState)
+    } else {
+      user.loginStates = [loginState];
+    }
+    await this.userModel.save(user);
+    return uuid;
   }
 }
