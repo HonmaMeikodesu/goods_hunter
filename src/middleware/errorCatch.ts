@@ -16,7 +16,7 @@ export class ErrorCatchMiddleware implements IWebMiddleware {
         ctx.res.statusCode = 200;
         ctx.body = {
           code : "200",
-          data: { ...ctx.body }
+          data: ctx.body,
         }
       } catch (e) {
         this.logger.error(e.msg);

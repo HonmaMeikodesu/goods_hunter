@@ -13,10 +13,7 @@ import moment from "moment";
 import { mercariGoodsList } from "../template";
 import { EmailService } from "../service/emailService";
 import Mail from "nodemailer/lib/mailer";
-import emailConfig from "../config/mail";
-
-const HUNTERINFO = "hunterInfo";
-const SHOTRECORD = "shotRecord";
+import CONST from "../const";
 
 function hunterCognition<T extends GoodsHunter>(hunterInfo: GoodsHunter, cognitionFunc: (info: typeof hunterInfo) => boolean): hunterInfo is T {
   return cognitionFunc(hunterInfo);
@@ -34,7 +31,7 @@ export class HunterCronManager {
   @Init()
   async init() {
     this.cronList = {};
-    const values = await this.redisClient.hvals(HUNTERINFO);
+    const values = await this.redisClient.hvals(CONST.HUNTERINFO);
     values.map(async (value) => {
       const cronDetail: CronDetailInDb = JSON.parse(value);
       await this.addCronTask(cronDetail.hunterInfo, cronDetail.id);
@@ -71,7 +68,7 @@ export class HunterCronManager {
 
   async removeCronTask(id: string, jobInstance: CronJob) {
     jobInstance.stop();
-    await this.redisClient.hdel(HUNTERINFO, id);
+    await this.redisClient.hdel(CONST.HUNTERINFO, id);
     delete this.cronList[id];
   }
   async addCronTask(hunterInfo: GoodsHunter, existedId?: string) {
@@ -85,14 +82,14 @@ export class HunterCronManager {
         const goodsList = resp.data;
         let filteredGoods: typeof goodsList = [];
         const nextLatestTime = resp.data.reduce((max, current) => current.updated > max ? current.updated : max, goodsList[0].updated);
-        const prevLatestTime = toNumber(await this.redisClient.hget(SHOTRECORD, cronId));
+        const prevLatestTime = toNumber(await this.redisClient.hget(CONST.SHOTRECORD, cronId));
         if (isNaN(prevLatestTime)) {
           // first time for this cron shot record
           filteredGoods = goodsList;
         } else {
           filteredGoods = goodsList.filter((good) => good.updated > prevLatestTime);
         }
-        await this.redisClient.hset(SHOTRECORD, cronId, toString(nextLatestTime));
+        await this.redisClient.hset(CONST.SHOTRECORD, cronId, toString(nextLatestTime));
         filteredGoods.forEach(async (good) => {
           const imgBase64Url = await this.mercariApi.fetchThumbNailsAndConvertToBase64(first(good.thumbnails));
           good.thumbnails = [imgBase64Url];
@@ -101,7 +98,6 @@ export class HunterCronManager {
         const keyword = new URL(hunterInfo.url).searchParams.get("keyword");
 
         const emailMessage: Mail.Options = {
-          from: emailConfig.emailOptions.from,
           to: email,
           subject: `New update on mercari goods of your interest, keyword:${keyword}`,
           html,
@@ -119,7 +115,7 @@ export class HunterCronManager {
         hunterInfo,
       }
       if (!existedId)
-        await this.redisClient.hset(HUNTERINFO, cronId, JSON.stringify(CronDeailInDB));
+        await this.redisClient.hset(CONST.HUNTERINFO, cronId, JSON.stringify(CronDeailInDB));
       this.cronList[cronId] = cronDetail;
     }
   }

@@ -7,6 +7,7 @@ import { isArray, isEmpty } from "lodash";
 import { v4 } from "uuid";
 import { LoginState } from "../model/loginState";
 import moment from "moment";
+import sha256 from "crypto-js/sha256";
 
 
 @Provide()
@@ -19,9 +20,10 @@ export class LoginService {
   loginStateModel: Repository<LoginState>;
 
   async checkValidAndGenerateLoginState(email: string, password: string) {
+    const digest = sha256(password).toString();
     const record = await this.userModel.findOne({
       email,
-      password,
+      password: digest,
     }, {
       relations: ["loginStates"]
     });

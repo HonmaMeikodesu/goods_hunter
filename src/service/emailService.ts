@@ -1,7 +1,7 @@
 import { Provide, Inject, Scope, ScopeEnum } from "@midwayjs/decorator";
 import { createTransport, Transporter } from "nodemailer";
 import Mail from "nodemailer/lib/mailer";
-import mailInfo from "../config/mail";
+import mailInfo from "../private/mail";
 
 @Provide()
 @Scope(ScopeEnum["Singleton"])
@@ -12,6 +12,9 @@ export class EmailService {
   }
 
   async sendEmail(message: Mail.Options) {
-    await this.transporter.sendMail(message);
+    await this.transporter.sendMail({
+      from: mailInfo.systemOwner,
+      ...message,
+    });
   }
 }

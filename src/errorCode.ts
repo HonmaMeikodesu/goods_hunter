@@ -2,6 +2,7 @@ const type = {
   middleware: "01",
   controller: "02",
   service: "03",
+  common: "04",
 }
 
 const middleware = {
@@ -12,12 +13,14 @@ const middleware = {
 const controller = {
   registerGoods: "01",
   login: "02",
+  register: "03"
 }
 
 const service = {
   emailService: "01",
   hunterCronManager: "02",
   login: "03",
+  register: "04"
 }
 
 export default {
@@ -27,9 +30,17 @@ export default {
     expiredLoginState: type.middleware + middleware.loginStateCheck + "03",
   },
   loginController: {
-    invalidRequestBody: type.controller + controller.login + "01",
   },
   loginService: {
     wrongEmailOrPassword: type.service + service.login + "01",
+  },
+  registerController: {
+  },
+  registerService: {
+    userAlreadyExist: type.service + service.register + "01",
+    invalidVerificationCode: type.service + service.register + "02"
+  },
+  common: {
+    invalidRequestBody: type.common + "0001",
   }
 }

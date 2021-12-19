@@ -15,7 +15,7 @@ export class LoginController {
 
   @Post('/login')
   async login(@Body("email") email: string, @Body("password") password: string) {
-    if (!email || !password) throw new Error(errorCode.loginController.invalidRequestBody);
+    if (!email || !password) throw new Error(errorCode.common.invalidRequestBody);
     const loginState = await this.loginService.checkValidAndGenerateLoginState(email, password);
     this.ctx.cookies.set("loginState", loginState);
   }
