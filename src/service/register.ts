@@ -52,5 +52,9 @@ export class RegisterService {
     newUser.email = email;
     newUser.password = digest;
     await this.userModel.save(newUser);
+    await this.emailService.sendEmail({
+      to: email,
+      subject: "Your account has been confirmed and registered, have fun and enjoy your hunting here, fresh one :)"
+    })
   }
 }

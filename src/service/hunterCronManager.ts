@@ -90,20 +90,24 @@ export class HunterCronManager {
           filteredGoods = goodsList.filter((good) => good.updated > prevLatestTime);
         }
         await this.redisClient.hset(CONST.SHOTRECORD, cronId, toString(nextLatestTime));
-        filteredGoods.forEach(async (good) => {
-          const imgBase64Url = await this.mercariApi.fetchThumbNailsAndConvertToBase64(first(good.thumbnails));
-          good.thumbnails = [imgBase64Url];
-        });
-        const html = render(mercariGoodsList, { data: filteredGoods});
-        const keyword = new URL(hunterInfo.url).searchParams.get("keyword");
 
-        const emailMessage: Mail.Options = {
-          to: email,
-          subject: `New update on mercari goods of your interest, keyword:${keyword}`,
-          html,
-        }
-        await this.emailService.sendEmail(emailMessage);
-        this.logger.info(`task ${cronId} executed steady and sound at ${moment().format("YYYY:MM:DD hh:mm:ss")}`);
+        Promise.all(filteredGoods.map(good => {
+          return this.mercariApi.fetchThumbNailsAndConvertToBase64(first(good.thumbnails)).then((imgBase64Url) => {
+            good.thumbnails = [imgBase64Url];
+            return;
+          })
+        })).then(async () => {
+          const html = render(mercariGoodsList, { data: filteredGoods});
+          const keyword = new URL(hunterInfo.url).searchParams.get("keyword");
+
+          const emailMessage: Mail.Options = {
+            to: email,
+            subject: `New update on mercari goods of your interest, keyword:${keyword}`,
+            html,
+          }
+          await this.emailService.sendEmail(emailMessage);
+          this.logger.info(`task ${cronId} executed steady and sound at ${moment().format("YYYY:MM:DD hh:mm:ss")}`);
+        });
       }), null, true);
       const cronDetail: CronDeail<typeof hunterInfo> = {
         id: cronId,

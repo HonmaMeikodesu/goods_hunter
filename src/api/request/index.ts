@@ -12,7 +12,7 @@ export function proxyGet<T>(container: IMidwayContainer) {
     const httpService = await container.getAsync<HttpService>(HttpService);
     const httpsAgent = new HttpsProxyAgent(proxyInbound);
     const resp = await httpService
-      .get<T>(url, {
+      .get<T>(encodeURI(url), {
         headers,
         httpsAgent,
         proxy: false,
