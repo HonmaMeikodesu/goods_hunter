@@ -71,6 +71,7 @@ export class HunterCronManager {
     if (cronJob) {
       cronJob.jobInstance.stop();
       await this.redisClient.hdel(CONST.HUNTERINFO, id);
+      await this.redisClient.hdel(CONST.SHOTRECORD, id);
       delete this.cronList[id];
     }
   }
