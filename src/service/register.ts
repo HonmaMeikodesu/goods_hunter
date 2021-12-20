@@ -39,7 +39,8 @@ export class RegisterService {
   }
 
   async confirmRegister(code: string) {
-    const user = await this.redisClient.get(`${CONST.REGISTERCODE}${code}`);
+    const key = `${CONST.REGISTERCODE}${code}`;
+    const user = await this.redisClient.get(key);
     if (!user) throw new Error(errorCode.registerService.invalidVerificationCode);
     const { password, email } = JSON.parse(user) as User;
     const digest = sha256(password).toString();
@@ -51,7 +52,9 @@ export class RegisterService {
     const newUser = new User();
     newUser.email = email;
     newUser.password = digest;
+    // TODO transaction
     await this.userModel.save(newUser);
+    await this.redisClient.del(key);
     await this.emailService.sendEmail({
       to: email,
       subject: "Your account has been confirmed and registered, have fun and enjoy your hunting here, fresh one :)"
