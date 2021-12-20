@@ -5,7 +5,7 @@ import { User } from "../model/user";
 import errorCode from "../errorCode";
 import serverInfo from "../private/server";
 import sha256 from "crypto-js/sha256";
-import { EmailService } from "./emailService";
+import { EmailService } from "./email";
 import emailConfig from "../private/mail";
 import { RedisService } from "@midwayjs/redis";
 import CONST from "../const";

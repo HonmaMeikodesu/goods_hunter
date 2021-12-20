@@ -11,7 +11,7 @@ import { MercariApi } from "../api/site/mercari";
 import { render } from "ejs";
 import moment from "moment";
 import { mercariGoodsList } from "../template";
-import { EmailService } from "../service/emailService";
+import { EmailService } from "./email";
 import Mail from "nodemailer/lib/mailer";
 import CONST from "../const";
 
@@ -26,7 +26,7 @@ interface CronList<T extends GoodsHunter = any> {
 @Provide()
 @Scope(ScopeEnum["Singleton"])
 export class HunterCronManager {
-  private cronList: CronList;
+  private cronList: CronList<GoodsHunter>;
 
   @Init()
   async init() {
@@ -56,7 +56,7 @@ export class HunterCronManager {
       const jobInstance = this.cronList[key].jobInstance;
       const hunterInfo = cloneDeep(this.cronList[key].hunterInfo);
       if (!jobInstance.running) {
-        await this.removeCronTask(key, jobInstance);
+        await this.removeCronTask(key);
         await this.addCronTask(hunterInfo);
       }
     })
@@ -66,10 +66,13 @@ export class HunterCronManager {
     return this.cronList;
   }
 
-  async removeCronTask(id: string, jobInstance: CronJob) {
-    jobInstance.stop();
-    await this.redisClient.hdel(CONST.HUNTERINFO, id);
-    delete this.cronList[id];
+  async removeCronTask(id: string) {
+    const cronJob = this.cronList[id];
+    if (cronJob) {
+      cronJob.jobInstance.stop();
+      await this.redisClient.hdel(CONST.HUNTERINFO, id);
+      delete this.cronList[id];
+    }
   }
   async addCronTask(hunterInfo: GoodsHunter, existedId?: string) {
     if(hunterCognition<MercariHunter>(hunterInfo, (info) => !!info.url)) {

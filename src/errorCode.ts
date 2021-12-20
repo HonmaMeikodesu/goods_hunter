@@ -11,16 +11,17 @@ const middleware = {
 }
 
 const controller = {
-  registerGoods: "01",
+  goods: "01",
   login: "02",
   register: "03"
 }
 
 const service = {
-  emailService: "01",
+  email: "01",
   hunterCronManager: "02",
   login: "03",
-  register: "04"
+  register: "04",
+  goods: "05"
 }
 
 export default {
@@ -42,5 +43,8 @@ export default {
   },
   common: {
     invalidRequestBody: type.common + "0001",
+  },
+  goodsService: {
+    TaskNotFound: type.service + service.goods + "01"
   }
 }
