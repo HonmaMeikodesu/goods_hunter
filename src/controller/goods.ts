@@ -21,6 +21,7 @@ export class GoodsController {
   @Post('/registerGoodsWatcher', { middleware: ['loginStateCheck'] })
   async registerGoodsWatcher(@Body() url: string, @Body() schedule: string) {
     const user = this.ctx.user as UserInfo;
+    await this.goodsService.checkTaskExist(url);
     await this.hunterCronManager.addCronTask({ url, schedule, user: { email: user.email } });
   }
 

@@ -4,7 +4,7 @@ import { RedisService } from "@midwayjs/redis";
 import { v4 as uuid } from "uuid";
 import { CronJob } from "cron";
 import { isValidCron } from "cron-validator";
-import { cloneDeep, toNumber, toString, first } from "lodash";
+import { cloneDeep, toNumber, toString, first, isEmpty } from "lodash";
 import isValidUrl from "../utils/isValidUrl";
 import { GoodsHunter, MercariHunter, CronDeail, CronDetailInDb } from "../types";
 import { MercariApi } from "../api/site/mercari";
@@ -50,7 +50,7 @@ export class HunterCronManager {
   @Inject()
   emailService: EmailService;
 
-  @TaskLocal('*/10 * * * * *')
+  @TaskLocal('*/59 * * * * *')
   private async selfPingPong() {
     Object.keys(this.cronList).map(async (key) => {
       const jobInstance = this.cronList[key].jobInstance;
@@ -100,15 +100,17 @@ export class HunterCronManager {
             return;
           })
         })).then(async () => {
-          const html = render(mercariGoodsList, { data: filteredGoods});
-          const keyword = new URL(hunterInfo.url).searchParams.get("keyword");
+          if (!isEmpty(filteredGoods)) {
+            const html = render(mercariGoodsList, { data: filteredGoods});
+            const keyword = new URL(hunterInfo.url).searchParams.get("keyword");
 
-          const emailMessage: Mail.Options = {
-            to: email,
-            subject: `New update on mercari goods of your interest, keyword:${keyword}`,
-            html,
+            const emailMessage: Mail.Options = {
+              to: email,
+              subject: `New update on mercari goods of your interest, keyword:${keyword}`,
+              html,
+            }
+            await this.emailService.sendEmail(emailMessage);
           }
-          await this.emailService.sendEmail(emailMessage);
           this.logger.info(`task ${cronId} executed steady and sound at ${moment().format("YYYY:MM:DD hh:mm:ss")}`);
         });
       }), null, true);

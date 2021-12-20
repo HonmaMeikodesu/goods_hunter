@@ -45,6 +45,7 @@ export default {
     invalidRequestBody: type.common + "0001",
   },
   goodsService: {
-    TaskNotFound: type.service + service.goods + "01"
+    taskAlreadyExist: type.service + service.goods + "01",
+    taskNotFound: type.service + service.goods + "02",
   }
 }

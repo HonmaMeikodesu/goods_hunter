@@ -15,11 +15,18 @@ export class GoodsService {
   @Inject()
   hunterCronManager: HunterCronManager;
 
+  async checkTaskExist(url: string) {
+    const values = await this.redisClient.hvals(CONST.HUNTERINFO);
+    const tasks = values.map((val) => JSON.parse(val)) as CronDetailInDb<GoodsHunter>[];
+    const task = tasks.find((task) => task.hunterInfo.url === url);
+    if (task) throw new Error(errorCode.goodsService.taskAlreadyExist);
+  }
+
   async deleteTask(email: string, url: string) {
     const values = await this.redisClient.hvals(CONST.HUNTERINFO);
     const tasks = values.map((val) => JSON.parse(val)) as CronDetailInDb<GoodsHunter>[];
     const task = tasks.find((task) => (task.hunterInfo.user.email === email) && (task.hunterInfo.url === url));
-    if (!task) throw new Error(errorCode.goodsService.TaskNotFound);
+    if (!task) throw new Error(errorCode.goodsService.taskNotFound);
     await this.hunterCronManager.removeCronTask(task.id);
   }
 }
