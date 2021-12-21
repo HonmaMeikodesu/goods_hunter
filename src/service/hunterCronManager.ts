@@ -96,7 +96,6 @@ export class HunterCronManager {
         } else {
           filteredGoods = goodsList.filter((good) => good.updated > prevLatestTime);
         }
-        await this.redisClient.hset(CONST.SHOTRECORD, cronId, toString(nextLatestTime));
 
         Promise.all(filteredGoods.map(good => {
           return this.mercariApi.fetchThumbNailsAndConvertToBase64(first(good.thumbnails)).then((imgBase64Url) => {
@@ -114,6 +113,7 @@ export class HunterCronManager {
               html,
             }
             await this.emailService.sendEmail(emailMessage);
+            await this.redisClient.hset(CONST.SHOTRECORD, cronId, toString(nextLatestTime));
             this.logger.info(`email sent to ${email}, goodsRecor:\n${JSON.stringify(filteredGoods)}\n`);
           }
           this.logger.info(`task ${cronId} executed steady and sound at ${moment().format("YYYY:MM:DD hh:mm:ss")}`);
