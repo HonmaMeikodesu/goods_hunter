@@ -57,9 +57,11 @@ export class HunterCronManager {
       const hunterInfo = cloneDeep(this.cronList[key].hunterInfo);
       if (!jobInstance.running) {
         await this.removeCronTask(key);
+        this.logger.error(`task ${key} terminated unexpectedly, try restarting...`)
         await this.addCronTask(hunterInfo);
       }
     })
+    this.logger.info(`ping pong check ends, current cronList: ${Object.keys(this.cronList).join(",")}`);
   }
 
   getCronList() {
@@ -73,6 +75,7 @@ export class HunterCronManager {
       await this.redisClient.hdel(CONST.HUNTERINFO, id);
       await this.redisClient.hdel(CONST.SHOTRECORD, id);
       delete this.cronList[id];
+      this.logger.info(`task ${id} removed`);
     }
   }
   async addCronTask(hunterInfo: GoodsHunter, existedId?: string) {
@@ -116,6 +119,7 @@ export class HunterCronManager {
           this.logger.info(`task ${cronId} executed steady and sound at ${moment().format("YYYY:MM:DD hh:mm:ss")}`);
         });
       }), null, true);
+      this.logger.info(`task ${cronId} established and get set to go`);
       const cronDetail: CronDeail<typeof hunterInfo> = {
         id: cronId,
         jobInstance: newCronJob,
