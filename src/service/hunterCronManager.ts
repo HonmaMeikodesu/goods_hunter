@@ -114,7 +114,7 @@ export class HunterCronManager {
             }
             await this.emailService.sendEmail(emailMessage);
             await this.redisClient.hset(CONST.SHOTRECORD, cronId, toString(nextLatestTime));
-            this.logger.info(`email sent to ${email}, goodsRecor:\n${JSON.stringify(filteredGoods)}\n`);
+            this.logger.info(`email sent to ${email}, goodsNameRecord:\n${JSON.stringify(filteredGoods.map(good=>good.name))}\n`);
           }
           this.logger.info(`task ${cronId} executed steady and sound at ${moment().format("YYYY:MM:DD hh:mm:ss")}`);
         });
