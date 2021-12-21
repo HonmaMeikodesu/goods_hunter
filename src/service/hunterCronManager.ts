@@ -50,7 +50,7 @@ export class HunterCronManager {
   @Inject()
   emailService: EmailService;
 
-  @TaskLocal('*/59 * * * * *')
+  @TaskLocal('0 */1 * * * *')
   private async selfPingPong() {
     Object.keys(this.cronList).map(async (key) => {
       const jobInstance = this.cronList[key].jobInstance;
