@@ -50,15 +50,16 @@
     "ts-jest": "^26.2.0",
     "typescript": "^4.0.0"
   },
+  "peerDependencies": {
+    "pm2": "*"
+  },
   "engines": {
     "node": ">=12.0.0"
   },
   "scripts": {
-    "start": "export proxyInbound='http://localhost:1218'&&egg-scripts start --daemon --title=my-midway-project --framework=@midwayjs/web",
-    "stop": "egg-scripts stop --title=my-midway-project",
     "start_build": "npm run build && cross-env NODE_ENV=development midway-bin dev",
-    "dev": "cross-env ets && cross-env proxyInbound='http://localhost:1218' cross-env NODE_ENV=local midway-bin dev --ts",
-    "dev_local": "cross-env ets && cross-env proxyInbound='http://localhost:10809' cross-env NODE_ENV=local midway-bin dev --ts",
+    "dev": "cross-env ets && cross-env proxyInbound='http://localhost:1218' && cross-env NODE_ENV=local && midway-bin dev --ts",
+    "dev_local": "cross-env ets && cross-env proxyInbound='http://localhost:10809' && cross-env NODE_ENV=local && midway-bin dev --ts",
     "test": "midway-bin test --ts",
     "cov": "midway-bin cov --ts",
     "lint": "mwts check",
