@@ -4,10 +4,16 @@ export interface UserInfo {
   email: string;
 }
 
+export interface FreezingRange {
+  start: string;
+  end: string;
+}
+
 export interface GoodsHunter {
   user: UserInfo;
   url: string;
   schedule: string;
+  freezingRange?: FreezingRange
 }
 
 export interface MercariHunter extends GoodsHunter {

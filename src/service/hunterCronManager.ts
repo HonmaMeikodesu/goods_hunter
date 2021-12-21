@@ -14,6 +14,7 @@ import { mercariGoodsList } from "../template";
 import { EmailService } from "./email";
 import Mail from "nodemailer/lib/mailer";
 import CONST from "../const";
+import isBetweenDayTime from "../utils/isBetweenDayTime";
 
 function hunterCognition<T extends GoodsHunter>(hunterInfo: GoodsHunter, cognitionFunc: (info: typeof hunterInfo) => boolean): hunterInfo is T {
   return cognitionFunc(hunterInfo);
@@ -80,11 +81,17 @@ export class HunterCronManager {
   }
   async addCronTask(hunterInfo: GoodsHunter, existedId?: string) {
     if(hunterCognition<MercariHunter>(hunterInfo, (info) => !!info.url)) {
-      const { url, schedule, user } = hunterInfo;
+      const { url, schedule, user, freezingRange } = hunterInfo;
       const { email } = user;
       if (!isValidCron(schedule) || !isValidUrl(url)) throw new Error("Invalid cron format!");
       const cronId = existedId || uuid();
       const newCronJob = new CronJob(schedule, (async () => {
+        if(freezingRange) {
+          const { start, end } = freezingRange;
+          if (isBetweenDayTime(start, end)) {
+            return;
+          }
+        }
         const resp = await this.mercariApi.fetchGoodsList(url);
         const goodsList = resp.data;
         let filteredGoods: typeof goodsList = [];
