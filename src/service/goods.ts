@@ -27,6 +27,6 @@ export class GoodsService {
     const tasks = values.map((val) => JSON.parse(val)) as CronDetailInDb<GoodsHunter>[];
     const task = tasks.find((task) => (task.hunterInfo.user.email === email) && (task.hunterInfo.url === url));
     if (!task) throw new Error(errorCode.goodsService.taskNotFound);
-    await this.hunterCronManager.removeCronTask(task.id);
+    await this.hunterCronManager.removeCronTask(task.id, task.hunterInfo.type);
   }
 }

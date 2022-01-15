@@ -1,6 +1,7 @@
 import { EntityModel } from "@midwayjs/orm";
 import { Column, PrimaryColumn, UpdateDateColumn, CreateDateColumn, OneToMany } from "typeorm";
 import { LoginState } from "./loginState";
+import { MercariHunter } from "./mercariHunter";
 
 @EntityModel()
 export class User {
@@ -18,4 +19,7 @@ export class User {
 
     @OneToMany(() => LoginState,"user", { cascade: true })
     loginStates: LoginState[];
+
+    @OneToMany(() => MercariHunter, "user", { cascade: true })
+    mercariHunters: MercariHunter[];
 }

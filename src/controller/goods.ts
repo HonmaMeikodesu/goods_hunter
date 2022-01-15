@@ -5,6 +5,7 @@ import { toNumber } from "lodash";
 import { UserInfo } from '../types';
 import { GoodsService } from '../service/goods';
 import errorCode from "../errorCode";
+import getHunterType from "../utils/getHunterType";
 
 @Provide()
 @Controller('/')
@@ -34,7 +35,7 @@ export class GoodsController {
     }
     const user = this.ctx.user as UserInfo;
     await this.goodsService.checkTaskExist(url);
-    await this.hunterCronManager.addCronTask({ url, schedule, user: { email: user.email }, freezingRange: (freezeStart && freezeEnd) ? { start: freezeStart, end: freezeEnd } : undefined});
+    await this.hunterCronManager.addCronTask({ url, type: getHunterType(url), schedule, user: { email: user.email }, freezingRange: (freezeStart && freezeEnd) ? { start: freezeStart, end: freezeEnd } : undefined});
   }
 
   @Get('/unregisterGoodsWatcher', { middleware: [ "loginStateCheck" ]})

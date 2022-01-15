@@ -6,7 +6,7 @@ import { CronJob } from "cron";
 import { isValidCron } from "cron-validator";
 import { cloneDeep, toNumber, toString, first, isEmpty } from "lodash";
 import isValidUrl from "../utils/isValidUrl";
-import { GoodsHunter, MercariHunter, CronDeail, CronDetailInDb } from "../types";
+import { GoodsHunter, MercariHunter as MercariHunterType, CronDeail, CronDetailInDb, HunterType } from "../types";
 import { MercariApi } from "../api/site/mercari";
 import { render } from "ejs";
 import moment from "moment";
@@ -15,6 +15,9 @@ import { EmailService } from "./email";
 import Mail from "nodemailer/lib/mailer";
 import CONST from "../const";
 import isBetweenDayTime from "../utils/isBetweenDayTime";
+import { DatabaseTransactionWrapper } from "../utils/databaseTransactionWrapper";
+import { User } from "../model/user";
+import { MercariHunter } from "../model/mercariHunter";
 
 function hunterCognition<T extends GoodsHunter>(hunterInfo: GoodsHunter, cognitionFunc: (info: typeof hunterInfo) => boolean): hunterInfo is T {
   return cognitionFunc(hunterInfo);
@@ -51,13 +54,16 @@ export class HunterCronManager {
   @Inject()
   emailService: EmailService;
 
+  @Inject()
+  databaseTransactionWrapper: DatabaseTransactionWrapper;
+
   @TaskLocal('0 */1 * * * *')
   private async selfPingPong() {
     Object.keys(this.cronList).map(async (key) => {
       const jobInstance = this.cronList[key].jobInstance;
       const hunterInfo = cloneDeep(this.cronList[key].hunterInfo);
       if (!jobInstance.running) {
-        await this.removeCronTask(key);
+        await this.removeCronTask(key, hunterInfo.type);
         this.logger.error(`task ${key} terminated unexpectedly, try restarting...`)
         await this.addCronTask(hunterInfo);
       }
@@ -69,19 +75,25 @@ export class HunterCronManager {
     return this.cronList;
   }
 
-  async removeCronTask(id: string) {
+  async removeCronTask(id: string, type: HunterType) {
     const cronJob = this.cronList[id];
-    if (cronJob) {
-      cronJob.jobInstance.stop();
-      await this.redisClient.hdel(CONST.HUNTERINFO, id);
-      await this.redisClient.hdel(CONST.SHOTRECORD, id);
-      delete this.cronList[id];
-      this.logger.info(`task ${id} removed`);
-    }
+    if (!cronJob) return;
+    await this.databaseTransactionWrapper({
+      pending: async (queryRunner) => {
+        if (type === "Mercari") {
+          await queryRunner.manager.delete(MercariHunter, { hunterInstanceId: id });
+        }
+        await this.redisClient.hdel(CONST.HUNTERINFO, id);
+        await this.redisClient.hdel(CONST.SHOTRECORD, id);
+        cronJob.jobInstance.stop();
+        delete this.cronList[id];
+      }
+    })
+    this.logger.info(`task ${id} removed`);
   }
   async addCronTask(hunterInfo: GoodsHunter, existedId?: string) {
-    if(hunterCognition<MercariHunter>(hunterInfo, (info) => !!info.url)) {
-      const { url, schedule, user, freezingRange } = hunterInfo;
+    if(hunterCognition<MercariHunterType>(hunterInfo, (info) => !!info.url)) {
+      const { url, schedule, user, freezingRange, type } = hunterInfo;
       const { email } = user;
       if (!isValidCron(schedule) || !isValidUrl(url)) throw new Error("Invalid cron format!");
       const cronId = existedId || uuid();
@@ -136,8 +148,25 @@ export class HunterCronManager {
         id: cronId,
         hunterInfo,
       }
-      if (!existedId)
-        await this.redisClient.hset(CONST.HUNTERINFO, cronId, JSON.stringify(CronDeailInDB));
+      if (!existedId) {
+        // not reload for the previous jobInstance, but a brand new one instead
+        await this.databaseTransactionWrapper({
+          pending: async (queryRunner) => {
+            const user = await queryRunner.manager.findOne(User, { email });
+            if (type === "Mercari") {
+              const newMercariHunter = new MercariHunter();
+              newMercariHunter.hunterInstanceId = cronId;
+              user.mercariHunters.push(newMercariHunter);
+            }
+            await queryRunner.manager.save(user);
+            await this.redisClient.hset(CONST.HUNTERINFO, cronId, JSON.stringify(CronDeailInDB));
+          },
+          rejected: async () => {
+            newCronJob.stop();
+            await this.redisClient.hdel(CONST.HUNTERINFO, cronId);
+          }
+        })
+      }
       this.cronList[cronId] = cronDetail;
     }
   }

@@ -3,6 +3,7 @@ const type = {
   controller: "02",
   service: "03",
   common: "04",
+  misc: "05",
 }
 
 const middleware = {
@@ -22,6 +23,10 @@ const service = {
   login: "03",
   register: "04",
   goods: "05"
+}
+
+const misc = {
+  utils: "01",
 }
 
 export default {
@@ -47,5 +52,9 @@ export default {
   goodsService: {
     taskAlreadyExist: type.service + service.goods + "01",
     taskNotFound: type.service + service.goods + "02",
+  },
+  getHunterType: {
+    invalidUrl: type.misc + misc.utils + "01",
+    hunterTypeNotFound: type.misc + misc.utils + "02",
   }
 }

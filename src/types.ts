@@ -9,7 +9,10 @@ export interface FreezingRange {
   end: string;
 }
 
+export type HunterType = "Mercari";
+
 export interface GoodsHunter {
+  type: HunterType;
   user: UserInfo;
   url: string;
   schedule: string;
