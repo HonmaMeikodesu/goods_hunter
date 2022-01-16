@@ -6,9 +6,10 @@ import { UserInfo } from '../types';
 import { GoodsService } from '../service/goods';
 import errorCode from "../errorCode";
 import getHunterType from "../utils/getHunterType";
+import CONST from "../const";
 
 @Provide()
-@Controller('/')
+@Controller('/', { middleware: ["loginStateCheck"]})
 export class GoodsController {
 
   @Inject()
@@ -20,7 +21,7 @@ export class GoodsController {
   @Inject()
   ctx: Context;
 
-  @Post('/registerGoodsWatcher', { middleware: ['loginStateCheck'] })
+  @Post('/registerGoodsWatcher')
   async registerGoodsWatcher(@Body() url: string, @Body() schedule: string, @Body() freezeStart: string, @Body() freezeEnd: string) {
     if (!url || !schedule) throw new Error(errorCode.common.invalidRequestBody);
     if (freezeStart || freezeEnd) {
@@ -38,10 +39,33 @@ export class GoodsController {
     await this.hunterCronManager.addCronTask({ url, type: getHunterType(url), schedule, user: { email: user.email }, freezingRange: (freezeStart && freezeEnd) ? { start: freezeStart, end: freezeEnd } : undefined});
   }
 
-  @Get('/unregisterGoodsWatcher', { middleware: [ "loginStateCheck" ]})
+  @Get('/unregisterGoodsWatcher')
   async unregisterGoodsWatcher(@Query("url") url: string) {
     if (!url) throw new Error(errorCode.common.invalidRequestBody);
     const user = this.ctx.user as UserInfo;
     await this.goodsService.deleteTask(user.email, url);
   }
+
+  @Get('/listGoodsWatcher')
+  async listGoodsWatcher(@Query("type") type: (typeof CONST.HUNTERTYPE)[number]) {
+    if (!CONST.HUNTERTYPE.includes(type)) throw new Error(errorCode.goodsController.invalidHunterType);
+    const user = this.ctx.user as UserInfo;
+    const list = await this.goodsService.listUserTasks(user.email, type);
+    return list;
+  }
+
+  @Get('/ignoreGood')
+  async ignoreGood(@Query("goodId") goodId: string) {
+    if (!goodId) throw new Error(errorCode.common.invalidRequestBody);
+    const user = this.ctx.user as UserInfo;
+    await this.hunterCronManager.addUserIgnoreGoods(user.email, [goodId]);
+  }
+
+  @Get('/cancelGoodIgnore')
+  async cancelGoodIgnore(@Query("goodId") goodId: string) {
+    if (!goodId) throw new Error(errorCode.common.invalidRequestBody);
+    const user = this.ctx.user as UserInfo;
+    await this.hunterCronManager.cancelUserIgnoreGoods(user.email, [goodId]);
+  }
+
 }

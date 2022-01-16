@@ -6,7 +6,7 @@ import { CronJob } from "cron";
 import { isValidCron } from "cron-validator";
 import { cloneDeep, toNumber, toString, first, isEmpty } from "lodash";
 import isValidUrl from "../utils/isValidUrl";
-import { GoodsHunter, MercariHunter as MercariHunterType, CronDeail, CronDetailInDb, HunterType } from "../types";
+import { GoodsHunter, MercariHunter as MercariHunterType, CronDeail, CronDetailInDb } from "../types";
 import { MercariApi } from "../api/site/mercari";
 import { render } from "ejs";
 import moment from "moment";
@@ -75,7 +75,15 @@ export class HunterCronManager {
     return this.cronList;
   }
 
-  async removeCronTask(id: string, type: HunterType) {
+  async addUserIgnoreGoods(user: string, goodIds: string[]) {
+    await this.redisClient.sadd(`${CONST.USERIGNORE}_${user}`, goodIds);
+  }
+
+  async cancelUserIgnoreGoods(user: string, goodIds: string[]) {
+    await this.redisClient.srem(`${CONST.USERIGNORE}_${user}`, goodIds);
+  }
+
+  async removeCronTask(id: string, type: (typeof CONST.HUNTERTYPE)[number]) {
     const cronJob = this.cronList[id];
     if (!cronJob) return;
     await this.databaseTransactionWrapper({
@@ -115,7 +123,8 @@ export class HunterCronManager {
         } else {
           filteredGoods = goodsList.filter((good) => good.updated > prevLatestTime);
         }
-
+        const ignoreGoods = await this.redisClient.smembers(`${CONST.USERIGNORE}_${user}`);
+        filteredGoods = filteredGoods.filter((good) => !ignoreGoods.includes(good.id));
         Promise.all(filteredGoods.map(good => {
           return this.mercariApi.fetchThumbNailsAndConvertToBase64(first(good.thumbnails)).then((imgBase64Url) => {
             good.thumbnails = [imgBase64Url];

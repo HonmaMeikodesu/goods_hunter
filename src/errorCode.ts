@@ -49,6 +49,9 @@ export default {
   common: {
     invalidRequestBody: type.common + "0001",
   },
+  goodsController: {
+    invalidHunterType: type.controller + controller.goods + "01",
+  },
   goodsService: {
     taskAlreadyExist: type.service + service.goods + "01",
     taskNotFound: type.service + service.goods + "02",

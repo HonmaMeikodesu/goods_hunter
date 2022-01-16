@@ -1,4 +1,5 @@
 import { CronJob } from "cron";
+import CONST from "./const";
 
 export interface UserInfo {
   email: string;
@@ -9,10 +10,8 @@ export interface FreezingRange {
   end: string;
 }
 
-export type HunterType = "Mercari";
-
 export interface GoodsHunter {
-  type: HunterType;
+  type: (typeof CONST.HUNTERTYPE)[number];
   user: UserInfo;
   url: string;
   schedule: string;
