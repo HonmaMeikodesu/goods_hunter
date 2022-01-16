@@ -4,7 +4,7 @@ import errorCode from '../errorCode';
 import { LoginService } from '../service/login';
 
 @Provide()
-@Controller()
+@Controller("/login")
 export class LoginController {
 
   @Inject()
@@ -13,7 +13,7 @@ export class LoginController {
   @Inject()
   ctx: Context;
 
-  @Post('/login')
+  @Post('/')
   async login(@Body("email") email: string, @Body("password") password: string) {
     if (!email || !password) throw new Error(errorCode.common.invalidRequestBody);
     const loginState = await this.loginService.checkValidAndGenerateLoginState(email, password);

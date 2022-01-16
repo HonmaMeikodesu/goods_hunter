@@ -9,7 +9,7 @@ import getHunterType from "../utils/getHunterType";
 import CONST from "../const";
 
 @Provide()
-@Controller('/', { middleware: ["loginStateCheck"]})
+@Controller('/goods', { middleware: ["loginStateCheck"]})
 export class GoodsController {
 
   @Inject()
