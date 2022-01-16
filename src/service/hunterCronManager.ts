@@ -123,7 +123,7 @@ export class HunterCronManager {
         } else {
           filteredGoods = goodsList.filter((good) => good.updated > prevLatestTime);
         }
-        const ignoreGoods = await this.redisClient.smembers(`${CONST.USERIGNORE}_${user}`);
+        const ignoreGoods = await this.redisClient.smembers(`${CONST.USERIGNORE}_${email}`);
         filteredGoods = filteredGoods.filter((good) => !ignoreGoods.includes(good.id));
         Promise.all(filteredGoods.map(good => {
           return this.mercariApi.fetchThumbNailsAndConvertToBase64(first(good.thumbnails)).then((imgBase64Url) => {
