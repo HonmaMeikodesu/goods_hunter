@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>临时登陆页</title>
+  <script>
+    function submit() {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      fetch("http://<%=serverHost%>/login", {
+        method: 'post',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8;' },
+        body: `email=${email}&password=${password}`
+      }).then(data => {
+        return data.text()
+      }).then(text => {
+        try {
+          let obj = JSON.parse(text);
+          if (obj.code === "200") {
+            window.open("login success");
+            return;
+          }
+          throw new Error(obj.data);
+        } catch(e) {
+          window.open("login fail:" + e.message);
+        }
+      });
+    }
+  </script>
+</head>
+
+<body>
+  <div>
+    <label for="email">邮箱</label>
+    <input id="email" type="text" />
+  </div>
+  <div>
+    <label for="password">密码</label>
+    <input id="password" type="password" />
+  </div>
+  <button onclick="submit()">登录</button>
+</body>
+
+</html>

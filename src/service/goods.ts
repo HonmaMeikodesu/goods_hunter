@@ -7,6 +7,7 @@ import { HunterCronManager } from "./hunterCronManager";
 import { InjectEntityModel } from "@midwayjs/orm";
 import { Repository } from "typeorm";
 import { User } from "../model/user";
+import { omit } from "lodash";
 
 
 @Provide()
@@ -36,13 +37,13 @@ export class GoodsService {
     await this.hunterCronManager.removeCronTask(task.id, task.hunterInfo.type);
   }
 
-  async listUserTasks(email: string, type: (typeof CONST.HUNTERTYPE)[number]) {
+  async listUserTasks(email: string, type: (typeof CONST.HUNTERTYPE)[number]): Promise<CronDetailInDb[]> {
     const user = await this.user.findOne({
       email
-    });
+    }, { relations: ["mercariHunters"] });
     if (type === "Mercari") {
       const allCronList = this.hunterCronManager.getCronList();
-      return user.mercariHunters.map((hunter) => allCronList[hunter.hunterInstanceId]);
+      return user.mercariHunters.map((hunter) => omit(allCronList[hunter.hunterInstanceId], "jobInstance"));
     }
   }
 }

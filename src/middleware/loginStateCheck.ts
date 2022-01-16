@@ -21,7 +21,12 @@ export class LoginStateCheck implements IWebMiddleware {
   resolve() {
     return async (ctx: Context, next: IMidwayWebNext) => {
       const loginState = ctx.cookies.get("loginState")  as string | undefined;
-      if (!loginState) throw new Error(errorCode.loginStateMiddleware.missingLoginState);
+      console.log(1234);
+      if (!loginState) {
+        ctx.redirect("/");
+        ctx.res.end();
+        return;
+      }
       const record = await this.loginStateModel.findOne({
         loginState,
       }, {
