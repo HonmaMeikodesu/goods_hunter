@@ -11,7 +11,7 @@
       const password = document.getElementById("password").value;
       fetch("http://<%=serverHost%>/login", {
         method: 'post',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8;' },
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: `email=${email}&password=${password}`
       }).then(data => {
         return data.text()
