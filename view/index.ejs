@@ -19,12 +19,12 @@
         try {
           let obj = JSON.parse(text);
           if (obj.code === "200") {
-            window.open("login success");
+            window.alert("login success");
             return;
           }
-          throw new Error(obj.data);
+          throw new Error(obj.code);
         } catch(e) {
-          window.open("login fail:" + e.message);
+          window.alert("login fail:" + e.message);
         }
       });
     }
