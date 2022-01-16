@@ -161,7 +161,7 @@ export class HunterCronManager {
         // not reload for the previous jobInstance, but a brand new one instead
         await this.databaseTransactionWrapper({
           pending: async (queryRunner) => {
-            const user = await queryRunner.manager.findOne(User, { email });
+            const user = await queryRunner.manager.findOne(User, { email }, { relations: ["mercariHunters"] });
             if (type === "Mercari") {
               const newMercariHunter = new MercariHunter();
               newMercariHunter.hunterInstanceId = cronId;
