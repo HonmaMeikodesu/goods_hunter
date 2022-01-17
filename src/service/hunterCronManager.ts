@@ -18,6 +18,7 @@ import isBetweenDayTime from "../utils/isBetweenDayTime";
 import { DatabaseTransactionWrapper } from "../utils/databaseTransactionWrapper";
 import { User } from "../model/user";
 import { MercariHunter } from "../model/mercariHunter";
+import serverInfo from "../private/server";
 
 function hunterCognition<T extends GoodsHunter>(hunterInfo: GoodsHunter, cognitionFunc: (info: typeof hunterInfo) => boolean): hunterInfo is T {
   return cognitionFunc(hunterInfo);
@@ -132,7 +133,7 @@ export class HunterCronManager {
           })
         })).then(async () => {
           if (!isEmpty(filteredGoods)) {
-            const html = render(mercariGoodsList, { data: filteredGoods});
+            const html = render(mercariGoodsList, { data: filteredGoods, serverHost: serverInfo.serverHost });
             const keyword = new URL(hunterInfo.url).searchParams.get("keyword");
 
             const emailMessage: Mail.Options = {

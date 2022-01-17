@@ -60,19 +60,20 @@
   <div class="container">
     <% data.forEach(function(data){ %>
     <div class="grid-unit">
-      <div
+      <a
         class="img-container"
-        onclick="window.open('https://jp.mercari.com/item/' + '<%= data.id %>')"
+        href="https://jp.mercari.com/item/<%= data.id %>"
       >
         <img src="<%= data.thumbnails %>" alt="" class="image" />
         <div class="price"><%= data.price %></div>
         <% if(data.status !== "on_sale") { %>
           <div class="sold"><div>SOLD</div></div>
         <% } %> 
-      </div>
+      </a>
       <div class="name">
         <%= data.name %> 
       </div>
+      <a href="http://<%= serverHost %>/goods/ignoreGood?goodId=<%= data.id %>">Click here to filter this good</a>
     </div>
     <% }) %>
   </div>
