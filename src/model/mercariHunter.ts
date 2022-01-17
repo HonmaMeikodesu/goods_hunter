@@ -7,7 +7,7 @@ export class MercariHunter {
   @ManyToOne(() => User, "mercariHunters", { primary: true })
   user: User;
 
-  @Column("varchar", { nullable: false })
+  @Column("varchar", { primary: true })
   hunterInstanceId: string;
 
 }
