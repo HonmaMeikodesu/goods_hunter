@@ -104,7 +104,8 @@ export class HunterCronManager {
     if(hunterCognition<MercariHunterType>(hunterInfo, (info) => !!info.url)) {
       const { url, schedule, user, freezingRange, type } = hunterInfo;
       const { email } = user;
-      if (!isValidCron(schedule) || !isValidUrl(url)) throw new Error("Invalid cron format!");
+      const decodedUrl = decodeURIComponent(url);
+      if (!isValidCron(schedule) || !isValidUrl(decodedUrl)) throw new Error("Invalid cron format!");
       const cronId = existedId || uuid();
       const newCronJob = new CronJob(schedule, (async () => {
         if(freezingRange) {
@@ -113,7 +114,7 @@ export class HunterCronManager {
             return;
           }
         }
-        const resp = await this.mercariApi.fetchGoodsList(url);
+        const resp = await this.mercariApi.fetchGoodsList(decodedUrl);
         const goodsList = resp.data;
         let filteredGoods: typeof goodsList = [];
         const nextLatestTime = resp.data.reduce((max, current) => current.updated > max ? current.updated : max, goodsList[0].updated);
@@ -134,7 +135,7 @@ export class HunterCronManager {
         })).then(async () => {
           if (!isEmpty(filteredGoods)) {
             const html = render(mercariGoodsList, { data: filteredGoods, serverHost: serverInfo.serverHost });
-            const keyword = new URL(hunterInfo.url).searchParams.get("keyword");
+            const keyword = new URL(decodeURIComponent(hunterInfo.url)).searchParams.get("keyword");
 
             const emailMessage: Mail.Options = {
               to: email,

@@ -36,6 +36,7 @@ export class GoodsController {
     }
     const user = this.ctx.user as UserInfo;
     await this.goodsService.checkTaskExist(url);
+    url = decodeURIComponent(url);
     await this.hunterCronManager.addCronTask({ url, type: getHunterType(url), schedule, user: { email: user.email }, freezingRange: (freezeStart && freezeEnd) ? { start: freezeStart, end: freezeEnd } : undefined});
   }
 
@@ -43,6 +44,7 @@ export class GoodsController {
   async unregisterGoodsWatcher(@Query("url") url: string) {
     if (!url) throw new Error(errorCode.common.invalidRequestBody);
     const user = this.ctx.user as UserInfo;
+    url = decodeURIComponent(url);
     await this.goodsService.deleteTask(user.email, url);
   }
 
