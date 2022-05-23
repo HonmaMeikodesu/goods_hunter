@@ -30,7 +30,7 @@ export default (appInfo: EggAppInfo) => {
     },
   };
 
-  config.taskConfig = {
+  config.task = {
     redis: {
       port: 6379,
       host: "127.0.0.1",
@@ -42,6 +42,10 @@ export default (appInfo: EggAppInfo) => {
         tz: "Asia/Shanghai",
       },
     },
+  };
+
+  config.egg = {
+    port: 7001,
   };
 
   config.orm = {
