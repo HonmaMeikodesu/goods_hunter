@@ -1,4 +1,4 @@
-import { Provide, Inject, Logger } from "@midwayjs/decorator";
+import { Provide, Inject, Logger, Scope, ScopeEnum } from "@midwayjs/decorator";
 import { ProxyGet } from "../../request";
 import { ILogger } from "@midwayjs/logger";
 import generateJwt from "generate-mercari-jwt";
@@ -7,6 +7,9 @@ import { GoodsListResponse } from "./types";
 const MERCARIHOST = "api.mercari.jp";
 
 @Provide()
+@Scope(ScopeEnum.Request, {
+  allowDowngrade: true,
+})
 export class MercariApi {
   @Inject("proxyGet")
   proxyGet: ProxyGet;
