@@ -2,6 +2,7 @@ import { IMidwayContainer, providerWrapper } from "@midwayjs/core";
 import { HttpService } from "@midwayjs/axios";
 import { AxiosRequestConfig, AxiosResponse } from "axios";
 import { proxyInbound } from "../const";
+import { ScopeEnum } from "@midwayjs/decorator";
 const HttpsProxyAgent = require("https-proxy-agent");
 
 export declare interface ProxyGet {
@@ -33,5 +34,6 @@ providerWrapper([
   {
     id: "proxyGet",
     provider: proxyGet,
+    scope: ScopeEnum.Singleton,
   },
 ]);

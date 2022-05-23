@@ -2,6 +2,7 @@ import { IMidwayContainer, providerWrapper } from "@midwayjs/core";
 import { loggers } from "@midwayjs/logger";
 import { getConnection, QueryRunner } from "typeorm";
 import { isFunction } from "lodash";
+import { ScopeEnum } from "@midwayjs/decorator";
 
 export declare interface DatabaseTransactionWrapper {
   (funcs: {
@@ -43,5 +44,6 @@ providerWrapper([
   {
     id: "databaseTransactionWrapper",
     provider: databaseTransactionWrapper,
+    scope: ScopeEnum.Singleton,
   },
 ]);
