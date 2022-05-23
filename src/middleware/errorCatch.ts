@@ -1,15 +1,18 @@
-import { Provide, Logger } from "@midwayjs/decorator";
+import { Provide, Logger, Middleware } from "@midwayjs/decorator";
 import { ILogger } from "@midwayjs/logger";
-import { IWebMiddleware, IMidwayWebNext } from "@midwayjs/web";
+import { IMiddleware } from "@midwayjs/core";
+import { NextFunction } from "@midwayjs/web";
 import { Context } from "egg";
 
-@Provide()
-export class ErrorCatchMiddleware implements IWebMiddleware {
+@Middleware()
+export class ErrorCatchMiddleware
+  implements IMiddleware<Context, NextFunction>
+{
   @Logger()
   logger: ILogger;
 
   resolve() {
-    return async (ctx: Context, next: IMidwayWebNext) => {
+    return async (ctx: Context, next: NextFunction) => {
       try {
         await next();
         ctx.res.statusCode = 200;

@@ -1,6 +1,7 @@
 import { Provide, Logger } from "@midwayjs/decorator";
 import { ILogger } from "@midwayjs/logger";
-import { IWebMiddleware, IMidwayWebNext } from "@midwayjs/web";
+import { IMiddleware } from "@midwayjs/core";
+import { NextFunction } from "@midwayjs/web";
 import { Context } from "egg";
 import { InjectEntityModel } from "@midwayjs/orm";
 import { Repository } from "typeorm";
@@ -10,7 +11,7 @@ import moment from "moment";
 import { UserInfo } from "../types";
 
 @Provide()
-export class LoginStateCheck implements IWebMiddleware {
+export class LoginStateCheck implements IMiddleware<Context, NextFunction> {
   @InjectEntityModel(LoginState)
   loginStateModel: Repository<LoginState>;
 
@@ -18,7 +19,7 @@ export class LoginStateCheck implements IWebMiddleware {
   logger: ILogger;
 
   resolve() {
-    return async (ctx: Context, next: IMidwayWebNext) => {
+    return async (ctx: Context, next: NextFunction) => {
       const loginState = ctx.cookies.get("loginState") as string | undefined;
       if (!loginState) {
         ctx.redirect("/");
