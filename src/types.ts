@@ -16,6 +16,8 @@ export interface GoodsHunter {
   url: string;
   schedule: string;
   freezingRange?: FreezingRange;
+  lastShotAt?: string;
+  bornAt: string;
 }
 
 export interface MercariHunter extends GoodsHunter {

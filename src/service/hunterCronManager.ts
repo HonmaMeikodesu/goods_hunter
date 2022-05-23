@@ -12,7 +12,15 @@ import { RedisService } from "@midwayjs/redis";
 import { v4 as uuid } from "uuid";
 import { CronJob } from "cron";
 import { isValidCron } from "cron-validator";
-import { cloneDeep, toNumber, toString, first, isEmpty } from "lodash";
+import {
+  cloneDeep,
+  toNumber,
+  toString,
+  first,
+  isEmpty,
+  get,
+  set,
+} from "lodash";
 import isValidUrl from "../utils/isValidUrl";
 import {
   GoodsHunter,
@@ -190,11 +198,14 @@ export class HunterCronManager {
                 html,
               };
               await this.emailService.sendEmail(emailMessage);
+              const lastestTime = toString(nextLatestTime);
               await this.redisClient.hset(
                 CONST.SHOTRECORD,
                 cronId,
-                toString(nextLatestTime)
+                lastestTime
               );
+              const cronDetail = get(this.cronList, cronId);
+              set(cronDetail, "hunterInfo.lastShotAt", lastestTime);
               this.logger.info(
                 `email sent to ${email}, goodsNameRecord:\n${JSON.stringify(
                   filteredGoods.map(good => good.name)

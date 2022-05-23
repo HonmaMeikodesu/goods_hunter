@@ -15,6 +15,7 @@ import { GoodsService } from "../service/goods";
 import errorCode from "../errorCode";
 import getHunterType from "../utils/getHunterType";
 import CONST from "../const";
+import moment from "moment";
 
 @Provide()
 @Controller("/goods", { middleware: ["loginStateCheck"] })
@@ -67,6 +68,7 @@ export class GoodsController {
         freezeStart && freezeEnd
           ? { start: freezeStart, end: freezeEnd }
           : undefined,
+      bornAt: moment().unix().toString(),
     });
   }
 
