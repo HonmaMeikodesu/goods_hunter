@@ -4,7 +4,7 @@ import { User } from "./user";
 
 @EntityModel()
 export class LoginState {
-  @ManyToOne(() => User, "loginState", { primary: true })
+  @ManyToOne(() => User, "loginStates", { primary: true })
   user: User;
 
   @PrimaryColumn("varchar", { nullable: false })
