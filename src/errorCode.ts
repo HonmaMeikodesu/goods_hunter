@@ -53,6 +53,7 @@ export default {
   goodsService: {
     taskAlreadyExist: type.service + service.goods + "01",
     taskNotFound: type.service + service.goods + "02",
+    taskPermissionDenied: type.service + service.goods + "03"
   },
   getHunterType: {
     invalidUrl: type.misc + misc.utils + "01",

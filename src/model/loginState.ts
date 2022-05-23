@@ -1,5 +1,5 @@
 import { EntityModel } from "@midwayjs/orm";
-import { PrimaryColumn, ManyToOne, Column } from "typeorm";
+import { PrimaryColumn, ManyToOne, Column, CreateDateColumn, UpdateDateColumn } from "typeorm";
 import { User } from "./user";
 
 @EntityModel()
@@ -12,4 +12,10 @@ export class LoginState {
 
   @Column("datetime", { nullable: false })
   expiredAt: string;
+
+  @CreateDateColumn()
+  createdAt: string;
+
+  @UpdateDateColumn()
+  updatedAt: string;
 }

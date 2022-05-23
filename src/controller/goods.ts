@@ -57,7 +57,7 @@ export class GoodsController {
         throw new Error(errorCode.common.invalidRequestBody);
     }
     const user = this.ctx.user as UserInfo;
-    await this.goodsService.checkTaskExist(url);
+    await this.goodsService.checkTaskExist(url, "Mercari");
     url = decodeURIComponent(url);
     await this.hunterCronManager.addCronTask({
       url,
@@ -68,19 +68,17 @@ export class GoodsController {
         freezeStart && freezeEnd
           ? { start: freezeStart, end: freezeEnd }
           : undefined,
-      bornAt: moment().unix().toString(),
+      createdAt: moment().unix().toString(),
     });
   }
 
   @Get("/unregisterGoodsWatcher")
   async unregisterGoodsWatcher(
-    @Query("url")
-    url: string
+    @Query("id")
+    id: string
   ) {
-    if (!url) throw new Error(errorCode.common.invalidRequestBody);
-    const user = this.ctx.user as UserInfo;
-    url = decodeURIComponent(url);
-    await this.goodsService.deleteTask(user.email, url);
+    if (!id) throw new Error(errorCode.common.invalidRequestBody);
+    await this.goodsService.deleteTask(id, "Mercari");
   }
 
   @Get("/listGoodsWatcher")

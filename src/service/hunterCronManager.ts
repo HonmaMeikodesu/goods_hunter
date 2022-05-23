@@ -40,6 +40,8 @@ import { DatabaseTransactionWrapper } from "../utils/databaseTransactionWrapper"
 import { User } from "../model/user";
 import { MercariHunter } from "../model/mercariHunter";
 import serverInfo from "../private/server";
+import { InjectEntityModel } from "@midwayjs/orm";
+import { Repository } from "typeorm";
 
 function hunterCognition<T extends GoodsHunter>(
   hunterInfo: GoodsHunter,
@@ -60,10 +62,28 @@ export class HunterCronManager {
   @Init()
   async init() {
     this.cronList = {};
-    const values = await this.redisClient.hvals(CONST.HUNTERINFO);
-    values.map(async value => {
-      const cronDetail: CronDetailInDb = JSON.parse(value);
-      await this.addCronTask(cronDetail.hunterInfo, cronDetail.id);
+    const mercariHunterList = await this.mercariHunter.find({ relations: ["user"] });
+
+    mercariHunterList.map(async mercariHunter => {
+      const { hunterInstanceId, freezingEnd, freezingStart, user, url, lastShotAt, createdAt, schedule } = mercariHunter;
+      const hunter: CronDetailInDb<MercariHunterType> = {
+        id: hunterInstanceId,
+        hunterInfo: {
+          user: {
+            email: user.email,
+          },
+          type: "Mercari",
+          url,
+          schedule,
+          freezingRange: {
+            start: freezingStart,
+            end: freezingEnd
+          },
+          lastShotAt,
+          createdAt
+        }
+      }
+      await this.addCronTask(hunter.hunterInfo, hunter.id);
     });
   }
 
@@ -78,6 +98,12 @@ export class HunterCronManager {
 
   @Inject()
   emailService: EmailService;
+
+  @InjectEntityModel(User)
+  user: Repository<User>;
+
+  @InjectEntityModel(MercariHunter)
+  mercariHunter: Repository<MercariHunter>;
 
   @Inject()
   databaseTransactionWrapper: DatabaseTransactionWrapper;
@@ -117,18 +143,8 @@ export class HunterCronManager {
   async removeCronTask(id: string, type: typeof CONST.HUNTERTYPE[number]) {
     const cronJob = this.cronList[id];
     if (!cronJob) return;
-    await this.databaseTransactionWrapper({
-      pending: async queryRunner => {
-        if (type === "Mercari") {
-          await queryRunner.manager.delete(MercariHunter, {
-            hunterInstanceId: id,
-          });
-        }
-        await this.redisClient.hdel(CONST.HUNTERINFO, id);
-        await this.redisClient.hdel(CONST.SHOTRECORD, id);
-        cronJob.jobInstance.stop();
-        delete this.cronList[id];
-      },
+    await this.mercariHunter.delete({
+      hunterInstanceId: id,
     });
     this.logger.info(`task ${id} removed`);
   }
@@ -156,9 +172,12 @@ export class HunterCronManager {
             (max, current) => (current.updated > max ? current.updated : max),
             goodsList[0].updated
           );
-          const prevLatestTime = toNumber(
-            await this.redisClient.hget(CONST.SHOTRECORD, cronId)
-          );
+          const lastShotAt = (await this.mercariHunter.findOne({
+            where: {
+              hunterInstanceId: cronId,
+            }
+          }))?.lastShotAt;
+          const prevLatestTime = lastShotAt ? moment(lastShotAt).unix() : NaN;
           if (isNaN(prevLatestTime)) {
             // first time for this cron shot record
             filteredGoods = goodsList;
@@ -199,11 +218,11 @@ export class HunterCronManager {
               };
               await this.emailService.sendEmail(emailMessage);
               const lastestTime = toString(nextLatestTime);
-              await this.redisClient.hset(
-                CONST.SHOTRECORD,
-                cronId,
-                lastestTime
-              );
+              await this.mercariHunter.update({
+                hunterInstanceId: cronId
+              }, {
+                lastShotAt: lastestTime,
+              })
               const cronDetail = get(this.cronList, cronId);
               set(cronDetail, "hunterInfo.lastShotAt", lastestTime);
               this.logger.info(
@@ -244,18 +263,18 @@ export class HunterCronManager {
             if (type === "Mercari") {
               const newMercariHunter = new MercariHunter();
               newMercariHunter.hunterInstanceId = cronId;
+              newMercariHunter.freezingStart = hunterInfo?.freezingRange?.start;
+              newMercariHunter.freezingEnd = hunterInfo?.freezingRange?.end;
+              newMercariHunter.lastShotAt = hunterInfo?.lastShotAt;
+              newMercariHunter.schedule = hunterInfo?.schedule;
+              newMercariHunter.url = hunterInfo?.url;
+              newMercariHunter.createdAt = hunterInfo.bornAt;
               user.mercariHunters.push(newMercariHunter);
             }
             await queryRunner.manager.save(user);
-            await this.redisClient.hset(
-              CONST.HUNTERINFO,
-              cronId,
-              JSON.stringify(CronDeailInDB)
-            );
           },
           rejected: async () => {
             newCronJob.stop();
-            await this.redisClient.hdel(CONST.HUNTERINFO, cronId);
           },
         });
       }

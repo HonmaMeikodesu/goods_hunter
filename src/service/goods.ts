@@ -1,19 +1,19 @@
 import { Provide, Inject } from "@midwayjs/decorator";
 import errorCode from "../errorCode";
-import { RedisService } from "@midwayjs/redis";
 import CONST from "../const";
 import { CronDetailInDb, GoodsHunter, UserInfo } from "../types";
 import { HunterCronManager } from "./hunterCronManager";
 import { InjectEntityModel } from "@midwayjs/orm";
 import { Repository } from "typeorm";
 import { User } from "../model/user";
-import { omit } from "lodash";
+import { isEmpty, omit } from "lodash";
+import { Context } from "egg";
 import isValidUrl from "../utils/isValidUrl";
+import { MercariHunter } from "../model/mercariHunter";
 
 @Provide()
 export class GoodsService {
-  @Inject("redis:redisService")
-  private redisClient: RedisService;
+
 
   @Inject()
   hunterCronManager: HunterCronManager;
@@ -21,37 +21,51 @@ export class GoodsService {
   @InjectEntityModel(User)
   user: Repository<User>;
 
+  @InjectEntityModel(MercariHunter)
+  mercariHunter: Repository<MercariHunter>;
+
+  @Inject()
+  ctx: Context;
+
   compareKeyword(url1: string, url2: string): boolean {
-    if (!isValidUrl(url1) || !isValidUrl(url2)) throw new Error();
+    if (!isValidUrl(url1) || !isValidUrl(url2)) throw new Error("Invalid Url");
     return (
       new URL(decodeURIComponent(url1)).searchParams.get("keyword") ===
       new URL(decodeURIComponent(url2)).searchParams.get("keyword")
     );
   }
 
-  async checkTaskExist(url: string) {
-    const values = await this.redisClient.hvals(CONST.HUNTERINFO);
-    const tasks = values.map(val =>
-      JSON.parse(val)
-    ) as CronDetailInDb<GoodsHunter>[];
-    const task = tasks.find(task =>
-      this.compareKeyword(url, task.hunterInfo.url)
-    );
-    if (task) throw new Error(errorCode.goodsService.taskAlreadyExist);
+  async checkTaskExist(url: string, type: GoodsHunter["type"]) {
+    const user = this.ctx.user as UserInfo;
+    if (type === "Mercari") {
+      const currentUser = await this.user.findOne(user.email, { relations: ["mercariHunters"] });
+      if (!isEmpty(currentUser?.mercariHunters)) {
+        if (currentUser.mercariHunters.some((hunter) => this.compareKeyword(url, hunter.url))) {
+          throw new Error(errorCode.goodsService.taskAlreadyExist);
+        }
+      }
+    }
   }
 
-  async deleteTask(email: string, url: string) {
-    const values = await this.redisClient.hvals(CONST.HUNTERINFO);
-    const tasks = values.map(val =>
-      JSON.parse(val)
-    ) as CronDetailInDb<GoodsHunter>[];
-    const task = tasks.find(
-      task =>
-        task.hunterInfo.user.email === email &&
-        this.compareKeyword(task.hunterInfo.url, url)
-    );
-    if (!task) throw new Error(errorCode.goodsService.taskNotFound);
-    await this.hunterCronManager.removeCronTask(task.id, task.hunterInfo.type);
+  async deleteTask(id: string, type: GoodsHunter["type"]) {
+    const user = this.ctx.user as UserInfo;
+    if (type === "Mercari") {
+      const abortingMercariHunter = await this.mercariHunter.findOne({
+        where: {
+          hunterInstanceId: id
+        },
+        relations: ["user"]
+      });
+      if (abortingMercariHunter?.user?.email) {
+        const hunterOwnerEmail = abortingMercariHunter.user.email
+        if (hunterOwnerEmail !== user.email) {
+          throw new Error(errorCode.goodsService.taskPermissionDenied)
+        }
+        await this.hunterCronManager.removeCronTask(id, "Mercari");
+      } else {
+        throw new Error(errorCode.goodsService.taskNotFound);
+      }
+    }
   }
 
   async listUserTasks(
