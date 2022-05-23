@@ -12,5 +12,4 @@ export class LoginState {
 
   @Column("datetime", { nullable: false })
   expiredAt: string;
-
 }

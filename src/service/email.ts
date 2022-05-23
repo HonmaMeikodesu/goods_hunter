@@ -8,7 +8,9 @@ import mailInfo from "../private/mail";
 export class EmailService {
   private transporter: Transporter;
   constructor() {
-    this.transporter = createTransport(`smtps://${mailInfo.user}:${mailInfo.password}@${mailInfo.host}/?pool=true`);
+    this.transporter = createTransport(
+      `smtps://${mailInfo.user}:${mailInfo.password}@${mailInfo.host}/?pool=true`
+    );
   }
 
   async sendEmail(message: Mail.Options) {

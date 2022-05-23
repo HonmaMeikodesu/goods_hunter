@@ -11,11 +11,11 @@ export interface FreezingRange {
 }
 
 export interface GoodsHunter {
-  type: (typeof CONST.HUNTERTYPE)[number];
+  type: typeof CONST.HUNTERTYPE[number];
   user: UserInfo;
   url: string;
   schedule: string;
-  freezingRange?: FreezingRange
+  freezingRange?: FreezingRange;
 }
 
 export interface MercariHunter extends GoodsHunter {
@@ -27,6 +27,7 @@ export interface CronDetailInDb<T extends GoodsHunter = any> {
   hunterInfo: T;
 }
 
-export interface CronDeail<T extends GoodsHunter = any> extends CronDetailInDb<T> {
+export interface CronDeail<T extends GoodsHunter = any>
+  extends CronDetailInDb<T> {
   jobInstance: CronJob;
 }

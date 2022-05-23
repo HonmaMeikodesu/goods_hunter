@@ -1,11 +1,10 @@
-import { Provide, Logger } from '@midwayjs/decorator';
+import { Provide, Logger } from "@midwayjs/decorator";
 import { ILogger } from "@midwayjs/logger";
-import { IWebMiddleware, IMidwayWebNext } from '@midwayjs/web';
-import { Context } from 'egg';
+import { IWebMiddleware, IMidwayWebNext } from "@midwayjs/web";
+import { Context } from "egg";
 
 @Provide()
 export class ErrorCatchMiddleware implements IWebMiddleware {
-
   @Logger()
   logger: ILogger;
 
@@ -15,9 +14,9 @@ export class ErrorCatchMiddleware implements IWebMiddleware {
         await next();
         ctx.res.statusCode = 200;
         ctx.body = {
-          code : "200",
+          code: "200",
           data: ctx.body,
-        }
+        };
       } catch (e) {
         this.logger.error(e.msg);
         if (/\d{6}/.test(e.message)) {
@@ -30,7 +29,7 @@ export class ErrorCatchMiddleware implements IWebMiddleware {
           ctx.body = {
             code: "000000",
             msg: e.message,
-          }
+          };
         }
       }
     };

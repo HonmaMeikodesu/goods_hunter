@@ -8,7 +8,6 @@ const MERCARIHOST = "api.mercari.jp";
 
 @Provide()
 export class MercariApi {
-
   @Inject("proxyGet")
   proxyGet: ProxyGet;
 
@@ -20,15 +19,20 @@ export class MercariApi {
   async fetchGoodsList(url: string) {
     const urlObj = new URL(url);
     const jwt = await generateJwt("https://api.mercari.jp/search_index/search");
-    if (urlObj.host !== MERCARIHOST) throw new Error("Unexpected Host Name, expected Mercari");
+    if (urlObj.host !== MERCARIHOST)
+      throw new Error("Unexpected Host Name, expected Mercari");
     return this.proxyGet<GoodsListResponse>(url, {
       "X-Platform": "web",
-      "DPoP": jwt
-    })
+      DPoP: jwt,
+    });
   }
 
   async fetchThumbNailsAndConvertToBase64(url: string) {
-    const imgArrayBuffer: any = await this.proxyGet(url, {}, { responseType: "arraybuffer" });
+    const imgArrayBuffer: any = await this.proxyGet(
+      url,
+      {},
+      { responseType: "arraybuffer" }
+    );
     const base64Url = Buffer.from(imgArrayBuffer, "binary").toString("base64");
     return `data:image/jpg;base64,${base64Url}`;
   }

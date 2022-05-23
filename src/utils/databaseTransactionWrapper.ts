@@ -1,25 +1,25 @@
 import { IMidwayContainer, providerWrapper } from "@midwayjs/core";
 import { loggers } from "@midwayjs/logger";
-import { getConnection, QueryRunner } from 'typeorm';
-import { isFunction } from "@midwayjs/decorator";
+import { getConnection, QueryRunner } from "typeorm";
+import { isFunction } from "lodash";
 
 export declare interface DatabaseTransactionWrapper {
   (funcs: {
-    pending: (queryRunner: QueryRunner) => Promise<void>,
-    resolved?: (queryRunner: QueryRunner) => Promise<void>,
-    rejected?: (queryRunner: QueryRunner) => Promise<void>,
+    pending: (queryRunner: QueryRunner) => Promise<void>;
+    resolved?: (queryRunner: QueryRunner) => Promise<void>;
+    rejected?: (queryRunner: QueryRunner) => Promise<void>;
   }): Promise<void>;
 }
 
-export default async function databaseTransactionWrapper(container: IMidwayContainer) {
+export default async function databaseTransactionWrapper(
+  container: IMidwayContainer
+) {
   const appLogger = loggers.getLogger("logger");
-  return async function (
-    funcs: {
-      pending: (queryRunner: QueryRunner) => Promise<void>,
-      resolved?: (queryRunner: QueryRunner) => Promise<void>,
-      rejected?: (queryRunner: QueryRunner) => Promise<void>,
-    }
-  ) {
+  return async function (funcs: {
+    pending: (queryRunner: QueryRunner) => Promise<void>;
+    resolved?: (queryRunner: QueryRunner) => Promise<void>;
+    rejected?: (queryRunner: QueryRunner) => Promise<void>;
+  }) {
     const { pending, resolved, rejected } = funcs;
     const connection = getConnection();
     const queryRunner = connection.createQueryRunner();
@@ -36,13 +36,12 @@ export default async function databaseTransactionWrapper(container: IMidwayConta
     } finally {
       await queryRunner.release();
     }
-  }
+  };
 }
-
 
 providerWrapper([
   {
-    id: 'databaseTransactionWrapper',
+    id: "databaseTransactionWrapper",
     provider: databaseTransactionWrapper,
   },
 ]);

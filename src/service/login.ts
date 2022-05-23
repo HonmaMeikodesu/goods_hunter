@@ -9,10 +9,8 @@ import { LoginState } from "../model/loginState";
 import moment from "moment";
 import sha256 from "crypto-js/sha256";
 
-
 @Provide()
 export class LoginService {
-
   @InjectEntityModel(User)
   userModel: Repository<User>;
 
@@ -21,13 +19,17 @@ export class LoginService {
 
   async checkValidAndGenerateLoginState(email: string, password: string) {
     const digest = sha256(password).toString();
-    const record = await this.userModel.findOne({
-      email,
-      password: digest,
-    }, {
-      relations: ["loginStates"]
-    });
-    if (isEmpty(record)) throw new Error(errorCode.loginService.wrongEmailOrPassword);
+    const record = await this.userModel.findOne(
+      {
+        email,
+        password: digest,
+      },
+      {
+        relations: ["loginStates"],
+      }
+    );
+    if (isEmpty(record))
+      throw new Error(errorCode.loginService.wrongEmailOrPassword);
     const loginState = await this.generateLoginStateAndSaveInDB(record);
     return loginState;
   }
@@ -38,7 +40,7 @@ export class LoginService {
     const loginState = new LoginState();
     loginState.loginState = uuid;
     loginState.expiredAt = expiredAt;
-    user.loginStates.push(loginState)
+    user.loginStates.push(loginState);
     await this.userModel.save(user);
     return uuid;
   }

@@ -9,5 +9,4 @@ export class MercariHunter {
 
   @Column("varchar", { primary: true })
   hunterInstanceId: string;
-
 }

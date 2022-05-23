@@ -1,30 +1,37 @@
-import { IMidwayContainer, providerWrapper } from '@midwayjs/core';
-import { HttpService } from '@midwayjs/axios';
-import { AxiosRequestConfig, AxiosResponse } from 'axios';
-import { proxyInbound } from '../const';
-const HttpsProxyAgent = require('https-proxy-agent');
+import { IMidwayContainer, providerWrapper } from "@midwayjs/core";
+import { HttpService } from "@midwayjs/axios";
+import { AxiosRequestConfig, AxiosResponse } from "axios";
+import { proxyInbound } from "../const";
+const HttpsProxyAgent = require("https-proxy-agent");
 
 export declare interface ProxyGet {
-  <T>(url: string, headers?: AxiosRequestConfig["headers"], otherOptions?: Omit<AxiosRequestConfig, "headers">): Promise<T>;
+  <T>(
+    url: string,
+    headers?: AxiosRequestConfig["headers"],
+    otherOptions?: Omit<AxiosRequestConfig, "headers">
+  ): Promise<T>;
 }
 export function proxyGet<T>(container: IMidwayContainer) {
-  return async (url: string, headers?: AxiosRequestConfig['headers'], otherOptions?: Omit<AxiosRequestConfig, "headers">) => {
+  return async (
+    url: string,
+    headers?: AxiosRequestConfig["headers"],
+    otherOptions?: Omit<AxiosRequestConfig, "headers">
+  ) => {
     const httpService = await container.getAsync<HttpService>(HttpService);
     const httpsAgent = new HttpsProxyAgent(proxyInbound);
-    const resp = await httpService
-      .get<T>(encodeURI(url), {
-        headers,
-        httpsAgent,
-        proxy: false,
-        ...otherOptions,
-      });
+    const resp = await httpService.get<T>(encodeURI(url), {
+      headers,
+      httpsAgent,
+      proxy: false,
+      ...otherOptions,
+    });
     return resp.data;
   };
 }
 
 providerWrapper([
   {
-    id: 'proxyGet',
+    id: "proxyGet",
     provider: proxyGet,
   },
 ]);

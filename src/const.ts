@@ -4,6 +4,6 @@ const CONST = {
   REGISTERCODE: "registerCode",
   HUNTERTYPE: ["Mercari"],
   USERIGNORE: "userIgnore",
-} as const
+} as const;
 
 export default CONST;
