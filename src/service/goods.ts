@@ -8,8 +8,8 @@ import { Repository } from "typeorm";
 import { User } from "../model/user";
 import { isEmpty, omit } from "lodash";
 import { Context } from "egg";
-import isValidUrl from "../utils/isValidUrl";
 import { MercariHunter } from "../model/mercariHunter";
+import compareKeyword from "../utils/compareKeywords";
 
 @Provide()
 export class GoodsService {
@@ -27,20 +27,12 @@ export class GoodsService {
   @Inject()
   ctx: Context;
 
-  compareKeyword(url1: string, url2: string): boolean {
-    if (!isValidUrl(url1) || !isValidUrl(url2)) throw new Error("Invalid Url");
-    return (
-      new URL(decodeURIComponent(url1)).searchParams.get("keyword") ===
-      new URL(decodeURIComponent(url2)).searchParams.get("keyword")
-    );
-  }
-
   async checkTaskExist(url: string, type: GoodsHunter["type"]) {
     const user = this.ctx.user as UserInfo;
     if (type === "Mercari") {
       const currentUser = await this.user.findOne(user.email, { relations: ["mercariHunters"] });
       if (!isEmpty(currentUser?.mercariHunters)) {
-        if (currentUser.mercariHunters.some((hunter) => this.compareKeyword(url, hunter.url))) {
+        if (currentUser.mercariHunters.some((hunter) => compareKeyword(url, hunter.url))) {
           throw new Error(errorCode.goodsService.taskAlreadyExist);
         }
       }
@@ -71,7 +63,7 @@ export class GoodsService {
   async listUserTasks(
     email: string,
     type: typeof CONST.HUNTERTYPE[number]
-  ): Promise<Omit<CronDeail, "jobInstance">[]> {
+  ): Promise<MercariHunter[]> {
     const user = await this.user.findOne(
       {
         email,
@@ -79,10 +71,8 @@ export class GoodsService {
       { relations: ["mercariHunters"] }
     );
     if (type === "Mercari") {
-      const allCronList = this.hunterCronManager.getCronList();
-      return user.mercariHunters.map(hunter =>
-        omit(allCronList[hunter.hunterInstanceId], "jobInstance")
-      );
+      const allWatchers = await this.hunterCronManager.getCronList();
+      return allWatchers;
     }
   }
 }

@@ -10,7 +10,7 @@ import {
 import { HunterCronManager } from "../service/hunterCronManager";
 import { Context } from "egg";
 import { toNumber } from "lodash";
-import { UserInfo } from "../types";
+import { GoodsHunter, UserInfo } from "../types";
 import { GoodsService } from "../service/goods";
 import errorCode from "../errorCode";
 import getHunterType from "../utils/getHunterType";
@@ -113,5 +113,34 @@ export class GoodsController {
     if (!goodId) throw new Error(errorCode.common.invalidRequestBody);
     const user = this.ctx.user as UserInfo;
     await this.hunterCronManager.cancelUserIgnoreGoods(user.email, [goodId]);
+  }
+
+  @Post("/updateGoodsWatcher")
+  async updateGoodsWatcher(
+    @Body("id")
+    id: string,
+    @Body("url")
+    url: string,
+    @Body("schedule")
+    schedule: string,
+    @Body("freezeStart")
+    freezeStart: string,
+    @Body("freezeEnd")
+    freezeEnd: string
+  ) {
+    if (!id || !isUrl(url) || !isValidCron(schedule) || ((freezeStart || freezeEnd) && [freezeStart, freezeEnd].some((item) => !/\d\d:\d\d/.test(item))))  {
+      throw new Error(errorCode.common.invalidRequestBody);
+    }
+    await this.hunterCronManager.transferHunter(id, {
+      url,
+      schedule,
+      freezingRange: {
+        start: freezeStart,
+        end: freezeEnd,
+      },
+      user: {
+        email: this.ctx.user?.email
+      },
+    });
   }
 }

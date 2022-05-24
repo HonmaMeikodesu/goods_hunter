@@ -11,16 +11,11 @@ import { ILogger } from "@midwayjs/logger";
 import { RedisService } from "@midwayjs/redis";
 import { v4 as uuid } from "uuid";
 import { CronJob, CronTime } from "cron";
-import { isValidCron } from "cron-validator";
 import {
-  cloneDeep,
-  toNumber,
-  toString,
   first,
   isEmpty,
-  get,
-  set,
   noop,
+  values,
 } from "lodash";
 import isValidUrl from "../utils/isValidUrl";
 import {
@@ -42,9 +37,10 @@ import { User } from "../model/user";
 import { MercariHunter } from "../model/mercariHunter";
 import serverInfo from "../private/server";
 import { InjectEntityModel } from "@midwayjs/orm";
-import { Repository } from "typeorm";
+import { In, Repository } from "typeorm";
 import { Context } from "egg";
 import errorCode from "../errorCode";
+import compareKeyword from "../utils/compareKeywords";
 
 function hunterCognition<T extends GoodsHunter>(
   hunterInfo: GoodsHunter,
@@ -75,7 +71,7 @@ export class HunterCronManager {
     Promise.all(promiseList).then(() => {
       this.logger.info("all hunters at your service again at " + moment().format("YYYY-MM-DD HH:mm:ss") + ", welcome back!");
     }).catch(reason => {
-      this.logger.error("Oops....Something went wrong" + reason);
+      this.logger.error("Oops....Something went wrong:" + reason);
       process.exit(-1);
     })
   }
@@ -87,6 +83,12 @@ export class HunterCronManager {
           hunterInstanceId: id
         }
       })
+      const hunter = this.cronList[id];
+      if (hunter?.jobInstance?.running) {
+        // cronjob还跑着，直接返回
+        this.logger.warn(`task ${id} is alreay running`);
+        return;
+      }
       if (!isEmpty(asleepHunter)) {
         const { schedule } = asleepHunter;
         const newCronJob = new CronJob(
@@ -221,14 +223,12 @@ export class HunterCronManager {
                   html,
                 };
                 await this.emailService.sendEmail(emailMessage);
-                const lastestTime = toString(nextLatestTime);
+                const lastestTime = moment.unix(nextLatestTime).format("YYYY-MM-DD HH:mm:ss");
                 await this.mercariHunter.update({
                   hunterInstanceId: cronId
                 }, {
                   lastShotAt: lastestTime,
                 })
-                const cronDetail = get(this.cronList, cronId);
-                set(cronDetail, "hunterInfo.lastShotAt", lastestTime);
                 this.logger.info(
                   `email sent to ${user.email}, goodsNameRecord:\n${JSON.stringify(
                     filteredGoods.map(good => good.name)
@@ -247,8 +247,12 @@ export class HunterCronManager {
     return func;
   }
 
-  getCronList() {
-    return this.cronList;
+  async getCronList() {
+    const cronIdList = values(this.cronList).map((cron) => cron.id);
+    const hunterList = await this.mercariHunter.find({
+      hunterInstanceId: In(cronIdList)
+    });
+    return hunterList;
   }
 
   async addUserIgnoreGoods(user: string, goodIds: string[]) {
@@ -259,31 +263,43 @@ export class HunterCronManager {
     await this.redisClient.srem(`${CONST.USERIGNORE}_${user}`, goodIds);
   }
 
-  async transferHunter(id: string, newHunterInfo: GoodsHunter) {
-    if (hunterCognition<MercariHunterType>(newHunterInfo, info => !!info.url)) {
+  async transferHunter(id: string, newHunterInfo: Pick<GoodsHunter, "freezingRange" | "user" | "schedule" | "url">) {
+    if (hunterCognition<MercariHunterType>(newHunterInfo as GoodsHunter, info => !!info.url)) {
       const hunter = await this.mercariHunter.findOne({
         where: {
           hunterInstanceId: id
         }
       });
       if (!isEmpty(hunter)) {
-        const { schedule: prevSchedule, url: prevUrl, freezingEnd: prevFreezingEnd, freezingStart: prevFreezingStart } = hunter;
+        const { schedule: prevSchedule, url: prevUrl, lastShotAt: prevLastShotAt } = hunter;
+        const jobRecord = this.cronList[id];
+        if (!jobRecord?.jobInstance) {
+          throw new Error(errorCode.hunterCronManager.cronJobNotFound);
+        }
+        const instance = jobRecord.jobInstance;
         this.databaseTransactionWrapper({
           pending: async (queryRunner) => {
-
+            await queryRunner.manager.update(MercariHunter, { hunterInstanceId: id }, {
+              schedule: newHunterInfo.schedule,
+              url: newHunterInfo.url,
+              freezingStart: newHunterInfo?.freezingRange?.start,
+              freezingEnd: newHunterInfo?.freezingRange?.end,
+              lastShotAt: !compareKeyword(prevUrl, newHunterInfo.url) ? null : prevLastShotAt, // 关键词发生改变时，清空lastShotAt
+            });
+            if (prevSchedule !== newHunterInfo.schedule) {
+              // 需要重置crobJobInstance
+              instance.stop();
+              instance.setTime(new CronTime(newHunterInfo.schedule));
+              instance.start();
+            }
+          },
+          rejected: async () => {
+            // 更新失败，尝试重启原先的cronjob
+            await this.respawnHunterById(id, "Mercari");
           }
         })
-        if (prevSchedule !== newHunterInfo.schedule) {
-          // 需要重置crobJobInstance
-          const jobRecord = this.cronList[id];
-          if (!jobRecord?.jobInstance) {
-            throw new Error(errorCode.hunterCronManager.cronJobNotFound);
-          }
-          const instance = jobRecord.jobInstance;
-          instance.stop();
-          instance.setTime(new CronTime(newHunterInfo.schedule));
-          instance.start();
-        }
+      } else {
+        throw new Error(errorCode.hunterCronManager.cronJobNotFound);
       }
     }
   }
