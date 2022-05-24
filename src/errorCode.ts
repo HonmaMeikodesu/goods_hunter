@@ -4,6 +4,7 @@ const type = {
   service: "03",
   common: "04",
   misc: "05",
+  manager: "06"
 };
 
 const middleware = {
@@ -28,6 +29,10 @@ const service = {
 const misc = {
   utils: "01",
 };
+
+const manager = {
+  hunterCronManager: "01"
+}
 
 export default {
   loginStateMiddleware: {
@@ -59,4 +64,7 @@ export default {
     invalidUrl: type.misc + misc.utils + "01",
     hunterTypeNotFound: type.misc + misc.utils + "02",
   },
+  hunterCronManager: {
+    cronJobNotFound: type.manager + manager.hunterCronManager + "01",
+  }
 };

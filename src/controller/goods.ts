@@ -16,6 +16,8 @@ import errorCode from "../errorCode";
 import getHunterType from "../utils/getHunterType";
 import CONST from "../const";
 import moment from "moment";
+import { isValidCron } from "cron-validator";
+import isUrl from "../utils/isValidUrl";
 
 @Provide()
 @Controller("/goods", { middleware: ["loginStateCheck"] })
@@ -40,7 +42,7 @@ export class GoodsController {
     @Body("freezeEnd")
     freezeEnd: string
   ) {
-    if (!url || !schedule) throw new Error(errorCode.common.invalidRequestBody);
+    if (!isUrl(decodeURIComponent(url)) || !isValidCron(schedule)) throw new Error(errorCode.common.invalidRequestBody);
     if (freezeStart || freezeEnd) {
       freezeStart = freezeStart || "";
       freezeEnd = freezeEnd || "";
@@ -59,7 +61,7 @@ export class GoodsController {
     const user = this.ctx.user as UserInfo;
     await this.goodsService.checkTaskExist(url, "Mercari");
     url = decodeURIComponent(url);
-    await this.hunterCronManager.addCronTask({
+    await this.hunterCronManager.hireNewHunterForUser(this.ctx, {
       url,
       type: getHunterType(url),
       schedule,

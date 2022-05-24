@@ -1,7 +1,7 @@
 import { Provide, Inject } from "@midwayjs/decorator";
 import errorCode from "../errorCode";
 import CONST from "../const";
-import { CronDetailInDb, GoodsHunter, UserInfo } from "../types";
+import { CronDeail, GoodsHunter, UserInfo } from "../types";
 import { HunterCronManager } from "./hunterCronManager";
 import { InjectEntityModel } from "@midwayjs/orm";
 import { Repository } from "typeorm";
@@ -61,7 +61,7 @@ export class GoodsService {
         if (hunterOwnerEmail !== user.email) {
           throw new Error(errorCode.goodsService.taskPermissionDenied)
         }
-        await this.hunterCronManager.removeCronTask(id, "Mercari");
+        await this.hunterCronManager.dismissHunter(id, "Mercari");
       } else {
         throw new Error(errorCode.goodsService.taskNotFound);
       }
@@ -71,7 +71,7 @@ export class GoodsService {
   async listUserTasks(
     email: string,
     type: typeof CONST.HUNTERTYPE[number]
-  ): Promise<CronDetailInDb[]> {
+  ): Promise<Omit<CronDeail, "jobInstance">[]> {
     const user = await this.user.findOne(
       {
         email,

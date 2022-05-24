@@ -24,12 +24,8 @@ export interface MercariHunter extends GoodsHunter {
   [key: string]: any;
 }
 
-export interface CronDetailInDb<T extends GoodsHunter = any> {
+export interface CronDeail {
   id: string;
-  hunterInfo: T;
-}
-
-export interface CronDeail<T extends GoodsHunter = any>
-  extends CronDetailInDb<T> {
+  type: GoodsHunter["type"],
   jobInstance: CronJob;
 }
