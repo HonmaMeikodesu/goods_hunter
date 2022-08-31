@@ -163,6 +163,7 @@ export class HunterCronManager {
             const { url, freezingStart, freezingEnd, user } = currentHunterInfo;
             if (freezingStart && freezingEnd) {
               if (isBetweenDayTime(freezingStart, freezingEnd)) {
+                this.logger.info(`task ${cronId} sleeping, exiting...`)
                 return;
               }
             }
@@ -173,6 +174,10 @@ export class HunterCronManager {
             }
             const resp = await this.mercariApi.fetchGoodsList(decodedUrl);
             const goodsList = resp.data;
+            if(isEmpty(goodsList)) {
+              this.logger.info(`task ${cronId} gets an empty goodsList, exiting...`)
+              return;
+            }
             let filteredGoods: typeof goodsList = [];
             const nextLatestTime = resp.data.reduce(
               (max, current) => (current.updated > max ? current.updated : max),
@@ -240,6 +245,10 @@ export class HunterCronManager {
                   "YYYY:MM:DD hh:mm:ss"
                 )}`
               );
+            }).catch((e) => {
+              this.logger.error(`task ${cronId} execution failed at ${moment().format(
+                "YYYY:MM:DD hh:mm:ss"
+              )}`);
             });
           }
         };
