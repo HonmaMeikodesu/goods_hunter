@@ -248,7 +248,7 @@ export class HunterCronManager {
             }).catch((e) => {
               this.logger.error(`task ${cronId} execution failed at ${moment().format(
                 "YYYY:MM:DD hh:mm:ss"
-              )}`);
+              )}, here is the error message:\n${e.message || e}`);
             });
           }
         };
