@@ -3,6 +3,7 @@ import { HttpService } from "@midwayjs/axios";
 import { AxiosRequestConfig, AxiosResponse } from "axios";
 import { proxyInbound } from "../const";
 import { ScopeEnum } from "@midwayjs/decorator";
+import doThisUntilResolve from "../../utils/doThisUntilResolve";
 const HttpsProxyAgent = require("https-proxy-agent");
 
 export declare interface ProxyGet {
@@ -20,12 +21,12 @@ export function proxyGet<T>(container: IMidwayContainer) {
   ) => {
     const httpService = await container.getAsync<HttpService>(HttpService);
     const httpsAgent = new HttpsProxyAgent(proxyInbound);
-    const resp = await httpService.get<T>(encodeURI(url), {
+    const resp = await doThisUntilResolve(() => httpService.get<T>(encodeURI(url), {
       headers,
       httpsAgent,
       proxy: false,
       ...otherOptions,
-    });
+    }), 10);
     return resp.data;
   };
 }
