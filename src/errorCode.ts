@@ -56,13 +56,8 @@ export default {
     invalidHunterType: type.controller + controller.goods + "01",
   },
   goodsService: {
-    taskAlreadyExist: type.service + service.goods + "01",
     taskNotFound: type.service + service.goods + "02",
     taskPermissionDenied: type.service + service.goods + "03"
-  },
-  getHunterType: {
-    invalidUrl: type.misc + misc.utils + "01",
-    hunterTypeNotFound: type.misc + misc.utils + "02",
   },
   hunterCronManager: {
     cronJobNotFound: type.manager + manager.hunterCronManager + "01",

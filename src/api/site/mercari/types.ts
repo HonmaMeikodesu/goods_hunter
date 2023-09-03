@@ -1,48 +1,37 @@
 export interface GoodsListResponse {
-  result: string;
   meta: any;
-  data: Array<GoodsBreif>;
+  items: Array<GoodsBreif>;
 }
 
+type GoodsSalesStatus = "STATUS_ON_SALE" | "STATUS_TRADING" | "STATUS_SOLD_OUT";
+
 interface GoodsBreif {
-  id: string;
-  seller: {
-    id: number;
-    name: string;
-  };
-  status: string;
-  name: string;
-  price: number;
-  item_condition: {
-    id: number;
-    name: string;
-  };
-  thumbnails: Array<string>;
-  root_category_id: number;
-  num_likes: number;
-  num_comments: number;
-  created: number;
-  updated: number;
-  item_category: {
-    id: number;
-    name: string;
-    display_order: number;
-    parent_category_id: number;
-    parent_category_name: string;
-    root_category_id: number;
-    root_category_name: string;
-  };
-  shipping_from_area: {
-    id: number;
-    name: string;
-  };
-  item_brand?: {
-    id: number;
-    name: string;
-    sub_name: string;
-  };
-  pager_id: number;
-  liked: boolean;
-  item_pv: number;
-  item_type: string;
+  id: string,
+  sellerId: string,
+  buyerId: string,
+  status: GoodsSalesStatus,
+  name: string,
+  price: string,
+  created: string,
+  updated: string,
+  thumbnails: Array<string>,
+  itemType: string,
+  itemConditionId: string,
+  shippingPayerId: string,
+  shopName: string,
+  itemSize: null,
+  shippingMethodId: string,
+  categoryId: string
+}
+
+export type MercariGoodsSearchCondition = {
+  keyword: string,
+  excludeKeyword?: string,
+  status: Array<GoodsSalesStatus>,
+  categoryId?: string[],
+  priceMin?: number,
+  priceMax?: number,
+  itemConditionId?: number[],
+  shippingPayerId?: number[],
+  pageSize: number;
 }

@@ -10,14 +10,14 @@ import {
 import { HunterCronManager } from "../service/hunterCronManager";
 import { Context } from "egg";
 import { toNumber } from "lodash";
-import { GoodsHunter, UserInfo } from "../types";
+import { UserInfo } from "../types";
 import { GoodsService } from "../service/goods";
 import errorCode from "../errorCode";
-import getHunterType from "../utils/getHunterType";
 import CONST from "../const";
 import moment from "moment";
 import { isValidCron } from "cron-validator";
 import isUrl from "../utils/isValidUrl";
+import { GoodsSearchCondition } from "../api/site/types";
 
 @Provide()
 @Controller("/goods", { middleware: ["loginStateCheck"] })
@@ -33,16 +33,18 @@ export class GoodsController {
 
   @Post("/registerGoodsWatcher")
   async registerGoodsWatcher(
-    @Body("url")
-    url: string,
+    @Body("type")
+    type: typeof CONST.HUNTERTYPE[number],
     @Body("schedule")
     schedule: string,
     @Body("freezeStart")
     freezeStart: string,
     @Body("freezeEnd")
-    freezeEnd: string
+    freezeEnd: string,
+    @Body("searchCondition")
+    searchCondition: GoodsSearchCondition,
   ) {
-    if (!isUrl(decodeURIComponent(url)) || !isValidCron(schedule)) throw new Error(errorCode.common.invalidRequestBody);
+    if (!CONST.HUNTERTYPE.includes(type) || !searchCondition?.keyword || !isValidCron(schedule)) throw new Error(errorCode.common.invalidRequestBody);
     if (freezeStart || freezeEnd) {
       freezeStart = freezeStart || "";
       freezeEnd = freezeEnd || "";
@@ -59,11 +61,9 @@ export class GoodsController {
         throw new Error(errorCode.common.invalidRequestBody);
     }
     const user = this.ctx.user as UserInfo;
-    await this.goodsService.checkTaskExist(url, "Mercari");
-    url = decodeURIComponent(url);
     await this.hunterCronManager.hireNewHunterForUser(this.ctx, {
-      url,
-      type: getHunterType(url),
+      searchCondition,
+      type,
       schedule,
       user: { email: user.email },
       freezingRange:
@@ -119,8 +119,10 @@ export class GoodsController {
   async updateGoodsWatcher(
     @Body("id")
     id: string,
-    @Body("url")
-    url: string,
+    @Body("type")
+    type: typeof CONST.HUNTERTYPE[number],
+    @Body("searchCondition")
+    searchCondition: GoodsSearchCondition,
     @Body("schedule")
     schedule: string,
     @Body("freezeStart")
@@ -128,11 +130,12 @@ export class GoodsController {
     @Body("freezeEnd")
     freezeEnd: string
   ) {
-    if (!id || !isUrl(url) || !isValidCron(schedule) || ((freezeStart || freezeEnd) && [freezeStart, freezeEnd].some((item) => !/\d\d:\d\d/.test(item))))  {
+    if (!id || !CONST.HUNTERTYPE.includes(type) || !searchCondition?.keyword || !isValidCron(schedule) || ((freezeStart || freezeEnd) && [freezeStart, freezeEnd].some((item) => !/\d\d:\d\d/.test(item))))  {
       throw new Error(errorCode.common.invalidRequestBody);
     }
     await this.hunterCronManager.transferHunter(id, {
-      url,
+      searchCondition,
+      type,
       schedule,
       freezingRange: {
         start: freezeStart,

@@ -24,6 +24,7 @@
     "moment": "^2.29.1",
     "mysql2": "^2.3.3",
     "nodemailer": "^6.7.2",
+    "ts-node": "^10.9.1",
     "typeorm": "^0.2.41",
     "uuid": "^8.3.2"
   },
@@ -42,7 +43,7 @@
     "@types/node": "14",
     "@types/nodemailer": "^6.4.4",
     "@types/uuid": "^8.3.3",
-    "axios": "^0.21.1",
+    "axios": "^1.4.1",
     "cross-env": "^6.0.0",
     "husky": "^7.0.4",
     "jest": "^26.4.0",

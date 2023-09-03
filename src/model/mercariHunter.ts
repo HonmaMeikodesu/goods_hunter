@@ -29,7 +29,7 @@ export class MercariHunter {
   schedule: string;
 
   @Column("varchar")
-  url: string;
+  searchConditionSchema: string;
 
   @CreateDateColumn()
   createdAt: string;

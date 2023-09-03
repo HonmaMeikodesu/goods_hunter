@@ -7,6 +7,7 @@ import {
   Logger,
   Init,
 } from "@midwayjs/decorator";
+import { toNumber } from "lodash";
 import { ILogger } from "@midwayjs/logger";
 import { RedisService } from "@midwayjs/redis";
 import { v4 as uuid } from "uuid";
@@ -40,7 +41,8 @@ import { InjectEntityModel } from "@midwayjs/orm";
 import { In, Repository } from "typeorm";
 import { Context } from "egg";
 import errorCode from "../errorCode";
-import compareKeyword from "../utils/compareKeywords";
+import { GoodsSearchCondition } from "../api/site/types";
+import { MercariGoodsSearchCondition } from "../api/site/mercari/types";
 
 function hunterCognition<T extends GoodsHunter>(
   hunterInfo: GoodsHunter,
@@ -160,41 +162,45 @@ export class HunterCronManager {
             relations: ["user"],
           });
           if (!isEmpty(currentHunterInfo)) {
-            const { url, freezingStart, freezingEnd, user } = currentHunterInfo;
+            const { searchConditionSchema, freezingStart, freezingEnd, user } = currentHunterInfo;
             if (freezingStart && freezingEnd) {
               if (isBetweenDayTime(freezingStart, freezingEnd)) {
                 this.logger.info(`task ${cronId} sleeping, exiting...`)
                 return;
               }
             }
-            const decodedUrl = decodeURIComponent(url);
-            if (!isValidUrl(decodedUrl)) {
-              this.logger.error(`Invalid Mercari Hunter url When Executiong CronJob{${cronId}}: ${url} `);
+            let searchCondition: GoodsSearchCondition;
+            try {
+              searchCondition = JSON.parse(searchConditionSchema);
+              if (!searchCondition.keyword) {
+                throw new Error("no keyword found!");
+              }
+            } catch(e) {
+              this.logger.error(`Invalid Mercari Hunter search condition When Executiong CronJob{${cronId}}, ${e.message}`);
               return;
             }
-            const resp = await this.mercariApi.fetchGoodsList(decodedUrl);
-            const goodsList = resp.data;
+            const resp = await this.mercariApi.fetchGoodsList(searchCondition);
+            const goodsList = resp.items;
             if(isEmpty(goodsList)) {
               this.logger.info(`task ${cronId} gets an empty goodsList, exiting...`)
               return;
             }
             let filteredGoods: typeof goodsList = [];
-            const nextLatestTime = resp.data.reduce(
-              (max, current) => (current.updated > max ? current.updated : max),
-              goodsList[0].updated
+            const nextLatestTime = goodsList.reduce(
+              (max, current) => (toNumber(current.updated) > max ? toNumber(current.updated) : max),
+              toNumber(goodsList[0].updated)
             );
-            const lastShotAt = (await this.mercariHunter.findOne({
+            const lastShotAt = toNumber((await this.mercariHunter.findOne({
               where: {
                 hunterInstanceId: cronId,
               }
-            }))?.lastShotAt;
-            const prevLatestTime = lastShotAt ? moment(lastShotAt).unix() : NaN;
-            if (isNaN(prevLatestTime)) {
+            }))?.lastShotAt);
+            if (isNaN(lastShotAt)) {
               // first time for this cron shot record
               filteredGoods = goodsList;
             } else {
               filteredGoods = goodsList.filter(
-                good => good.updated > prevLatestTime
+                good => toNumber(good.updated) > lastShotAt
               );
             }
             const ignoreGoods = await this.redisClient.smembers(
@@ -218,13 +224,10 @@ export class HunterCronManager {
                   data: filteredGoods,
                   serverHost: serverInfo.serverHost,
                 });
-                const keyword = new URL(
-                  decodeURIComponent(url)
-                ).searchParams.get("keyword");
 
                 const emailMessage: Mail.Options = {
                   to: user.email,
-                  subject: `New update on mercari goods of your interest, keyword:${keyword}`,
+                  subject: `New update on mercari goods of your interest, keyword:${searchCondition.keyword}`,
                   html,
                 };
                 await this.emailService.sendEmail(emailMessage);
@@ -272,15 +275,21 @@ export class HunterCronManager {
     await this.redisClient.srem(`${CONST.USERIGNORE}_${user}`, goodIds);
   }
 
-  async transferHunter(id: string, newHunterInfo: Pick<GoodsHunter, "freezingRange" | "user" | "schedule" | "url">) {
-    if (hunterCognition<MercariHunterType>(newHunterInfo as GoodsHunter, info => !!info.url)) {
+  async transferHunter(id: string, newHunterInfo: Pick<GoodsHunter, "freezingRange" | "user" | "schedule" | "type" | "searchCondition">) {
+    if (hunterCognition<MercariHunterType>(newHunterInfo as GoodsHunter, info => info.type === "Mercari")) {
       const hunter = await this.mercariHunter.findOne({
         where: {
           hunterInstanceId: id
         }
       });
       if (!isEmpty(hunter)) {
-        const { schedule: prevSchedule, url: prevUrl, lastShotAt: prevLastShotAt } = hunter;
+        const { schedule: prevSchedule, searchConditionSchema: prevSearchConditionSchema, lastShotAt: prevLastShotAt } = hunter;
+        let prevSearchCondition: MercariGoodsSearchCondition;
+        try {
+          prevSearchCondition = JSON.parse(prevSearchConditionSchema);
+        } catch(e) {
+          // pass
+        }
         const jobRecord = this.cronList[id];
         if (!jobRecord?.jobInstance) {
           throw new Error(errorCode.hunterCronManager.cronJobNotFound);
@@ -290,10 +299,10 @@ export class HunterCronManager {
           pending: async (queryRunner) => {
             await queryRunner.manager.update(MercariHunter, { hunterInstanceId: id }, {
               schedule: newHunterInfo.schedule,
-              url: newHunterInfo.url,
+              searchConditionSchema: JSON.stringify(newHunterInfo.searchCondition),
               freezingStart: newHunterInfo?.freezingRange?.start,
               freezingEnd: newHunterInfo?.freezingRange?.end,
-              lastShotAt: !compareKeyword(prevUrl, newHunterInfo.url) ? null : prevLastShotAt, // 关键词发生改变时，清空lastShotAt
+              lastShotAt: prevSearchCondition?.keyword === newHunterInfo.searchCondition.keyword ? null : prevLastShotAt, // 关键词发生改变时，清空lastShotAt
             });
             if (prevSchedule !== newHunterInfo.schedule) {
               // 需要重置crobJobInstance
@@ -327,7 +336,7 @@ export class HunterCronManager {
   }
 
   async hireNewHunterForUser(ctx: Context, hunterInfo: GoodsHunter) {
-    if (hunterCognition<MercariHunterType>(hunterInfo, info => !!info.url)) {
+    if (hunterCognition<MercariHunterType>(hunterInfo, info => info.type === "Mercari")) {
       const user = ctx.user as UserInfo;
       const { email } = user;
       const cronId = uuid();
@@ -346,7 +355,7 @@ export class HunterCronManager {
             newMercariHunter.freezingEnd = hunterInfo?.freezingRange?.end;
             newMercariHunter.lastShotAt = hunterInfo?.lastShotAt;
             newMercariHunter.schedule = hunterInfo?.schedule;
-            newMercariHunter.url = hunterInfo?.url;
+            newMercariHunter.searchConditionSchema = JSON.stringify(hunterInfo?.searchCondition);
             newMercariHunter.createdAt = hunterInfo.bornAt;
             user.mercariHunters.push(newMercariHunter);
           }
