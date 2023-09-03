@@ -28,7 +28,7 @@ export class MercariHunter {
   @Column("varchar")
   schedule: string;
 
-  @Column("varchar")
+  @Column("longtext")
   searchConditionSchema: string;
 
   @CreateDateColumn()
