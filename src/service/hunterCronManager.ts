@@ -190,15 +190,16 @@ export class HunterCronManager {
               (max, current) => (toNumber(current.updated) > max ? toNumber(current.updated) : max),
               toNumber(goodsList[0].updated)
             );
-            const lastShotAt = toNumber((await this.mercariHunter.findOne({
+            const lastShotAtDateTime = toNumber((await this.mercariHunter.findOne({
               where: {
                 hunterInstanceId: cronId,
               }
             }))?.lastShotAt);
-            if (isNaN(lastShotAt)) {
+            if (isNaN(lastShotAtDateTime)) {
               // first time for this cron shot record
               filteredGoods = goodsList;
             } else {
+              const lastShotAt = moment(lastShotAtDateTime).unix();
               filteredGoods = goodsList.filter(
                 good => toNumber(good.updated) > lastShotAt
               );
