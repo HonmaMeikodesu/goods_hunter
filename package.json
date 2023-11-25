@@ -61,7 +61,7 @@
   },
   "scripts": {
     "start_build": "npm run build && cross-env NODE_ENV=development midway-bin dev",
-    "dev": "cross-env ets && cross-env proxyInbound='http://localhost:1218' cross-env NODE_ENV=local midway-bin dev --ts",
+    "dev": "cross-env ets && cross-env proxyInbound='http://127.0.0.1:7890' cross-env NODE_ENV=local midway-bin dev --ts",
     "dev_local": "cross-env ets && cross-env proxyInbound='http://localhost:10809' cross-env NODE_ENV=local midway-bin dev --ts",
     "test": "midway-bin test --ts",
     "cov": "midway-bin cov --ts",
