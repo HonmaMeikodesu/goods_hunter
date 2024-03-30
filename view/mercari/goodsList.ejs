@@ -73,9 +73,30 @@
       <div class="name">
         <%= data.name %> 
       </div>
-      <a href="http://<%= serverHost %>/goods/ignoreGood?goodId=<%= data.id %>">Click here to filter this good</a>
+      <a href="#" onclick="ignoreGood" data-iv="<%= data.ignoreInstruction.data.iv %>" data-message="<%= data.ignoreInstruction.data.message %>" data-digest="<%= data.ignoreInstruction.digest %>">Click here to filter this good</a>
     </div>
     <% }) %>
   </div>
+  <script>
+    function ignoreGood(e) {
+      fetch("http://<%= serverHost %>/goods/ignoreGood", {
+        method: "POST",
+        body: {
+          digest: e.target.dataset.digest,
+          data: {
+            iv: e.target.dataset.iv,
+            message: e.target.dataset.message
+          }
+        }
+      }).then((res) => {
+        return res.json()
+      }).then(res => {
+        if (res.code !== "200") return Promise.reject(res.message);
+        window.alert("Done :)");
+      }).catch((msg) => {
+        window.alert(msg);
+      })
+    }
+  </script>
 </body>
 </html>

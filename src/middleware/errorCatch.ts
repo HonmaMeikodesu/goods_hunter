@@ -20,7 +20,7 @@ export class ErrorCatchMiddleware
       try {
         await next();
         ctx.res.statusCode = 200;
-          ctx.body = {
+        ctx.body = {
           code: "200",
           data: ctx.body,
         };

@@ -221,13 +221,14 @@ export class HunterCronManager {
             Promise.all(
               filteredGoods.map(async ( good ) => {
                 good.thumbnailData = await this.cipher.encode(first(good.thumbnails));
+                good.ignoreInstruction = await this.cipher.encode(`${user.email} ${good.id}`);
                 return good;
               })
             ).then(async () => {
               if (!isEmpty(filteredGoods)) {
                 const html = render(mercariGoodsList, {
                   data: filteredGoods,
-                  serverHost: this.serverInfo.serverHost,
+                  serverHost: this.serverInfo.serverHost
                 });
 
                 const emailMessage: Mail.Options = {

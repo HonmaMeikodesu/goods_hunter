@@ -24,7 +24,10 @@ interface GoodsBreif {
   itemSize: null,
   shippingMethodId: string,
   categoryId: string
+  
+  // extend
   thumbnailData: CipherPayload
+  ignoreInstruction: CipherPayload;
 }
 
 export type MercariGoodsSearchCondition = {

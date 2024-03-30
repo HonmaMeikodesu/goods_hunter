@@ -99,7 +99,7 @@ export class GoodsController {
     @Body()
     payload: CipherPayload
   ) {
-    if (!payload?.data?.iv || !payload?.data?.message) throw new Error(errorCode.common.invalidRequestBody);
+    if (!payload?.data?.iv || !payload?.data?.message || !payload?.digest) throw new Error(errorCode.common.invalidRequestBody);
     await this.hunterCronManager.addUserIgnoreGoods(payload);
   }
 
