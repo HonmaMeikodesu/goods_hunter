@@ -1,6 +1,21 @@
 import { EggAppConfig, EggAppInfo, PowerPartial } from "egg";
+import { readFileSync } from "fs";
+import path from "path";
 
-export type DefaultConfig = PowerPartial<EggAppConfig>;
+export type CustomConfig = {
+  serverInfo: {
+    serverHost: string;
+  },
+  emailConfig: {
+    user: string;
+    password: string;
+    host: string;
+    systemOwner: string;
+  },
+  secretKeyJwkData: JsonWebKey;
+}
+
+export type DefaultConfig = PowerPartial<EggAppConfig> & CustomConfig;
 
 export default (appInfo: EggAppInfo) => {
   const config = {} as DefaultConfig;
@@ -44,6 +59,12 @@ export default (appInfo: EggAppInfo) => {
     },
   };
 
+  config.emailConfig = JSON.parse(readFileSync(path.resolve(__dirname, "../private/email.json")).toString());
+
+  config.secretKeyJwkData = JSON.parse(readFileSync(path.resolve(__dirname, "../private/secret.json")).toString());
+
+  config.serverInfo = JSON.parse(readFileSync(path.resolve(__dirname, "../private/server.json")).toString());
+
   config.egg = {
     port: 7001,
   };
@@ -64,3 +85,4 @@ export default (appInfo: EggAppInfo) => {
 
   return config;
 };
+

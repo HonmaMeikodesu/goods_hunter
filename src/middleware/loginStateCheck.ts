@@ -18,6 +18,10 @@ export class LoginStateCheck implements IMiddleware<Context, NextFunction> {
   @Logger()
   logger: ILogger;
 
+  ignore(ctx?: Context<any>) {
+    return ["/ignoreGood", "/cancelGoodIgnore", "/proxy"].includes(ctx.path);
+  }
+
   resolve() {
     return async (ctx: Context, next: NextFunction) => {
       const loginState = ctx.cookies.get("loginState") as string | undefined;
@@ -46,3 +50,4 @@ export class LoginStateCheck implements IMiddleware<Context, NextFunction> {
     };
   }
 }
+

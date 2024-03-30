@@ -1,3 +1,5 @@
+import { CipherPayload } from "../../../types";
+
 export interface GoodsListResponse {
   meta: any;
   items: Array<GoodsBreif>;
@@ -22,6 +24,7 @@ interface GoodsBreif {
   itemSize: null,
   shippingMethodId: string,
   categoryId: string
+  thumbnailData: CipherPayload
 }
 
 export type MercariGoodsSearchCondition = {

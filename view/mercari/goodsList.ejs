@@ -64,7 +64,7 @@
         class="img-container"
         href="https://jp.mercari.com/item/<%= data.id %>"
       >
-        <img src="<%= data.thumbnails %>" alt="" class="image" />
+        <img src="http://<%= serverHost %>/proxy/getMercariImage?iv=<%= data.thumbnailData.data.iv %>&message=<%= data.thumbnailData.data.message %>&digest=<%= data.thumbnailData.digest %>" alt="" class="image" />
         <div class="price"><%= data.price %></div>
         <% if(data.status !== "ITEM_STATUS_ON_SALE") { %>
           <div class="sold"><div>SOLD</div></div>

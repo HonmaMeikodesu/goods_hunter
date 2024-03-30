@@ -16,6 +16,7 @@ const controller = {
   goods: "01",
   login: "02",
   register: "03",
+  proxy: "04"
 };
 
 const service = {
@@ -24,6 +25,8 @@ const service = {
   login: "03",
   register: "04",
   goods: "05",
+  cipher: "06",
+  proxy: "07"
 };
 
 const misc = {
@@ -59,7 +62,15 @@ export default {
     taskNotFound: type.service + service.goods + "02",
     taskPermissionDenied: type.service + service.goods + "03"
   },
+  cipherService: {
+    messageCorrupted: type.service + service.cipher + "01",
+    messageConsumed: type.service + service.cipher + "02"
+  },
+  proxyService: {
+    invalidImageUrl: type.service + service.proxy + "01"
+  },
   hunterCronManager: {
-    cronJobNotFound: type.manager + manager.hunterCronManager + "01",
+    cronJobNotFound: type.manager + manager.hunterCronManager + "01"
   }
 };
+

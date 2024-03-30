@@ -4,6 +4,7 @@ import { ILogger } from "@midwayjs/logger";
 import generateJwt from "generate-mercari-jwt";
 import { GoodsListResponse, MercariGoodsSearchCondition } from "./types";
 import { v4 } from "uuid";
+import { ReadStream } from "fs";
 
 const MERCARIHOST = "api.mercari.jp";
 
@@ -49,13 +50,13 @@ export class MercariApi {
     });
   }
 
-  async fetchThumbNailsAndConvertToBase64(url: string) {
-    const imgArrayBuffer: any = await this.proxyGet(
+  async fetchThumbNail(url: string): Promise<ReadStream> {
+    const imgStream = await this.proxyGet<ReadStream>(
       url,
       {},
-      { responseType: "arraybuffer" }
+      { responseType: "stream" }
     );
-    const base64Url = Buffer.from(imgArrayBuffer, "binary").toString("base64");
-    return `data:image/jpg;base64,${base64Url}`;
+    return imgStream;
   }
 }
+

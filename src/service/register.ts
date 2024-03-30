@@ -1,15 +1,14 @@
-import { Provide, Inject, Scope, ScopeEnum, Body } from "@midwayjs/decorator";
+import { Provide, Inject, Scope, ScopeEnum, Body, Config } from "@midwayjs/decorator";
 import { InjectEntityModel } from "@midwayjs/orm";
 import { Repository } from "typeorm";
 import { User } from "../model/user";
 import errorCode from "../errorCode";
-import serverInfo from "../private/server";
 import sha256 from "crypto-js/sha256";
 import { EmailService } from "./email";
-import emailConfig from "../private/mail";
 import { RedisService } from "@midwayjs/redis";
 import CONST from "../const";
 import { v4 } from "uuid";
+import { CustomConfig } from "../config/config.default";
 
 @Provide()
 export class RegisterService {
@@ -22,11 +21,17 @@ export class RegisterService {
   @Inject("redis:redisService")
   redisClient: RedisService;
 
+  @Config("serverInfo")
+  serverInfo: CustomConfig["serverInfo"];
+
+  @Config("emailConfig")
+  emailConfig: CustomConfig["emailConfig"];
+
   private async sendVerification(email: string, code: string) {
     await this.emailService.sendEmail({
-      to: emailConfig.systemOwner,
+      to: this.emailConfig.systemOwner,
       subject: "You got a new user register verification to confirm",
-      html: `new user email: ${email}, click <a src="http://${serverInfo.serverHost}/register/confirm?code=${code}">here</a> to accept, ignore to decline`,
+      html: `new user email: ${email}, click <a src="http://${this.serverInfo.serverHost}/register/confirm?code=${code}">here</a> to accept, ignore to decline`,
     });
   }
 
@@ -66,3 +71,4 @@ export class RegisterService {
     });
   }
 }
+

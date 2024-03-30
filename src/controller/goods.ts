@@ -10,13 +10,12 @@ import {
 import { HunterCronManager } from "../service/hunterCronManager";
 import { Context } from "egg";
 import { toNumber } from "lodash";
-import { UserInfo } from "../types";
+import { CipherPayload, UserInfo } from "../types";
 import { GoodsService } from "../service/goods";
 import errorCode from "../errorCode";
 import CONST from "../const";
 import moment from "moment";
 import { isValidCron } from "cron-validator";
-import isUrl from "../utils/isValidUrl";
 import { GoodsSearchCondition } from "../api/site/types";
 
 @Provide()
@@ -95,24 +94,22 @@ export class GoodsController {
     return list;
   }
 
-  @Get("/ignoreGood")
+  @Post("/ignoreGood")
   async ignoreGood(
-    @Query("goodId")
-    goodId: string
+    @Body()
+    payload: CipherPayload
   ) {
-    if (!goodId) throw new Error(errorCode.common.invalidRequestBody);
-    const user = this.ctx.user as UserInfo;
-    await this.hunterCronManager.addUserIgnoreGoods(user.email, [goodId]);
+    if (!payload?.data?.iv || !payload?.data?.message) throw new Error(errorCode.common.invalidRequestBody);
+    await this.hunterCronManager.addUserIgnoreGoods(payload);
   }
 
-  @Get("/cancelGoodIgnore")
+  @Post("/cancelGoodIgnore")
   async cancelGoodIgnore(
-    @Query("goodId")
-    goodId: string
+    @Body()
+    payload: CipherPayload
   ) {
-    if (!goodId) throw new Error(errorCode.common.invalidRequestBody);
-    const user = this.ctx.user as UserInfo;
-    await this.hunterCronManager.cancelUserIgnoreGoods(user.email, [goodId]);
+    if (!payload?.data?.iv || !payload?.data?.message) throw new Error(errorCode.common.invalidRequestBody);
+    await this.hunterCronManager.cancelUserIgnoreGoods(payload);
   }
 
   @Post("/updateGoodsWatcher")
@@ -147,3 +144,4 @@ export class GoodsController {
     });
   }
 }
+

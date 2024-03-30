@@ -30,3 +30,13 @@ export interface CronDeail {
   type: GoodsHunter["type"],
   jobInstance: CronJob;
 }
+
+export type CipherPayload = {
+    digest: string;
+    data: {
+        iv: string;
+        message: string;
+    };
+}
+
+

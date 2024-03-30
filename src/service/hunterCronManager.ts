@@ -6,6 +6,7 @@ import {
   TaskLocal,
   Logger,
   Init,
+  Config,
 } from "@midwayjs/decorator";
 import { toNumber } from "lodash";
 import { ILogger } from "@midwayjs/logger";
@@ -18,12 +19,12 @@ import {
   noop,
   values,
 } from "lodash";
-import isValidUrl from "../utils/isValidUrl";
 import {
   GoodsHunter,
   MercariHunter as MercariHunterType,
   CronDeail,
   UserInfo,
+  CipherPayload,
 } from "../types";
 import { MercariApi } from "../api/site/mercari";
 import { render } from "ejs";
@@ -36,13 +37,14 @@ import isBetweenDayTime from "../utils/isBetweenDayTime";
 import { DatabaseTransactionWrapper } from "../utils/databaseTransactionWrapper";
 import { User } from "../model/user";
 import { MercariHunter } from "../model/mercariHunter";
-import serverInfo from "../private/server";
 import { InjectEntityModel } from "@midwayjs/orm";
 import { In, Repository } from "typeorm";
 import { Context } from "egg";
 import errorCode from "../errorCode";
 import { GoodsSearchCondition } from "../api/site/types";
 import { MercariGoodsSearchCondition } from "../api/site/mercari/types";
+import { CustomConfig } from "../config/config.default";
+import CipherServive from "./cipher";
 
 function hunterCognition<T extends GoodsHunter>(
   hunterInfo: GoodsHunter,
@@ -59,6 +61,9 @@ interface CronList {
 @Scope(ScopeEnum["Singleton"])
 export class HunterCronManager {
   private cronList: CronList;
+
+  @Config("serverInfo")
+  serverInfo: CustomConfig["serverInfo"];
 
   @Init()
   async init() {
@@ -131,6 +136,9 @@ export class HunterCronManager {
 
   @Inject()
   databaseTransactionWrapper: DatabaseTransactionWrapper;
+
+  @Inject()
+  cipher: CipherServive;
 
   @TaskLocal("0 */1 * * * *")
   private async selfPingPong() {
@@ -211,19 +219,15 @@ export class HunterCronManager {
               good => !ignoreGoods.includes(good.id)
             );
             Promise.all(
-              filteredGoods.map(good => {
-                return this.mercariApi
-                  .fetchThumbNailsAndConvertToBase64(first(good.thumbnails))
-                  .then(imgBase64Url => {
-                    good.thumbnails = [imgBase64Url];
-                    return;
-                  });
+              filteredGoods.map(async ( good ) => {
+                good.thumbnailData = await this.cipher.encode(first(good.thumbnails));
+                return good;
               })
             ).then(async () => {
               if (!isEmpty(filteredGoods)) {
                 const html = render(mercariGoodsList, {
                   data: filteredGoods,
-                  serverHost: serverInfo.serverHost,
+                  serverHost: this.serverInfo.serverHost,
                 });
 
                 const emailMessage: Mail.Options = {
@@ -268,12 +272,23 @@ export class HunterCronManager {
     return hunterList;
   }
 
-  async addUserIgnoreGoods(user: string, goodIds: string[]) {
-    await this.redisClient.sadd(`${CONST.USERIGNORE}_${user}`, goodIds);
+  async addUserIgnoreGoods(payload: CipherPayload) {
+    await  this.cipher.checkIfMessageConsumed(payload.data.message);
+    const decodedMessage = await this.cipher.decode(payload);
+    const [ user, goodId ] = decodedMessage.split(" ");
+
+    await this.redisClient.sadd(`${CONST.USERIGNORE}_${user}`, goodId);
+    await this.cipher.addMessageToConsume(payload.data.message);
   }
 
-  async cancelUserIgnoreGoods(user: string, goodIds: string[]) {
-    await this.redisClient.srem(`${CONST.USERIGNORE}_${user}`, goodIds);
+  async cancelUserIgnoreGoods(payload: CipherPayload) {
+    await this.cipher.checkIfMessageConsumed(payload.data.message);
+    const decodedMessage = await this.cipher.decode(payload);
+
+    const [ user, goodId ] = decodedMessage.split(" ");
+
+    await this.redisClient.srem(`${CONST.USERIGNORE}_${user}`, goodId);
+    await this.cipher.addMessageToConsume(payload.data.message);
   }
 
   async transferHunter(id: string, newHunterInfo: Pick<GoodsHunter, "freezingRange" | "user" | "schedule" | "type" | "searchCondition">) {
@@ -387,3 +402,4 @@ export class HunterCronManager {
     }
   }
 }
+
