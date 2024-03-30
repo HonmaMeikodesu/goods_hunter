@@ -1,8 +1,8 @@
-import { Controller, Get, Provide, Inject } from "@midwayjs/decorator";
+import { Controller, Get, Provide, Inject, Config } from "@midwayjs/decorator";
 import { render } from "ejs";
 import { indexPage } from "../template";
-import server from "../private/server";
 import { Context } from "egg";
+import { CustomConfig } from "../config/config.default";
 
 @Provide()
 @Controller("/")
@@ -10,10 +10,14 @@ export class HomeController {
   @Inject()
   ctx: Context;
 
+  @Config("serverInfo")
+  serverInfo: CustomConfig["serverInfo"];
+
+
   @Get("/")
   async home() {
     const loginPage = render(indexPage, {
-      serverHost: server.serverHost,
+      serverHost: this.serverInfo.serverHost,
     });
     this.ctx.res.setHeader("Content-Type", "text/html");
     this.ctx.res.statusCode = 200;

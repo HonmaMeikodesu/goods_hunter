@@ -5,6 +5,8 @@ import errorCode from "../errorCode";
 import { RedisService } from "@midwayjs/redis";
 import CONST from "../const";
 import { CipherPayload as Payload } from "../types"
+// FIXME node version upgrade needed
+const { subtle } = require('node:crypto').webcrypto;
 
 @Provide()
 @Scope(ScopeEnum["Singleton"])
@@ -15,7 +17,7 @@ export default class CipherServive {
 
     private secretKey: CryptoKey;
 
-    private subtle = (new Crypto).subtle;
+    private subtle = subtle as SubtleCrypto;
 
     @Inject("redis:redisService")
     redisClient: RedisService;
@@ -32,6 +34,13 @@ export default class CipherServive {
             iv[i] = randomStr.charCodeAt(i);
         }
         return iv;
+    }
+
+    private formatPayloadData(payloadData: Payload["data"]): Payload["data"] {
+        return {
+            iv: payloadData.iv,
+            message: payloadData.message
+        }
     }
 
     private convertBufferToHexString(buffer: ArrayBuffer): string {
@@ -70,7 +79,7 @@ export default class CipherServive {
 
         const ivHexStr = this.convertBufferToHexString(iv.buffer)
 
-        const payloadData: Payload["data"] = { iv: ivHexStr, message: messageHexStr };
+        const payloadData: Payload["data"] = this.formatPayloadData({ iv: ivHexStr, message: messageHexStr });
 
         const digest = await this.subtle.digest("SHA-256", te.encode(JSON.stringify(payloadData)));
 
@@ -88,7 +97,7 @@ export default class CipherServive {
 
         const td = new TextDecoder();
 
-        const digestBuffer = await this.subtle.digest("SHA-256", te.encode(JSON.stringify(data)));
+        const digestBuffer = await this.subtle.digest("SHA-256", te.encode(JSON.stringify(this.formatPayloadData(data))));
 
         if (this.convertBufferToHexString(digestBuffer) !== digest) {
             throw new Error(errorCode.cipherService.messageCorrupted);

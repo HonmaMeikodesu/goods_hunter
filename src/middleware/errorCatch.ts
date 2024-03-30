@@ -11,12 +11,16 @@ export class ErrorCatchMiddleware
   @Logger()
   logger: ILogger;
 
+  ignore(ctx?: Context<any>) {
+    return ["/proxy"].some(path => ctx.path.includes(path));
+  }
+
   resolve() {
     return async (ctx: Context, next: NextFunction) => {
       try {
         await next();
         ctx.res.statusCode = 200;
-        ctx.body = {
+          ctx.body = {
           code: "200",
           data: ctx.body,
         };

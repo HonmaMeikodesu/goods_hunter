@@ -19,7 +19,7 @@ export class LoginStateCheck implements IMiddleware<Context, NextFunction> {
   logger: ILogger;
 
   ignore(ctx?: Context<any>) {
-    return ["/ignoreGood", "/cancelGoodIgnore", "/proxy"].includes(ctx.path);
+    return ["/ignoreGood", "/cancelGoodIgnore", "/proxy"].some(path => ctx.path.includes(path))
   }
 
   resolve() {
