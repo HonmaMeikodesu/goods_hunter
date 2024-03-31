@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests" />
   <title>GoodsHunter</title>
   <style>
     .container {
@@ -55,6 +56,27 @@
       flex: 1;
     }
   </style>
+  <script>
+    function ignoreGood(iv, message, digest) {
+      fetch("http://<%= serverHost %>/goods/ignoreGood", {
+        method: "POST",
+        body: {
+          digest,
+          data: {
+            iv,
+            message
+          }
+        }
+      }).then((res) => {
+        return res.json()
+      }).then(res => {
+        if (res.code !== "200") return Promise.reject(res.message);
+        window.alert("Done :)");
+      }).catch((msg) => {
+        window.alert(msg);
+      })
+    }
+  </script>
 </head>
 <body>
   <div class="container">
@@ -73,30 +95,10 @@
       <div class="name">
         <%= data.name %> 
       </div>
-      <a href="#" onclick="ignoreGood" data-iv="<%= data.ignoreInstruction.data.iv %>" data-message="<%= data.ignoreInstruction.data.message %>" data-digest="<%= data.ignoreInstruction.digest %>">Click here to filter this good</a>
+       <a href="#" onclick="ignoreGood('<%= data.ignoreInstruction.data.iv %>', '<%= data.ignoreInstruction.data.message %>', '<%= data.ignoreInstruction.digest %>')">Click here to filter this good</a>
     </div>
     <% }) %>
   </div>
-  <script>
-    function ignoreGood(e) {
-      fetch("http://<%= serverHost %>/goods/ignoreGood", {
-        method: "POST",
-        body: {
-          digest: e.target.dataset.digest,
-          data: {
-            iv: e.target.dataset.iv,
-            message: e.target.dataset.message
-          }
-        }
-      }).then((res) => {
-        return res.json()
-      }).then(res => {
-        if (res.code !== "200") return Promise.reject(res.message);
-        window.alert("Done :)");
-      }).catch((msg) => {
-        window.alert(msg);
-      })
-    }
-  </script>
 </body>
 </html>
+
