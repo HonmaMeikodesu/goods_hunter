@@ -4,6 +4,7 @@ import { AxiosRequestConfig } from "axios";
 import { proxyInbound } from "../const";
 import { ScopeEnum } from "@midwayjs/decorator";
 import doThisUntilResolve from "../../utils/doThisUntilResolve";
+import { isNumber } from "lodash";
 const HttpsProxyAgent = require("https-proxy-agent");
 
 export declare interface ProxyGet {
@@ -17,7 +18,7 @@ export function proxyGet<T>(container: IMidwayContainer) {
   return async (
     url: string,
     headers?: AxiosRequestConfig["headers"],
-    otherOptions?: Omit<AxiosRequestConfig, "headers">
+    otherOptions?: Omit<AxiosRequestConfig, "headers"> & { maxRetry?: number }
   ) => {
     const httpService = await container.getAsync<HttpService>(HttpService);
     const httpsAgent = new HttpsProxyAgent(proxyInbound);
@@ -25,8 +26,9 @@ export function proxyGet<T>(container: IMidwayContainer) {
       headers,
       httpsAgent,
       proxy: false,
+      timeout: 5 * 1000,
       ...otherOptions,
-    }), 10);
+    }), isNumber(otherOptions?.maxRetry) ? otherOptions.maxRetry : 2);
     return resp.data;
   };
 }
@@ -44,7 +46,7 @@ export function proxyPost<T>(container: IMidwayContainer) {
     url: string,
     headers?: AxiosRequestConfig["headers"],
     body?: any,
-    otherOptions?: Omit<AxiosRequestConfig, "headers">
+    otherOptions?: Omit<AxiosRequestConfig, "headers"> & { maxRetry?: number }
   ) => {
     const httpService = await container.getAsync<HttpService>(HttpService);
     const httpsAgent = new HttpsProxyAgent(proxyInbound);
@@ -52,8 +54,9 @@ export function proxyPost<T>(container: IMidwayContainer) {
       headers,
       httpsAgent,
       proxy: false,
+      timeout: 5 * 1000,
       ...otherOptions,
-    }), 10);
+    }), isNumber(otherOptions?.maxRetry) ? otherOptions.maxRetry : 5);
     return resp.data;
   };
 }
@@ -73,3 +76,4 @@ providerWrapper([
     scope: ScopeEnum.Singleton,
   },
 ]);
+
