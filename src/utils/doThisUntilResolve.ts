@@ -7,6 +7,6 @@ export default async function doThisUntilResolve<T>(func: () => Promise<T>, maxT
     if (maxTry && (curr > maxTry)) {
       return Promise.reject("exceeding maximum trials!");
     }
-    return await doThisUntilResolve(func)
+    return await doThisUntilResolve(func, maxTry, curr)
   }
 }
