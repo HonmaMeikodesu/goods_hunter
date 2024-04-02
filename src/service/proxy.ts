@@ -5,6 +5,7 @@ import CipherServive from "./cipher";
 import isValidUrl from "../utils/isValidUrl";
 import { ReadStream } from "fs";
 import errorCode from "../errorCode";
+import { Context } from "egg";
 
 @Provide()
 export default class ProxyService {
@@ -15,10 +16,15 @@ export default class ProxyService {
     @Inject()
     cipher: CipherServive;
 
+    @Inject()
+    ctx: Context;
+
     async getMercariImage(payload: CipherPayload): Promise<ReadStream> {
         const imageUrl = await this.cipher.decode(payload);
 
         if (!isValidUrl(imageUrl)) throw new Error(errorCode.proxyService.invalidImageUrl);
-            return this.mercariApi.fetchThumbNail(imageUrl);
+        this.ctx.res.setHeader("Content-Type", "image/webp");
+        return this.mercariApi.fetchThumbNail(imageUrl);
     }
 }
+

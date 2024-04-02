@@ -11,19 +11,24 @@ export class ErrorCatchMiddleware
   @Logger()
   logger: ILogger;
 
-  ignore(ctx?: Context<any>) {
-    return ["/proxy"].some(path => ctx.path.includes(path));
-  }
-
   resolve() {
     return async (ctx: Context, next: NextFunction) => {
       try {
         await next();
         ctx.res.statusCode = 200;
-        ctx.body = {
-          code: "200",
-          data: ctx.body,
-        };
+
+        const contentType = ctx.res.getHeader("Content-Type") || "application/json";
+
+        switch(contentType) {
+          case "application/json":
+            ctx.body = {
+              code: "200",
+              data: ctx.body,
+            };
+            break;
+          default:
+            // pass
+        }
       } catch (e) {
         this.logger.error(e.msg);
         if (/\d{6}/.test(e.message)) {
@@ -42,3 +47,4 @@ export class ErrorCatchMiddleware
     };
   }
 }
+
