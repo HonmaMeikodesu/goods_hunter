@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,13 +14,30 @@
       grid-row-gap: 6px;
       grid-column-gap: 6px;
     }
+
     .img-container {
       position: relative;
     }
+
     .grid-unit {
       display: flex;
       flex-direction: column;
+      position: relative;
     }
+
+    .grid-unit::before {
+      content: "";
+      padding-top: 100%;
+    }
+
+    .grid-unit-item {
+      position: absolute;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      right: 0;
+    }
+
     .price {
       border-radius: 0 20px 20px 0;
       position: absolute;
@@ -31,9 +49,11 @@
       left: 0;
       color: #fff;
     }
+
     .img {
       width: 100%;
     }
+
     .sold {
       height: 0;
       width: 0;
@@ -44,10 +64,12 @@
       left: 0;
       top: 0;
     }
-    .sold > div {
+
+    .sold>div {
       transform: rotate(315deg) translate(-25px, -25px);
       font-size: 24px;
     }
+
     .name {
       background-color: #f5f5f5;
       border: 1px solid transparent;
@@ -78,27 +100,35 @@
     }
   </script>
 </head>
+
 <body>
   <div class="container">
     <% data.forEach(function(data){ %>
-    <div class="grid-unit">
-      <a
-        class="img-container"
-        href="https://jp.mercari.com/item/<%= data.id %>"
-      >
-        <img src="http://<%= serverHost %>/proxy/getMercariImage?iv=<%= data.thumbnailData.data.iv %>&message=<%= data.thumbnailData.data.message %>&digest=<%= data.thumbnailData.digest %>" alt="" class="image" />
-        <div class="price"><%= data.price %></div>
-        <% if(data.status !== "ITEM_STATUS_ON_SALE") { %>
-          <div class="sold"><div>SOLD</div></div>
-        <% } %> 
-      </a>
-      <div class="name">
-        <%= data.name %> 
+      <div class="grid-unit">
+        <div class="grid-unit-item">
+          <a class="img-container" href="https://jp.mercari.com/item/<%= data.id %>">
+            <img
+              src="http://<%= serverHost %>/proxy/getMercariImage?iv=<%= data.thumbnailData.data.iv %>&message=<%= data.thumbnailData.data.message %>&digest=<%= data.thumbnailData.digest %>"
+              alt="" class="image" onerror="this.src = this.parentElement.href" />
+            <div class="price">
+              <%= data.price %>
+            </div>
+            <% if(data.status !=="ITEM_STATUS_ON_SALE" ) { %>
+              <div class="sold">
+                <div>SOLD</div>
+              </div>
+              <% } %>
+          </a>
+          <div class="name">
+            <%= data.name %>
+          </div>
+          <a href="#"
+            onclick="ignoreGood('<%= data.ignoreInstruction.data.iv %>', '<%= data.ignoreInstruction.data.message %>', '<%= data.ignoreInstruction.digest %>')">Click
+            here to filter this good</a>
+        </div>
       </div>
-       <a href="#" onclick="ignoreGood('<%= data.ignoreInstruction.data.iv %>', '<%= data.ignoreInstruction.data.message %>', '<%= data.ignoreInstruction.digest %>')">Click here to filter this good</a>
-    </div>
-    <% }) %>
+      <% }) %>
   </div>
 </body>
-</html>
 
+</html>
