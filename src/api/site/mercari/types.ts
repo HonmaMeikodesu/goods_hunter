@@ -24,7 +24,7 @@ interface GoodsBreif {
   itemSize: null,
   shippingMethodId: string,
   categoryId: string
-  
+
   // extend
   thumbnailData: CipherPayload
   ignoreInstruction: CipherPayload;

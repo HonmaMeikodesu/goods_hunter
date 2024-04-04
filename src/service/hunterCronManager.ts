@@ -13,12 +13,7 @@ import { ILogger } from "@midwayjs/logger";
 import { RedisService } from "@midwayjs/redis";
 import { v4 as uuid } from "uuid";
 import { CronJob, CronTime } from "cron";
-import {
-  first,
-  isEmpty,
-  noop,
-  values,
-} from "lodash";
+import { first, isEmpty, noop, values } from "lodash";
 import {
   GoodsHunter,
   MercariHunter as MercariHunterType,
@@ -42,7 +37,10 @@ import { In, Repository } from "typeorm";
 import { Context } from "egg";
 import errorCode from "../errorCode";
 import { GoodsSearchCondition } from "../api/site/types";
-import { MercariGoodsSearchCondition } from "../api/site/mercari/types";
+import {
+  GoodsListResponse,
+  MercariGoodsSearchCondition,
+} from "../api/site/mercari/types";
 import { CustomConfig } from "../config/config.default";
 import CipherServive from "./cipher";
 
@@ -68,28 +66,36 @@ export class HunterCronManager {
   @Init()
   async init() {
     this.cronList = {};
-    const mercariHunterList = await this.mercariHunter.find({ relations: ["user"] });
+    const mercariHunterList = await this.mercariHunter.find({
+      relations: ["user"],
+    });
 
     const promiseList: Promise<any>[] = [];
     mercariHunterList.forEach(mercariHunter => {
       const { hunterInstanceId } = mercariHunter;
       promiseList.push(this.respawnHunterById(hunterInstanceId, "Mercari"));
     });
-    Promise.all(promiseList).then(() => {
-      this.logger.info("all hunters at your service again at " + moment().format("YYYY-MM-DD HH:mm:ss") + ", welcome back!");
-    }).catch(reason => {
-      this.logger.error("Oops....Something went wrong:" + reason);
-      process.exit(-1);
-    })
+    Promise.all(promiseList)
+      .then(() => {
+        this.logger.info(
+          "all hunters at your service again at " +
+            moment().format("YYYY-MM-DD HH:mm:ss") +
+            ", welcome back!"
+        );
+      })
+      .catch(reason => {
+        this.logger.error("Oops....Something went wrong:" + reason);
+        process.exit(-1);
+      });
   }
 
   async respawnHunterById(id: string, type: GoodsHunter["type"]) {
     if (type === "Mercari") {
       const asleepHunter = await this.mercariHunter.findOne({
         where: {
-          hunterInstanceId: id
-        }
-      })
+          hunterInstanceId: id,
+        },
+      });
       const hunter = this.cronList[id];
       if (hunter?.jobInstance?.running) {
         // cronjob还跑着，直接返回
@@ -165,70 +171,95 @@ export class HunterCronManager {
         func = async () => {
           const currentHunterInfo = await this.mercariHunter.findOne({
             where: {
-              hunterInstanceId: cronId
+              hunterInstanceId: cronId,
             },
             relations: ["user"],
           });
-          if (!isEmpty(currentHunterInfo)) {
-            const { searchConditionSchema, freezingStart, freezingEnd, user } = currentHunterInfo;
-            if (freezingStart && freezingEnd) {
-              if (isBetweenDayTime(freezingStart, freezingEnd)) {
-                this.logger.info(`task ${cronId} sleeping, exiting...`)
-                return;
-              }
+          if (isEmpty(currentHunterInfo)) return;
+          const { searchConditionSchema, freezingStart, freezingEnd, user } =
+            currentHunterInfo;
+          if (
+            freezingStart &&
+            freezingEnd &&
+            isBetweenDayTime(freezingStart, freezingEnd)
+          ) {
+            this.logger.info(`task ${cronId} sleeping, exiting...`);
+            return;
+          }
+          let searchCondition: GoodsSearchCondition;
+          try {
+            searchCondition = JSON.parse(searchConditionSchema);
+            if (!searchCondition.keyword) {
+              throw new Error("no keyword found!");
             }
-            let searchCondition: GoodsSearchCondition;
-            try {
-              searchCondition = JSON.parse(searchConditionSchema);
-              if (!searchCondition.keyword) {
-                throw new Error("no keyword found!");
-              }
-            } catch(e) {
-              this.logger.error(`Invalid Mercari Hunter search condition When Executiong CronJob{${cronId}}, ${e.message}`);
-              return;
-            }
-            const resp = await this.mercariApi.fetchGoodsList(searchCondition);
-            const goodsList = resp.items;
-            if(isEmpty(goodsList)) {
-              this.logger.info(`task ${cronId} gets an empty goodsList, exiting...`)
-              return;
-            }
-            let filteredGoods: typeof goodsList = [];
-            const nextLatestTime = goodsList.reduce(
-              (max, current) => (toNumber(current.updated) > max ? toNumber(current.updated) : max),
-              toNumber(goodsList[0].updated)
+          } catch (e) {
+            this.logger.error(
+              `Invalid Mercari Hunter search condition when executiong cronjob{${cronId}}, ${e.message}`
             );
-            const lastShotAtDateTime = toNumber((await this.mercariHunter.findOne({
-              where: {
-                hunterInstanceId: cronId,
-              }
-            }))?.lastShotAt);
-            if (isNaN(lastShotAtDateTime)) {
-              // first time for this cron shot record
-              filteredGoods = goodsList;
-            } else {
-              const lastShotAt = moment(lastShotAtDateTime).unix();
-              filteredGoods = goodsList.filter(
-                good => toNumber(good.updated) > lastShotAt
-              );
-            }
-            const ignoreGoods = await this.redisClient.smembers(
-              `${CONST.USERIGNORE}_${user.email}`
+            return;
+          }
+          let resp: GoodsListResponse = null;
+          try {
+            resp = await this.mercariApi.fetchGoodsList(searchCondition);
+          } catch (e) {
+            this.logger.error(
+              `Fail to fetch good list when executing cronjob{${cronId}}, ${e.message}`
             );
-            filteredGoods = filteredGoods.filter(
-              good => !ignoreGoods.includes(good.id)
+            return;
+          }
+          const goodsList = resp.items;
+          if (isEmpty(goodsList)) {
+            this.logger.info(
+              `task ${cronId} gets an empty goodsList, exiting...`
             );
-            Promise.all(
-              filteredGoods.map(async ( good ) => {
-                good.thumbnailData = await this.cipher.encode(first(good.thumbnails));
-                good.ignoreInstruction = await this.cipher.encode(`${user.email} ${good.id}`);
-                return good;
+            return;
+          }
+          let filteredGoods: typeof goodsList = [];
+          const nextLatestTime = goodsList.reduce(
+            (max, current) =>
+              toNumber(current.updated) > max ? toNumber(current.updated) : max,
+            toNumber(goodsList[0].updated)
+          );
+          const lastShotAtDateTime = toNumber(
+            (
+              await this.mercariHunter.findOne({
+                where: {
+                  hunterInstanceId: cronId,
+                },
               })
-            ).then(async () => {
+            )?.lastShotAt
+          );
+          if (isNaN(lastShotAtDateTime)) {
+            // first time for this cron shot record
+            filteredGoods = goodsList;
+          } else {
+            const lastShotAt = moment(lastShotAtDateTime).unix();
+            filteredGoods = goodsList.filter(
+              good => toNumber(good.updated) > lastShotAt
+            );
+          }
+          const ignoreGoods = await this.redisClient.smembers(
+            `${CONST.USERIGNORE}_${user.email}`
+          );
+          filteredGoods = filteredGoods.filter(
+            good => !ignoreGoods.includes(good.id)
+          );
+          Promise.all(
+            filteredGoods.map(async good => {
+              good.thumbnailData = await this.cipher.encode(
+                first(good.thumbnails)
+              );
+              good.ignoreInstruction = await this.cipher.encode(
+                `${user.email} ${good.id}`
+              );
+              return good;
+            })
+          )
+            .then(async () => {
               if (!isEmpty(filteredGoods)) {
                 const html = render(mercariGoodsList, {
                   data: filteredGoods,
-                  serverHost: this.serverInfo.serverHost
+                  serverHost: this.serverInfo.serverHost,
                 });
 
                 const emailMessage: Mail.Options = {
@@ -237,14 +268,21 @@ export class HunterCronManager {
                   html,
                 };
                 await this.emailService.sendEmail(emailMessage);
-                const lastestTime = moment.unix(nextLatestTime).format("YYYY-MM-DD HH:mm:ss");
-                await this.mercariHunter.update({
-                  hunterInstanceId: cronId
-                }, {
-                  lastShotAt: lastestTime,
-                })
+                const lastestTime = moment
+                  .unix(nextLatestTime)
+                  .format("YYYY-MM-DD HH:mm:ss");
+                await this.mercariHunter.update(
+                  {
+                    hunterInstanceId: cronId,
+                  },
+                  {
+                    lastShotAt: lastestTime,
+                  }
+                );
                 this.logger.info(
-                  `email sent to ${user.email}, goodsNameRecord:\n${JSON.stringify(
+                  `email sent to ${
+                    user.email
+                  }, goodsNameRecord:\n${JSON.stringify(
                     filteredGoods.map(good => good.name)
                   )}\n`
                 );
@@ -254,29 +292,31 @@ export class HunterCronManager {
                   "YYYY:MM:DD hh:mm:ss"
                 )}`
               );
-            }).catch((e) => {
-              this.logger.error(`task ${cronId} execution failed at ${moment().format(
-                "YYYY:MM:DD hh:mm:ss"
-              )}, here is the error message:\n${e.message || e}`);
+            })
+            .catch(e => {
+              this.logger.error(
+                `task ${cronId} execution failed at ${moment().format(
+                  "YYYY:MM:DD hh:mm:ss"
+                )}, here is the error message:\n${e.message || e}`
+              );
             });
-          }
         };
     }
     return func;
   }
 
   async getCronList() {
-    const cronIdList = values(this.cronList).map((cron) => cron.id);
+    const cronIdList = values(this.cronList).map(cron => cron.id);
     const hunterList = await this.mercariHunter.find({
-      hunterInstanceId: In(cronIdList)
+      hunterInstanceId: In(cronIdList),
     });
     return hunterList;
   }
 
   async addUserIgnoreGoods(payload: CipherPayload) {
-    await  this.cipher.checkIfMessageConsumed(payload.data.message);
+    await this.cipher.checkIfMessageConsumed(payload.data.message);
     const decodedMessage = await this.cipher.decode(payload);
-    const [ user, goodId ] = decodedMessage.split(" ");
+    const [user, goodId] = decodedMessage.split(" ");
 
     await this.redisClient.sadd(`${CONST.USERIGNORE}_${user}`, goodId);
     await this.cipher.addMessageToConsume(payload.data.message);
@@ -286,25 +326,40 @@ export class HunterCronManager {
     await this.cipher.checkIfMessageConsumed(payload.data.message);
     const decodedMessage = await this.cipher.decode(payload);
 
-    const [ user, goodId ] = decodedMessage.split(" ");
+    const [user, goodId] = decodedMessage.split(" ");
 
     await this.redisClient.srem(`${CONST.USERIGNORE}_${user}`, goodId);
     await this.cipher.addMessageToConsume(payload.data.message);
   }
 
-  async transferHunter(id: string, newHunterInfo: Pick<GoodsHunter, "freezingRange" | "user" | "schedule" | "type" | "searchCondition">) {
-    if (hunterCognition<MercariHunterType>(newHunterInfo as GoodsHunter, info => info.type === "Mercari")) {
+  async transferHunter(
+    id: string,
+    newHunterInfo: Pick<
+      GoodsHunter,
+      "freezingRange" | "user" | "schedule" | "type" | "searchCondition"
+    >
+  ) {
+    if (
+      hunterCognition<MercariHunterType>(
+        newHunterInfo as GoodsHunter,
+        info => info.type === "Mercari"
+      )
+    ) {
       const hunter = await this.mercariHunter.findOne({
         where: {
-          hunterInstanceId: id
-        }
+          hunterInstanceId: id,
+        },
       });
       if (!isEmpty(hunter)) {
-        const { schedule: prevSchedule, searchConditionSchema: prevSearchConditionSchema, lastShotAt: prevLastShotAt } = hunter;
+        const {
+          schedule: prevSchedule,
+          searchConditionSchema: prevSearchConditionSchema,
+          lastShotAt: prevLastShotAt,
+        } = hunter;
         let prevSearchCondition: MercariGoodsSearchCondition;
         try {
           prevSearchCondition = JSON.parse(prevSearchConditionSchema);
-        } catch(e) {
+        } catch (e) {
           // pass
         }
         const jobRecord = this.cronList[id];
@@ -313,14 +368,24 @@ export class HunterCronManager {
         }
         const instance = jobRecord.jobInstance;
         this.databaseTransactionWrapper({
-          pending: async (queryRunner) => {
-            await queryRunner.manager.update(MercariHunter, { hunterInstanceId: id }, {
-              schedule: newHunterInfo.schedule,
-              searchConditionSchema: JSON.stringify(newHunterInfo.searchCondition),
-              freezingStart: newHunterInfo?.freezingRange?.start,
-              freezingEnd: newHunterInfo?.freezingRange?.end,
-              lastShotAt: prevSearchCondition?.keyword === newHunterInfo.searchCondition.keyword ? null : prevLastShotAt, // 关键词发生改变时，清空lastShotAt
-            });
+          pending: async queryRunner => {
+            await queryRunner.manager.update(
+              MercariHunter,
+              { hunterInstanceId: id },
+              {
+                schedule: newHunterInfo.schedule,
+                searchConditionSchema: JSON.stringify(
+                  newHunterInfo.searchCondition
+                ),
+                freezingStart: newHunterInfo?.freezingRange?.start,
+                freezingEnd: newHunterInfo?.freezingRange?.end,
+                lastShotAt:
+                  prevSearchCondition?.keyword ===
+                  newHunterInfo.searchCondition.keyword
+                    ? null
+                    : prevLastShotAt, // 关键词发生改变时，清空lastShotAt
+              }
+            );
             if (prevSchedule !== newHunterInfo.schedule) {
               // 需要重置crobJobInstance
               instance.stop();
@@ -331,15 +396,15 @@ export class HunterCronManager {
           rejected: async () => {
             // 更新失败，尝试重启原先的cronjob
             await this.respawnHunterById(id, "Mercari");
-          }
-        })
+          },
+        });
       } else {
         throw new Error(errorCode.hunterCronManager.cronJobNotFound);
       }
     }
   }
 
-  async dismissHunter(id: string, type: typeof CONST.HUNTERTYPE[number]) {
+  async dismissHunter(id: string, type: (typeof CONST.HUNTERTYPE)[number]) {
     const cronJob = this.cronList[id];
     if (!cronJob) return;
     if (type === "Mercari") {
@@ -353,7 +418,12 @@ export class HunterCronManager {
   }
 
   async hireNewHunterForUser(ctx: Context, hunterInfo: GoodsHunter) {
-    if (hunterCognition<MercariHunterType>(hunterInfo, info => info.type === "Mercari")) {
+    if (
+      hunterCognition<MercariHunterType>(
+        hunterInfo,
+        info => info.type === "Mercari"
+      )
+    ) {
       const user = ctx.user as UserInfo;
       const { email } = user;
       const cronId = uuid();
@@ -372,7 +442,9 @@ export class HunterCronManager {
             newMercariHunter.freezingEnd = hunterInfo?.freezingRange?.end;
             newMercariHunter.lastShotAt = hunterInfo?.lastShotAt;
             newMercariHunter.schedule = hunterInfo?.schedule;
-            newMercariHunter.searchConditionSchema = JSON.stringify(hunterInfo?.searchCondition);
+            newMercariHunter.searchConditionSchema = JSON.stringify(
+              hunterInfo?.searchCondition
+            );
             newMercariHunter.createdAt = hunterInfo.bornAt;
             user.mercariHunters.push(newMercariHunter);
           }
@@ -403,4 +475,3 @@ export class HunterCronManager {
     }
   }
 }
-
