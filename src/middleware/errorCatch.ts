@@ -30,7 +30,7 @@ export class ErrorCatchMiddleware
             // pass
         }
       } catch (e) {
-        this.logger.error(e.message);
+        this.logger.error(e);
         if (/\d{6}/.test(e.message)) {
           ctx.status = 400;
           ctx.body = {
@@ -40,7 +40,7 @@ export class ErrorCatchMiddleware
           ctx.status = 500;
           ctx.body = {
             code: "000000",
-            msg: e.message,
+            msg: "系统异常",
           };
         }
       }

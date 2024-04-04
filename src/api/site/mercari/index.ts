@@ -50,14 +50,13 @@ export class MercariApi {
     });
   }
 
-  async fetchThumbNailsAndConvertToBase64(url: string) {
-    const imgArrayBuffer: any = await this.proxyGet(
+  async fetchThumbNail(url: string): Promise<ReadStream> {
+    const imgStream = await this.proxyGet<ReadStream>(
       url,
       {},
-      { responseType: "arraybuffer" }
+      { responseType: "stream" }
     );
-    const base64Url = Buffer.from(imgArrayBuffer, "binary").toString("base64");
-    return `data:image/jpg;base64,${base64Url}`;
+    return imgStream;
   }
 
 }

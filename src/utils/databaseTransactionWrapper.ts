@@ -33,7 +33,7 @@ export default async function databaseTransactionWrapper(
     } catch (error) {
       await queryRunner.rollbackTransaction();
       if (isFunction(rejected)) await rejected(queryRunner);
-      appLogger.error(error?.message || "Unknown database operate error");
+      appLogger.error(error || "Unknown database operate error");
     } finally {
       await queryRunner.release();
     }

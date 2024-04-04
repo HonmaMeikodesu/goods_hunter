@@ -194,7 +194,7 @@ export class HunterCronManager {
             }
           } catch (e) {
             this.logger.error(
-              `Invalid Mercari Hunter search condition when executiong cronjob{${cronId}}, ${e.message}`
+              `Invalid Mercari Hunter search condition when executiong cronjob{${cronId}}, ${e}`
             );
             return;
           }
@@ -203,7 +203,7 @@ export class HunterCronManager {
             resp = await this.mercariApi.fetchGoodsList(searchCondition);
           } catch (e) {
             this.logger.error(
-              `Fail to fetch good list when executing cronjob{${cronId}}, ${e.message}`
+              `Fail to fetch good list when executing cronjob{${cronId}}, ${e}`
             );
             return;
           }
@@ -297,7 +297,7 @@ export class HunterCronManager {
               this.logger.error(
                 `task ${cronId} execution failed at ${moment().format(
                   "YYYY:MM:DD hh:mm:ss"
-                )}, here is the error message:\n${e.message || e}`
+                )}, here is the error message:\n${e}`
               );
             });
         };

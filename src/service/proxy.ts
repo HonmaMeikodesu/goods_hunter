@@ -19,12 +19,12 @@ export default class ProxyService {
     @Inject()
     ctx: Context;
 
-    async getMercariImage(payload: CipherPayload): Promise<string> {
+    async getMercariImage(payload: CipherPayload) {
         const imageUrl = await this.cipher.decode(payload);
 
         if (!isValidUrl(imageUrl)) throw new Error(errorCode.proxyService.invalidImageUrl);
-        this.ctx.res.setHeader("Content-Type", "image/jpg");
-        return this.mercariApi.fetchThumbNailsAndConvertToBase64(imageUrl);
+        this.ctx.res.setHeader("Content-Type", "image/webp");
+        return this.mercariApi.fetchThumbNail(imageUrl);
     }
 }
 
