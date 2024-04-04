@@ -30,7 +30,7 @@ export class ErrorCatchMiddleware
             // pass
         }
       } catch (e) {
-        this.logger.error(e.msg);
+        this.logger.error(e.message);
         if (/\d{6}/.test(e.message)) {
           ctx.res.statusCode = 400;
           ctx.body = {
