@@ -13,14 +13,13 @@ export class HomeController {
   @Config("serverInfo")
   serverInfo: CustomConfig["serverInfo"];
 
-
   @Get("/")
   async home() {
     const loginPage = render(indexPage, {
       serverHost: this.serverInfo.serverHost,
     });
     this.ctx.res.setHeader("Content-Type", "text/html");
-    this.ctx.res.statusCode = 200;
+    this.ctx.status = 200;
     this.ctx.res.write(loginPage);
     this.ctx.res.end();
   }

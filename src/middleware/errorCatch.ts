@@ -15,7 +15,7 @@ export class ErrorCatchMiddleware
     return async (ctx: Context, next: NextFunction) => {
       try {
         await next();
-        ctx.res.statusCode = 200;
+        ctx.status = 200;
 
         const contentType = ctx.res.getHeader("Content-Type") || "application/json";
 
@@ -32,12 +32,12 @@ export class ErrorCatchMiddleware
       } catch (e) {
         this.logger.error(e.message);
         if (/\d{6}/.test(e.message)) {
-          ctx.res.statusCode = 400;
+          ctx.status = 400;
           ctx.body = {
             code: e.message,
           };
         } else {
-          ctx.res.statusCode = 500;
+          ctx.status = 500;
           ctx.body = {
             code: "000000",
             msg: e.message,
