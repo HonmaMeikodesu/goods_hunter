@@ -94,13 +94,17 @@ export class GoodsController {
     return list;
   }
 
-  @Post("/ignoreGood")
+  @Get("/ignoreGood")
   async ignoreGood(
-    @Body()
-    payload: CipherPayload
+    @Query("iv")
+    iv: string,
+    @Query("message")
+    message: string,
+    @Query("digest")
+    digest: string
   ) {
-    if (!payload?.data?.iv || !payload?.data?.message || !payload?.digest) throw new Error(errorCode.common.invalidRequestBody);
-    await this.hunterCronManager.addUserIgnoreGoods(payload);
+    if (!iv || !message || !digest) throw new Error(errorCode.common.invalidRequestBody);
+    await this.hunterCronManager.addUserIgnoreGoods({ digest, data: { iv, message } });
   }
 
   @Post("/cancelGoodIgnore")
@@ -144,4 +148,5 @@ export class GoodsController {
     });
   }
 }
+
 

@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -16,14 +15,13 @@
     }
 
     .img-container {
-      position: relative;
       width: 100%;
       height: 100%;
     }
 
     .img-container img {
       max-width: 100%;
-      max-height: 100%;
+      height: 100%;
     }
 
     .grid-unit {
@@ -81,27 +79,6 @@
       flex: 1;
     }
   </style>
-  <script>
-    function ignoreGood(iv, message, digest) {
-      fetch("http://<%= serverHost %>/goods/ignoreGood", {
-        method: "POST",
-        body: {
-          digest,
-          data: {
-            iv,
-            message
-          }
-        }
-      }).then((res) => {
-        return res.json()
-      }).then(res => {
-        if (res.code !== "200") return Promise.reject(res.message);
-        window.alert("Done :)");
-      }).catch((msg) => {
-        window.alert(msg);
-      })
-    }
-  </script>
 </head>
 
 <body>
@@ -125,9 +102,11 @@
           <div class="name">
             <%= data.name %>
           </div>
-          <a href="#"
-            onclick="ignoreGood('<%= data.ignoreInstruction.data.iv %>', '<%= data.ignoreInstruction.data.message %>', '<%= data.ignoreInstruction.digest %>')">Click
-            here to filter this good</a>
+          <a
+            href="http://<%= serverHost %>/goods/ignoreGood/iv=<%= data.ignoreInstruction.data.iv %>&message=<%= data.ignoreInstruction.data.message %>&digest=<%= data.ignoreInstruction.digest %>"
+          >
+              Click here to filter this good
+          </a>
         </div>
       </div>
       <% }) %>
