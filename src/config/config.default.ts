@@ -65,6 +65,13 @@ export default (appInfo: EggAppInfo) => {
 
   config.serverInfo = JSON.parse(readFileSync(path.resolve(__dirname, "../private/server.json")).toString());
 
+  try {
+    config.yahooAuctionCookie = JSON.parse(readFileSync(path.resolve(__dirname, "../private/yahoo.json")).toString());
+  } catch (e) {
+    config.yahooAuctionCookie = "";
+  }
+
+
   config.egg = {
     port: 7001,
   };
@@ -85,4 +92,5 @@ export default (appInfo: EggAppInfo) => {
 
   return config;
 };
+
 

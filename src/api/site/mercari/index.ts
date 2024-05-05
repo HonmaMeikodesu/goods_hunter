@@ -5,14 +5,13 @@ import generateJwt from "generate-mercari-jwt";
 import { GoodsListResponse, MercariGoodsSearchCondition } from "./types";
 import { v4 } from "uuid";
 import { ReadStream } from "fs";
-
-const MERCARIHOST = "api.mercari.jp";
+import { ApiBase } from "../base";
 
 @Provide()
 @Scope(ScopeEnum.Request, {
   allowDowngrade: true,
 })
-export class MercariApi {
+export class MercariApi extends ApiBase {
   @Inject("proxyGet")
   proxyGet: ProxyGet;
 
@@ -49,15 +48,6 @@ export class MercariApi {
       withShopname: false
     });
   }
-
-  async fetchThumbNail(url: string): Promise<ReadStream> {
-    const imgStream = await this.proxyGet<ReadStream>(
-      url,
-      {},
-      { responseType: "stream" }
-    );
-    return imgStream;
-  }
-
 }
+
 
