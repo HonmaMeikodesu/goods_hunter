@@ -20,8 +20,6 @@ export class YahooAuctionApi extends ApiBase {
 
         const { url } = options;
 
-
-        await 
     }
 
     async getBidRecordList(auctionId: string) {
