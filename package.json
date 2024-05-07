@@ -20,6 +20,7 @@
     "ejs": "^3.1.6",
     "generate-mercari-jwt": "^1.0.2",
     "https-proxy-agent": "^5.0.0",
+    "jsdom": "^24.0.0",
     "lodash": "^4.17.21",
     "moment": "^2.29.1",
     "mysql2": "^2.3.3",
@@ -39,19 +40,20 @@
     "@types/ejs": "^3.1.0",
     "@types/ioredis": "^4.28.3",
     "@types/jest": "^26.0.10",
+    "@types/jsdom": "^21.1.6",
     "@types/lodash": "^4.14.178",
     "@types/node": "14",
     "@types/nodemailer": "^6.4.4",
     "@types/uuid": "^8.3.3",
     "axios": "^1.4.1",
     "cross-env": "^6.0.0",
+    "egg-mock": "^4.2.0",
     "husky": "^7.0.4",
     "jest": "^26.4.0",
     "mwts": "^1.0.5",
     "ts-jest": "^26.2.0",
-    "typescript": "^4.0.0",
     "ts-node": "^9.0.0",
-    "egg-mock": "^4.2.0"
+    "typescript": "^4.0.0"
   },
   "peerDependencies": {
     "pm2": "*"
@@ -81,10 +83,8 @@
       "midway_v2"
     ]
   },
-  "repository": {
-    "type": "git",
-    "url": ""
-  },
+  "repository": "git@github.com:HonmaMeikodesu/goods_hunter.git",
   "author": "",
   "license": "MIT"
 }
+

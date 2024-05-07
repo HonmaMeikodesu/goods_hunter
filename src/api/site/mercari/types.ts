@@ -1,4 +1,5 @@
 import { CipherPayload } from "../../../types";
+import { GoodsBreifExtension } from "../types";
 
 export interface GoodsListResponse {
   meta: any;
@@ -7,7 +8,7 @@ export interface GoodsListResponse {
 
 type GoodsSalesStatus = "STATUS_ON_SALE" | "STATUS_TRADING" | "STATUS_SOLD_OUT";
 
-interface GoodsBreif {
+interface GoodsBreif extends GoodsBreifExtension {
   id: string,
   sellerId: string,
   buyerId: string,
@@ -24,10 +25,6 @@ interface GoodsBreif {
   itemSize: null,
   shippingMethodId: string,
   categoryId: string
-
-  // extend
-  thumbnailData: CipherPayload
-  ignoreInstruction: CipherPayload;
 }
 
 export type MercariGoodsSearchCondition = {
@@ -41,3 +38,4 @@ export type MercariGoodsSearchCondition = {
   shippingPayerId?: number[],
   pageSize: number;
 }
+

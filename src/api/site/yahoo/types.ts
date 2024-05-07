@@ -1,19 +1,19 @@
-export type GoodsBreif = {
+import { GoodsBreifExtension } from "../types";
+
+export type GoodsBreif = GoodsBreifExtension & {
     id: string;
-    category: string;
     name: string;
     thumbImgUrl: string;
     currentPrice: number;
-    isFreeShipping: boolean;
-    shippingFee?: number;
     buyNowPrice?: number;
-    endTime: number;
-    status: any;
     currentBidCount: number;
+    endTime: number;
+    isFreeShipping?: boolean;
+    isBrandNew?: boolean;
 }
 
 
 export type YahooAuctionGoodsSearchCondition = {
-    // TODO 后面再做详细区分
-    url: string;
+    keyword: string,
 }
+
