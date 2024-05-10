@@ -8,6 +8,8 @@ import { Repository } from "typeorm";
 import { User } from "../model/user";
 import { Context } from "egg";
 import { MercariHunter } from "../model/mercariHunter";
+import { YahooHunter } from "../model/yahooHunter";
+import { GoodsHunterModelBase } from "../model/types";
 
 @Provide()
 export class GoodsService {
@@ -20,45 +22,39 @@ export class GoodsService {
   user: Repository<User>;
 
   @InjectEntityModel(MercariHunter)
-  mercariHunter: Repository<MercariHunter>;
+  mercariHunterModel: Repository<MercariHunter>;
+
+  @InjectEntityModel(YahooHunter)
+  yahooHunterModel: Repository<YahooHunter>;
 
   @Inject()
   ctx: Context;
 
   async deleteTask(id: string, type: GoodsHunter["type"]) {
     const user = this.ctx.user as UserInfo;
-    if (type === "Mercari") {
-      const abortingMercariHunter = await this.mercariHunter.findOne({
-        where: {
-          hunterInstanceId: id
-        },
-        relations: ["user"]
-      });
-      if (abortingMercariHunter?.user?.email) {
-        const hunterOwnerEmail = abortingMercariHunter.user.email
-        if (hunterOwnerEmail !== user.email) {
-          throw new Error(errorCode.goodsService.taskPermissionDenied)
-        }
-        await this.hunterCronManager.dismissHunter(id, "Mercari");
-      } else {
-        throw new Error(errorCode.goodsService.taskNotFound);
+    const targetModel: Repository<GoodsHunterModelBase> = type === "Mercari" ? this.mercariHunterModel : this.yahooHunterModel;
+    const abortingHunter = await targetModel.findOne({
+      where: {
+        hunterInstanceId: id
+      },
+      relations: ["user"]
+    });
+    if (abortingHunter?.user?.email) {
+      const hunterOwnerEmail = abortingHunter.user.email
+      if (hunterOwnerEmail !== user.email) {
+        throw new Error(errorCode.goodsService.taskPermissionDenied)
       }
+      await this.hunterCronManager.dismissHunter(id, type);
+    } else {
+      throw new Error(errorCode.goodsService.taskNotFound);
     }
   }
 
   async listUserTasks(
     email: string,
-    type: typeof CONST.HUNTERTYPE[number]
-  ): Promise<MercariHunter[]> {
-    const user = await this.user.findOne(
-      {
-        email,
-      },
-      { relations: ["mercariHunters"] }
-    );
-    if (type === "Mercari") {
-      const allWatchers = await this.hunterCronManager.getCronList();
-      return allWatchers;
-    }
+  ): Promise<GoodsHunterModelBase[]> {
+    const allUserWatchers = await this.hunterCronManager.getCronList(email);
+    return allUserWatchers;
   }
 }
+

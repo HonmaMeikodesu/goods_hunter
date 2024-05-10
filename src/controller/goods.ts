@@ -76,21 +76,19 @@ export class GoodsController {
   @Get("/unregisterGoodsWatcher")
   async unregisterGoodsWatcher(
     @Query("id")
-    id: string
-  ) {
-    if (!id) throw new Error(errorCode.common.invalidRequestBody);
-    await this.goodsService.deleteTask(id, "Mercari");
-  }
-
-  @Get("/listGoodsWatcher")
-  async listGoodsWatcher(
+    id: string,
     @Query("type")
     type: typeof CONST.HUNTERTYPE[number]
   ) {
-    if (!CONST.HUNTERTYPE.includes(type))
-      throw new Error(errorCode.goodsController.invalidHunterType);
+    const goodsHunterTypes = CONST.HUNTERTYPE;
+    if (!id || !goodsHunterTypes.includes(type)) throw new Error(errorCode.common.invalidRequestBody);
+    await this.goodsService.deleteTask(id, type);
+  }
+
+  @Get("/listGoodsWatcher")
+  async listGoodsWatcher() {
     const user = this.ctx.user as UserInfo;
-    const list = await this.goodsService.listUserTasks(user.email, type);
+    const list = await this.goodsService.listUserTasks(user.email);
     return list;
   }
 
@@ -148,5 +146,6 @@ export class GoodsController {
     });
   }
 }
+
 
 

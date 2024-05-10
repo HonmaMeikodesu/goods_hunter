@@ -1,12 +1,13 @@
-import { Config, Inject, Logger, Provide } from "@midwayjs/decorator";
+import { Config, Inject, Logger, Provide, Scope, ScopeEnum } from "@midwayjs/decorator";
 import { ProxyGet } from "../../request";
 import { ILogger } from "@midwayjs/logger";
 import { ApiBase } from "../base";
-import { GoodsBreif, YahooAuctionGoodsSearchCondition } from "./types";
+import { GoodsBreif, GoodsListResponse, YahooAuctionGoodsSearchCondition } from "./types";
 import { URL } from "url";
 import { JSDOM } from "jsdom";
 
 @Provide()
+@Scope(ScopeEnum.Request, { allowDowngrade: true })
 export class YahooAuctionApi extends ApiBase {
     @Inject("proxyGet")
     proxyGet: ProxyGet;
@@ -17,7 +18,7 @@ export class YahooAuctionApi extends ApiBase {
     @Config("yahooAuctionCookie")
     cookie: string;
 
-    async fetchGoodsList(options: YahooAuctionGoodsSearchCondition): Promise<GoodsBreif[]> {
+    async fetchGoodsList(options: YahooAuctionGoodsSearchCondition): Promise<GoodsListResponse> {
 
         const goodsList: GoodsBreif[] = [];
 
@@ -82,4 +83,5 @@ export class YahooAuctionApi extends ApiBase {
     }
 
 }
+
 

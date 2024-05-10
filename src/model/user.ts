@@ -8,6 +8,7 @@ import {
 } from "typeorm";
 import { LoginState } from "./loginState";
 import { MercariHunter } from "./mercariHunter";
+import { YahooHunter } from "./yahooHunter";
 
 @EntityModel()
 export class User {
@@ -28,4 +29,8 @@ export class User {
 
   @OneToMany(() => MercariHunter, "user", { cascade: true })
   mercariHunters: MercariHunter[];
+
+  @OneToMany(() => YahooHunter, "user", { cascade: true })
+  yahooHunters: YahooHunter[];
 }
+

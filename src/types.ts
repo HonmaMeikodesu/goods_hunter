@@ -25,6 +25,11 @@ export interface MercariHunter extends GoodsHunter {
   [key: string]: any;
 }
 
+export interface YahooHunter extends GoodsHunter {
+  lastSeenAuctionId?: string;
+  [key: string]: any;
+}
+
 export interface CronDeail {
   id: string;
   type: GoodsHunter["type"],
@@ -38,5 +43,6 @@ export type CipherPayload = {
         message: string;
     };
 }
+
 
 

@@ -51,6 +51,7 @@ export class RegisterService {
     if (!user)
       throw new Error(errorCode.registerService.invalidVerificationCode);
     const { password, email } = JSON.parse(user) as User;
+    // TODO use HMAC instead (加盐)
     const digest = sha256(password).toString();
     const record = await this.userModel.findAndCount({
       email,
@@ -71,4 +72,5 @@ export class RegisterService {
     });
   }
 }
+
 

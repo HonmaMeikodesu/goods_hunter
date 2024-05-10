@@ -1,4 +1,6 @@
-import { GoodsBreifExtension } from "../types";
+import { GoodsBreifExtension, GoodsSearchConditionBase } from "../types";
+
+export type GoodsListResponse = GoodsBreif[];
 
 export type GoodsBreif = GoodsBreifExtension & {
     id: string;
@@ -13,7 +15,6 @@ export type GoodsBreif = GoodsBreifExtension & {
 }
 
 
-export type YahooAuctionGoodsSearchCondition = {
-    keyword: string,
-}
+export type YahooAuctionGoodsSearchCondition = GoodsSearchConditionBase;
+
 

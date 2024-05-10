@@ -1,5 +1,5 @@
 import { CipherPayload } from "../../../types";
-import { GoodsBreifExtension } from "../types";
+import { GoodsBreifExtension, GoodsSearchConditionBase } from "../types";
 
 export interface GoodsListResponse {
   meta: any;
@@ -27,8 +27,7 @@ interface GoodsBreif extends GoodsBreifExtension {
   categoryId: string
 }
 
-export type MercariGoodsSearchCondition = {
-  keyword: string,
+export type MercariGoodsSearchCondition = GoodsSearchConditionBase & {
   excludeKeyword?: string,
   status: Array<GoodsSalesStatus>,
   categoryId?: string[],
@@ -38,4 +37,5 @@ export type MercariGoodsSearchCondition = {
   shippingPayerId?: number[],
   pageSize: number;
 }
+
 

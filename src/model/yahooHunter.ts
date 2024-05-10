@@ -4,8 +4,8 @@ import { User } from "./user";
 import { GoodsHunterModelBase } from "./types";
 
 @EntityModel()
-export class MercariHunter implements GoodsHunterModelBase {
-  @ManyToOne(() => User, "mercariHunters", { primary: true })
+export class YahooHunter implements GoodsHunterModelBase {
+  @ManyToOne(() => User, "yahooHunters", { primary: true })
   user: User;
 
   @Column("varchar", { primary: true })
@@ -15,6 +15,11 @@ export class MercariHunter implements GoodsHunterModelBase {
     default: null
   })
   lastShotAt: string;
+
+  @Column("varchar", {
+    default: null
+  })
+  lastSeenAuctionId: string;
 
   @Column("time", {
     default: null

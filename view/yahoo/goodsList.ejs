@@ -100,18 +100,13 @@
     <% data.forEach(function(data){ %>
       <div class="grid-unit">
         <div class="grid-unit-item">
-          <a class="img-container" href="https://jp.mercari.com/item/<%= data.id %>">
+          <a class="img-container" href="https://page.auctions.yahoo.co.jp/jp/auction/<%= data.id %>">
             <img
               src="http://<%= serverHost %>/proxy/getImage?iv=<%= data.thumbnailData.data.iv %>&message=<%= data.thumbnailData.data.message %>&digest=<%= data.thumbnailData.digest %>"
               alt="" class="image" onerror="this.src = this.parentElement.href" />
             <div class="price">
-              <%= data.price %>
+              <%= data.currentPrice %>
             </div>
-            <% if(data.status !=="ITEM_STATUS_ON_SALE" ) { %>
-              <div class="sold">
-                <div>SOLD</div>
-              </div>
-              <% } %>
           </a>
           <div class="name">
             <%= data.name %>
