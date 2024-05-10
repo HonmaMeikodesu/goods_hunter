@@ -22,13 +22,11 @@ export class YahooAuctionApi extends ApiBase {
 
         const goodsList: GoodsBreif[] = [];
 
-        const yahooAuctionSearchUrl = new URL("https://auctions.yahoo.co.jp/search/search");
-
         const { keyword } = options;
 
-        yahooAuctionSearchUrl.searchParams.append("p", keyword);
+        const yahooAuctionSearchUrl = `https://auctions.yahoo.co.jp/search/search?p=${keyword}`;
 
-        const domStr = await this.proxyGet<string>(yahooAuctionSearchUrl.toString());
+        const domStr = await this.proxyGet<string>(yahooAuctionSearchUrl);
 
         const dom = new JSDOM(domStr);
 

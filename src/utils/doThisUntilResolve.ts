@@ -2,6 +2,7 @@ export default async function doThisUntilResolve<T>(func: () => Promise<T>, maxT
   try {
     return await func()
   } catch(e) {
+    console.error(e);
     curr = curr || 0;
     curr++;
     if (maxTry && (curr > maxTry)) {
