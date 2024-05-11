@@ -24,7 +24,7 @@ export class YahooAuctionApi extends ApiBase {
 
         const { keyword } = options;
 
-        const yahooAuctionSearchUrl = `https://auctions.yahoo.co.jp/search/search?p=${keyword}`;
+        const yahooAuctionSearchUrl = `https://auctions.yahoo.co.jp/search/search?s1=new&p=${keyword}`;
 
         const domStr = await this.proxyGet<string>(yahooAuctionSearchUrl);
 
