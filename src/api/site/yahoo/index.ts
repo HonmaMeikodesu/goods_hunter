@@ -76,7 +76,9 @@ export class YahooAuctionApi extends ApiBase {
             yahooAuctionSearchUrl.searchParams.append(item[0], item[1]);
         }))
 
-        const domStr = await this.proxyGet<string>(yahooAuctionSearchUrl);
+        const domStr = await this.proxyGet<string>(yahooAuctionSearchUrl, {
+            "Cookie": this.cookie
+        });
 
         const dom = new JSDOM(domStr);
 
@@ -131,6 +133,4 @@ export class YahooAuctionApi extends ApiBase {
     }
 
 }
-
-
 
