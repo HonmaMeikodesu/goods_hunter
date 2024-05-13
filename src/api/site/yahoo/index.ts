@@ -3,7 +3,6 @@ import { ProxyGet } from "../../request";
 import { ILogger } from "@midwayjs/logger";
 import { ApiBase } from "../base";
 import { GoodsBreif, GoodsListResponse, YahooAuctionGoodsSearchCondition } from "./types";
-import { URL } from "url";
 import { JSDOM } from "jsdom";
 
 @Provide()
@@ -22,9 +21,60 @@ export class YahooAuctionApi extends ApiBase {
 
         const goodsList: GoodsBreif[] = [];
 
-        const { keyword } = options;
+        const { keyword, category } = options;
 
-        const yahooAuctionSearchUrl = `https://auctions.yahoo.co.jp/search/search?s1=new&p=${keyword}`;
+        const yahooAuctionSearchUrl = new URL("https://auctions.yahoo.co.jp/search/search");
+
+        const searchOptions: Array<[string, string]> = [
+            [
+                "p",
+                keyword
+            ],
+            [
+                "va",
+                keyword
+            ],
+            [
+                "is_postage_mode",
+                "1"
+            ],
+            [
+                "dest_pref_code",
+                "13"
+            ],
+            [
+                "exflg",
+                "1"
+            ],
+            [
+                "b",
+                "1"
+            ],
+            [
+                "n",
+                "50"
+            ],
+            [
+                "s1",
+                "new"
+            ],
+            [
+                "o1",
+                "d"
+            ],
+            [
+                "rc_ng",
+                "1"
+            ]
+        ];
+
+        if (category) {
+            searchOptions.push([ "auccat", category ]);
+        }
+
+        searchOptions.forEach((item => {
+            yahooAuctionSearchUrl.searchParams.append(item[0], item[1]);
+        }))
 
         const domStr = await this.proxyGet<string>(yahooAuctionSearchUrl);
 
@@ -81,5 +131,6 @@ export class YahooAuctionApi extends ApiBase {
     }
 
 }
+
 
 

@@ -14,3 +14,4 @@ run/
 .tsbuildinfo
 .tsbuildinfo.*
 src/private/
+nohup.out

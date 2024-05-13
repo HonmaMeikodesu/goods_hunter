@@ -15,6 +15,9 @@ export type GoodsBreif = GoodsBreifExtension & {
 }
 
 
-export type YahooAuctionGoodsSearchCondition = GoodsSearchConditionBase;
+export type YahooAuctionGoodsSearchCondition = GoodsSearchConditionBase & {
+    category?: string
+};
+
 
 
