@@ -11,6 +11,7 @@ export type CustomConfig = {
     password: string;
     host: string;
     systemOwner: string;
+    contactSystemOwner: string;
   },
   secretKeyJwkData: JsonWebKey;
 }

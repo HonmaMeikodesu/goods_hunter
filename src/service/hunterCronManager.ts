@@ -147,6 +147,9 @@ export class HunterCronManager {
   @Inject("redis:redisService")
   redisClient: RedisService;
 
+  @Config("emailConfig")
+  mailInfo: CustomConfig["emailConfig"];
+
   @Inject()
   emailService: EmailService;
 
@@ -181,6 +184,18 @@ export class HunterCronManager {
         this.cronList
       ).join(",")}`
     );
+  }
+
+  @TaskLocal("0 */1 * * * *")
+  private async cookieHeartBeatCheck() {
+    const yahooCookieValid = await this.yahooApi.checkCookieHeartBeat();
+    if (!yahooCookieValid?.result) {
+      this.emailService.sendEmail({
+        to: this.mailInfo.contactSystemOwner,
+        subject: "Your yahoo cookie seems to expire or invalid",
+        text: `Consider a refresh won't we? current provided yahoo cookie:\n${yahooCookieValid.cookie}`
+      });
+    }
   }
 
   private hunterFactory(type: GoodsHunter["type"], cronId: string) {
