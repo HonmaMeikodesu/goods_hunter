@@ -136,14 +136,16 @@ export class YahooAuctionApi extends ApiBase {
         const userPageUrl = "https://auctions.yahoo.co.jp/user/jp/show/mystatus";
 
         const domStr = await this.proxyGet<string>(
-            userPageUrl
-        );
+            userPageUrl,
+	{
+            "Cookie": this.cookie
+        });
 
         const dom = new JSDOM(domStr);
 
         return {
             cookie: this.cookie,
-            result: !!(await dom.window.document.querySelector("#acMdStatus"))
+            result: !!dom.window.document.querySelector("#acMdStatus")
         };
     }
 

@@ -186,7 +186,7 @@ export class HunterCronManager {
     );
   }
 
-  @TaskLocal("0 */1 * * * *")
+  @TaskLocal("0 0 */4 * * *")
   private async cookieHeartBeatCheck() {
     const yahooCookieValid = await this.yahooApi.checkCookieHeartBeat();
     if (!yahooCookieValid?.result) {
@@ -196,6 +196,7 @@ export class HunterCronManager {
         text: `Consider a refresh won't we? current provided yahoo cookie:\n${yahooCookieValid.cookie}`
       });
     }
+    this.logger.info("cookie heart beat check finished")
   }
 
   private hunterFactory(type: GoodsHunter["type"], cronId: string) {
