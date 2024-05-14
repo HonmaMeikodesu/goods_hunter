@@ -66,7 +66,7 @@ export default (appInfo: EggAppInfo) => {
   config.serverInfo = JSON.parse(readFileSync(path.resolve(__dirname, "../private/server.json")).toString());
 
   try {
-    config.yahooAuctionCookie = JSON.parse(readFileSync(path.resolve(__dirname, "../private/yahoo.json")).toString());
+    config.yahooAuctionCookie = readFileSync(path.resolve(__dirname, "../private/yahoo.json")).toString().replace(/[\n\r]/g, '');
   } catch (e) {
     config.yahooAuctionCookie = "";
   }
