@@ -186,7 +186,7 @@ export class HunterCronManager {
     );
   }
 
-  @TaskLocal("0 0 */4 * * *")
+  @TaskLocal("0 */50 * * *")
   private async cookieHeartBeatCheck() {
     const yahooCookieValid = await this.yahooApi.checkCookieHeartBeat();
     if (!yahooCookieValid?.result) {

@@ -76,6 +76,8 @@ export class YahooAuctionApi extends ApiBase {
             yahooAuctionSearchUrl.searchParams.append(item[0], item[1]);
         }))
 
+	this.logger.info(`requesting to ${yahooAuctionSearchUrl}...`);
+
         const domStr = await this.proxyGet<string>(yahooAuctionSearchUrl, {
             "Cookie": this.cookie
         });
@@ -109,7 +111,7 @@ export class YahooAuctionApi extends ApiBase {
                 cl_cl_index: string;
             };
 
-            const currentBidCount = good.querySelector(".Product__detail .Product__otherInfo .Product__bidWrap .Product__bid").textContent;
+            const currentBidCount = good.querySelector(".Product__detail .Product__otherInfo .Product__bidWrap .Product__bid")?.textContent;
 
             const isBrandNew = good.querySelector(".Product__detail .Product__icons .Product__icon--unused");
 
