@@ -87,7 +87,9 @@ export class YahooAuctionApi extends ApiBase {
         const goodListElements: NodeListOf<HTMLLIElement> = dom.window.document.querySelectorAll(".Result__body .Products__items .Product");
 
         goodListElements.forEach((good) => {
-            const { auctionId, auctionBuynowprice, auctionEndtime, auctionPrice } = ( good.querySelector(".Product__detail .Product__bonus") as HTMLDivElement )?.dataset as {
+
+            // TODO don't use data here
+            const { auctionBuynowprice, auctionEndtime } = ( good.querySelector(".Product__detail .Product__bonus") as HTMLDivElement )?.dataset as {
                 auctionBuynowprice: string;
                 auctionCaneasypayment: string;
                 auctionCategoryidpath: string;
@@ -99,7 +101,7 @@ export class YahooAuctionApi extends ApiBase {
                 auctionStartprice: string
             };
 
-            const { auctionImg, auctionIsfreeshipping, auctionTitle } = ( good.querySelector(".Product__detail .Product__titleLink") as HTMLAnchorElement )?.dataset as {
+            const { auctionImg, auctionIsfreeshipping, auctionTitle, auctionId, auctionPrice } = ( good.querySelector(".Product__detail .Product__titleLink") as HTMLAnchorElement )?.dataset as {
                 auctionCategory: string;
                 auctionId: string;
                 auctionImg: string;
@@ -152,4 +154,5 @@ export class YahooAuctionApi extends ApiBase {
     }
 
 }
+
 
