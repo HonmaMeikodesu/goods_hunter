@@ -201,7 +201,7 @@ export class SurugayaHunterService extends HunterBase {
                             hunterInstanceId: cronId,
                         },
                         {
-                            lastSeenGoodList: JSON.stringify(filteredGoods.map((item) => item.id)),
+                            lastSeenGoodList: JSON.stringify((goodsList || []).map((item) => item.id)),
                         }
                     );
                     this.logger.info(

@@ -216,7 +216,7 @@ export class YahooHunterService extends HunterBase {
               hunterInstanceId: cronId,
             },
             {
-              lastSeenAuctionList: JSON.stringify(filteredGoods.map((item) => item.id)),
+              lastSeenAuctionList: JSON.stringify((goodsList || []).map((item) => item.id)),
             }
           );
           this.logger.info(
