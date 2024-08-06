@@ -4,6 +4,9 @@ import { ILogger } from "@midwayjs/logger";
 import { ApiBase } from "../base";
 import { GoodsBreif, GoodsListResponse, YahooAuctionGoodsSearchCondition } from "./types";
 import { JSDOM } from "jsdom";
+import { cloneDeep } from "lodash";
+
+const PAGE_SIZE = 60;
 
 @Provide()
 @Scope(ScopeEnum.Request, { allowDowngrade: true })
@@ -21,11 +24,9 @@ export class YahooAuctionApi extends ApiBase {
 
         const goodsList: GoodsBreif[] = [];
 
-        const { keyword, category } = options;
+        const { keyword, category, epoch } = options;
 
-        const yahooAuctionSearchUrl = new URL("https://auctions.yahoo.co.jp/search/search");
-
-        const searchOptions: Array<[string, string]> = [
+        const initSearchOptions: Array<[string, string]> = [
             [
                 "p",
                 keyword
@@ -52,7 +53,7 @@ export class YahooAuctionApi extends ApiBase {
             ],
             [
                 "n",
-                "50"
+                PAGE_SIZE.toString()
             ],
             [
                 "s1",
@@ -69,68 +70,84 @@ export class YahooAuctionApi extends ApiBase {
         ];
 
         if (category) {
-            searchOptions.push([ "auccat", category ]);
+            initSearchOptions.push([ "auccat", category ]);
         }
 
-        searchOptions.forEach((item => {
-            yahooAuctionSearchUrl.searchParams.append(item[0], item[1]);
-        }))
+        const yahooAuctionSearchUrls: URL[] = new Array(epoch || 1).fill(null).map(() => new URL("https://auctions.yahoo.co.jp/search/search"));
 
-	this.logger.info(`requesting to ${yahooAuctionSearchUrl}...`);
-
-        const domStr = await this.proxyGet<string>(yahooAuctionSearchUrl, {
-            "Cookie": this.cookie
+        const searchOptions = new Array(epoch || 1).fill(null).map((__, idx) => {
+            const next = cloneDeep(initSearchOptions);
+            const item = next.find((item) => item[0] === "b");
+            item[1] = ( PAGE_SIZE * idx + 1 ).toString();
+            return next;
         });
 
-        const dom = new JSDOM(domStr);
-
-        const goodListElements: NodeListOf<HTMLLIElement> = dom.window.document.querySelectorAll(".Result__body .Products__items .Product");
-
-        goodListElements.forEach((good) => {
-
-            // TODO don't use data here
-            const { auctionBuynowprice, auctionEndtime } = ( good.querySelector(".Product__detail .Product__bonus") as HTMLDivElement )?.dataset as {
-                auctionBuynowprice: string;
-                auctionCaneasypayment: string;
-                auctionCategoryidpath: string;
-                auctionEndtime: string;
-                auctionId: string;
-                auctionIsshoppingitem: string;
-                auctionPrice: string;
-                auctionSellerid: string;
-                auctionStartprice: string
-            };
-
-            const { auctionImg, auctionIsfreeshipping, auctionTitle, auctionId, auctionPrice } = ( good.querySelector(".Product__detail .Product__titleLink") as HTMLAnchorElement )?.dataset as {
-                auctionCategory: string;
-                auctionId: string;
-                auctionImg: string;
-                auctionIsflea: string;
-                auctionIsfreeshipping: string;
-                auctionPrice: string;
-                auctionTitle: string;
-                clParams: string;
-                cl_cl_index: string;
-            };
-
-            const currentBidCount = good.querySelector(".Product__detail .Product__otherInfo .Product__bidWrap .Product__bid")?.textContent;
-
-            const isBrandNew = good.querySelector(".Product__detail .Product__icons .Product__icon--unused");
-
-            goodsList.push({
-                id: auctionId,
-                name: auctionTitle,
-                thumbImgUrl: auctionImg,
-                currentPrice: parseInt(auctionPrice),
-                buyNowPrice: parseInt(auctionBuynowprice) || undefined,
-                currentBidCount: parseInt(currentBidCount),
-                endTime: parseInt(auctionEndtime) * 1000,
-                isFreeShipping: auctionIsfreeshipping === "1",
-                isBrandNew: !!isBrandNew,
-                thumbnailData: null,
-                ignoreInstruction: null
-            });
+        searchOptions.forEach((pageSearchOptions, idx) => {
+            pageSearchOptions.forEach((item => {
+                yahooAuctionSearchUrls[idx].searchParams.append(item[0], item[1]);
+            }))
         })
+
+        await Promise.all(yahooAuctionSearchUrls.map(async (yahooAuctionSearchUrl, idx) => {
+
+            this.logger.info(`requesting to ${yahooAuctionSearchUrl}..., currentPage: ${idx}`);
+
+            const domStr = await this.proxyGet<string>(yahooAuctionSearchUrl, {
+                "Cookie": this.cookie
+            });
+
+
+            const dom = new JSDOM(domStr);
+
+            const goodListElements: NodeListOf<HTMLLIElement> = dom.window.document.querySelectorAll(".Result__body .Products__items .Product");
+
+            goodListElements.forEach((good) => {
+
+                // TODO don't use data here
+                const { auctionBuynowprice, auctionEndtime } = (good.querySelector(".Product__detail .Product__bonus") as HTMLDivElement)?.dataset as {
+                    auctionBuynowprice: string;
+                    auctionCaneasypayment: string;
+                    auctionCategoryidpath: string;
+                    auctionEndtime: string;
+                    auctionId: string;
+                    auctionIsshoppingitem: string;
+                    auctionPrice: string;
+                    auctionSellerid: string;
+                    auctionStartprice: string
+                };
+
+                const { auctionImg, auctionIsfreeshipping, auctionTitle, auctionId, auctionPrice } = (good.querySelector(".Product__detail .Product__titleLink") as HTMLAnchorElement)?.dataset as {
+                    auctionCategory: string;
+                    auctionId: string;
+                    auctionImg: string;
+                    auctionIsflea: string;
+                    auctionIsfreeshipping: string;
+                    auctionPrice: string;
+                    auctionTitle: string;
+                    clParams: string;
+                    cl_cl_index: string;
+                };
+
+                const currentBidCount = good.querySelector(".Product__detail .Product__otherInfo .Product__bidWrap .Product__bid")?.textContent;
+
+                const isBrandNew = good.querySelector(".Product__detail .Product__icons .Product__icon--unused");
+
+                goodsList.push({
+                    id: auctionId,
+                    name: auctionTitle,
+                    thumbImgUrl: auctionImg,
+                    currentPrice: parseInt(auctionPrice),
+                    buyNowPrice: parseInt(auctionBuynowprice) || undefined,
+                    currentBidCount: parseInt(currentBidCount),
+                    endTime: parseInt(auctionEndtime) * 1000,
+                    isFreeShipping: auctionIsfreeshipping === "1",
+                    isBrandNew: !!isBrandNew,
+                    thumbnailData: null,
+                    ignoreInstruction: null
+                });
+            })
+        }));
+
 
         return goodsList;
 
@@ -141,9 +158,9 @@ export class YahooAuctionApi extends ApiBase {
 
         const domStr = await this.proxyGet<string>(
             userPageUrl,
-	{
-            "Cookie": this.cookie
-        });
+            {
+                "Cookie": this.cookie
+            });
 
         const dom = new JSDOM(domStr);
 
@@ -154,5 +171,6 @@ export class YahooAuctionApi extends ApiBase {
     }
 
 }
+
 
 

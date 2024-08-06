@@ -5,8 +5,6 @@ export interface GoodsHunterModelBase {
 
     hunterInstanceId: string;
 
-    lastShotAt: string;
-
     freezingStart: string;
 
     freezingEnd: string;
@@ -19,3 +17,4 @@ export interface GoodsHunterModelBase {
 
     updatedAt: string;
 }
+

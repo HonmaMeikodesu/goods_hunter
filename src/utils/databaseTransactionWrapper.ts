@@ -7,7 +7,7 @@ import { ScopeEnum } from "@midwayjs/decorator";
 export declare interface DatabaseTransactionWrapper {
   (funcs: {
     pending: (queryRunner: QueryRunner) => Promise<void>;
-    resolved?: (queryRunner: QueryRunner) => Promise<void>;
+    resolved?: (queryRunner: QueryRunner) => Promise<any>;
     rejected?: (queryRunner: QueryRunner) => Promise<void>;
   }): Promise<void>;
 }
@@ -18,7 +18,7 @@ export default async function databaseTransactionWrapper(
   const appLogger = loggers.getLogger("logger");
   return async function (funcs: {
     pending: (queryRunner: QueryRunner) => Promise<void>;
-    resolved?: (queryRunner: QueryRunner) => Promise<void>;
+    resolved?: (queryRunner: QueryRunner) => Promise<any>;
     rejected?: (queryRunner: QueryRunner) => Promise<void>;
   }) {
     const { pending, resolved, rejected } = funcs;
@@ -29,7 +29,7 @@ export default async function databaseTransactionWrapper(
     try {
       await pending(queryRunner);
       await queryRunner.commitTransaction();
-      if (isFunction(resolved)) await resolved(queryRunner);
+      if (isFunction(resolved)) return await resolved(queryRunner);
     } catch (error) {
       await queryRunner.rollbackTransaction();
       if (isFunction(rejected)) await rejected(queryRunner);
@@ -47,3 +47,4 @@ providerWrapper([
     scope: ScopeEnum.Singleton,
   },
 ]);
+

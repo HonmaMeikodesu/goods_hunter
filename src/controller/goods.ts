@@ -7,7 +7,7 @@ import {
   Get,
   Query,
 } from "@midwayjs/decorator";
-import { HunterCronManager } from "../service/hunterCronManager";
+import { HunterRouteService } from "../service/hunterRouteService";
 import { Context } from "egg";
 import { toNumber } from "lodash";
 import { CipherPayload, UserInfo } from "../types";
@@ -22,7 +22,7 @@ import { GoodsSearchCondition } from "../api/site/types";
 @Controller("/goods", { middleware: ["loginStateCheck"] })
 export class GoodsController {
   @Inject()
-  hunterCronManager: HunterCronManager;
+  hunterRouteService: HunterRouteService;
 
   @Inject()
   goodsService: GoodsService;
@@ -60,7 +60,7 @@ export class GoodsController {
         throw new Error(errorCode.common.invalidRequestBody);
     }
     const user = this.ctx.user as UserInfo;
-    await this.hunterCronManager.hireNewHunterForUser(this.ctx, {
+    await this.hunterRouteService.hireNewHunterForUser(this.ctx, {
       searchCondition,
       type,
       schedule,
@@ -102,7 +102,7 @@ export class GoodsController {
     digest: string
   ) {
     if (!iv || !message || !digest) throw new Error(errorCode.common.invalidRequestBody);
-    await this.hunterCronManager.addUserIgnoreGoods({ digest, data: { iv, message } });
+    await this.hunterRouteService.addUserIgnoreGoods({ digest, data: { iv, message } });
   }
 
   @Post("/cancelGoodIgnore")
@@ -111,7 +111,7 @@ export class GoodsController {
     payload: CipherPayload
   ) {
     if (!payload?.data?.iv || !payload?.data?.message) throw new Error(errorCode.common.invalidRequestBody);
-    await this.hunterCronManager.cancelUserIgnoreGoods(payload);
+    await this.hunterRouteService.cancelUserIgnoreGoods(payload);
   }
 
   @Post("/updateGoodsWatcher")
@@ -132,7 +132,7 @@ export class GoodsController {
     if (!id || !CONST.HUNTERTYPE.includes(type) || !searchCondition?.keyword || !isValidCron(schedule) || ((freezeStart || freezeEnd) && [freezeStart, freezeEnd].some((item) => !/\d\d:\d\d/.test(item))))  {
       throw new Error(errorCode.common.invalidRequestBody);
     }
-    await this.hunterCronManager.transferHunter(id, {
+    await this.hunterRouteService.transferHunter(id, {
       searchCondition,
       type,
       schedule,
@@ -146,6 +146,7 @@ export class GoodsController {
     });
   }
 }
+
 
 
 

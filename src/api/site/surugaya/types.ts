@@ -6,18 +6,15 @@ export type GoodsBreif = GoodsBreifExtension & {
     id: string;
     name: string;
     thumbImgUrl: string;
-    currentPrice: number;
-    buyNowPrice?: number;
-    currentBidCount: number;
-    endTime: number;
-    isFreeShipping?: boolean;
-    isBrandNew?: boolean;
+    price: string;
+    marketPlacePrice: string
 }
 
 
-export type YahooAuctionGoodsSearchCondition = GoodsSearchConditionBase & {
+export type SurugayaGoodsSearchCondition = GoodsSearchConditionBase & {
     category?: string;
     epoch?: number;
+    adultMode?: boolean;
 };
 
 

@@ -9,6 +9,7 @@ import {
 import { LoginState } from "./loginState";
 import { MercariHunter } from "./mercariHunter";
 import { YahooHunter } from "./yahooHunter";
+import { SurugayaHunter as SurugayaHunterType } from "./surugaya";
 
 @EntityModel()
 export class User {
@@ -32,5 +33,9 @@ export class User {
 
   @OneToMany(() => YahooHunter, "user", { cascade: true })
   yahooHunters: YahooHunter[];
+
+  @OneToMany(() => SurugayaHunterType, "user", { cascade: true })
+  surugayaHunters: SurugayaHunterType[];
 }
+
 

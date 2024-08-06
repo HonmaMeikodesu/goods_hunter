@@ -26,13 +26,17 @@ export interface MercariHunter extends GoodsHunter {
 }
 
 export interface YahooHunter extends GoodsHunter {
-  lastSeenAuctionId?: string;
+  [key: string]: any;
+}
+
+export interface SurugayaHunter extends GoodsHunter {
   [key: string]: any;
 }
 
 export interface CronDeail {
   id: string;
-  type: GoodsHunter["type"],
+  type: GoodsHunter["type"];
+  schedule: string;
   jobInstance: CronJob;
 }
 
@@ -43,6 +47,4 @@ export type CipherPayload = {
         message: string;
     };
 }
-
-
 

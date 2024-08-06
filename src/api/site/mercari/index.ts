@@ -1,10 +1,9 @@
 import { Provide, Inject, Logger, Scope, ScopeEnum } from "@midwayjs/decorator";
-import { ProxyGet, ProxyPost } from "../../request";
+import { ProxyPost } from "../../request";
 import { ILogger } from "@midwayjs/logger";
 import generateJwt from "generate-mercari-jwt";
 import { GoodsListResponse, MercariGoodsSearchCondition } from "./types";
 import { v4 } from "uuid";
-import { ReadStream } from "fs";
 import { ApiBase } from "../base";
 
 @Provide()
@@ -12,8 +11,6 @@ import { ApiBase } from "../base";
   allowDowngrade: true,
 })
 export class MercariApi extends ApiBase {
-  @Inject("proxyGet")
-  proxyGet: ProxyGet;
 
   @Inject("proxyPost")
   proxyPost: ProxyPost;
@@ -49,5 +46,6 @@ export class MercariApi extends ApiBase {
     });
   }
 }
+
 
 

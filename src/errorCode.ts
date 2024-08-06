@@ -21,21 +21,18 @@ const controller = {
 
 const service = {
   email: "01",
-  hunterCronManager: "02",
+  hunterRouteService: "02",
   login: "03",
   register: "04",
   goods: "05",
   cipher: "06",
-  proxy: "07"
+  proxy: "07",
+  commonHunter: "08",
 };
 
 const misc = {
   utils: "01",
 };
-
-const manager = {
-  hunterCronManager: "01"
-}
 
 export default {
   loginStateMiddleware: {
@@ -69,8 +66,9 @@ export default {
   proxyService: {
     invalidImageUrl: type.service + service.proxy + "01"
   },
-  hunterCronManager: {
-    cronJobNotFound: type.manager + manager.hunterCronManager + "01"
+  commonHunterService: {
+    cronJobNotFound: type.service + service.commonHunter + "01"
   }
 };
+
 
