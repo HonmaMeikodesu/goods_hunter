@@ -20,6 +20,7 @@ import Mail from "nodemailer/lib/mailer";
 import moment from "moment";
 import errorCode from "../../errorCode";
 import { CustomConfig } from "../../config/config.default";
+import { YahooAuctionRecord } from "../../model/yahooAuctionRecord";
 
 @Provide()
 @Scope(ScopeEnum.Singleton)
@@ -32,6 +33,9 @@ export class YahooHunterService extends HunterBase {
 
   @InjectEntityModel(YahooHunterModel)
   yahooHunterModel: Repository<YahooHunterModel>;
+
+  @InjectEntityModel(YahooAuctionRecord)
+  yahooAuctionRecordModel: Repository<YahooAuctionRecord>;
 
   @Config("emailConfig")
   mailInfo: CustomConfig["emailConfig"];
@@ -162,23 +166,26 @@ export class YahooHunterService extends HunterBase {
       return;
     }
 
-    const lastSeenAuctionListStr =
+    const lastSeenAuctionList =
       (
-        await this.yahooHunterModel.findOne({
+        await this.yahooAuctionRecordModel.find({
           where: {
-            hunterInstanceId: cronId,
+            hunter: {
+              hunterInstanceId: cronId,
+            }
           },
         })
-      )?.lastSeenAuctionList;
+      );
 
-    let lastSeenAuctionList: string[] = [];
-    try {
-      lastSeenAuctionList = JSON.parse(lastSeenAuctionListStr) || [];
-    } catch(e) {
-      // pass
-    }
+    let filteredGoods = (goodsList || []).filter((good) => {
+      const existed = lastSeenAuctionList?.find(item => item.auctionId === good.id);
 
-    let filteredGoods: typeof goodsList = differenceBy(goodsList || [], lastSeenAuctionList.map(id => ({ id })), "id");
+      if (!existed) return true;
+
+      if (good.currentPrice && existed.currentPrice !== good.currentPrice) return true;
+
+      if (good.buyNowPrice && existed.buyNowPrice !== good.buyNowPrice) return true;
+    })
 
     // FIXME collision between different hunters when getting ignoring goods
     const ignoreGoods = await this.redisClient.smembers(
@@ -211,21 +218,28 @@ export class YahooHunterService extends HunterBase {
             html,
           };
           await this.emailService.sendEmail(emailMessage);
-          await this.yahooHunterModel.update(
+          await this.yahooAuctionRecordModel.delete(
             {
-              hunterInstanceId: cronId,
-            },
-            {
-              lastSeenAuctionList: JSON.stringify((goodsList || []).map((item) => item.id)),
+              hunter: {
+                hunterInstanceId: cronId
+              }
             }
           );
+
+          await this.yahooAuctionRecordModel.createQueryBuilder().insert().values((goodsList || []).map(good => ({
+            hunter: { hunterInstanceId: cronId },
+            auctionId: good.id,
+            auctionName: good.name,
+            currentPrice: good.currentPrice || null,
+            buyNowPrice: good.buyNowPrice || null,
+            currentBidCount: good.currentBidCount || null
+          }))).execute();
           this.logger.info(
             `email sent to ${user.email
             }, goodsNameRecord:\n${JSON.stringify(
               filteredGoods.map(good => good.name)
             )}\n`
-          );
-        }
+          ); }
         this.logger.info(
           `task ${cronId} executed steady and sound at ${moment().format(
             "YYYY:MM:DD hh:mm:ss"
@@ -262,8 +276,7 @@ export class YahooHunterService extends HunterBase {
     if (!isEmpty(hunter)) {
       const {
         schedule: prevSchedule,
-        searchConditionSchema: prevSearchConditionSchema,
-        lastSeenAuctionList: prevLastShotList,
+        searchConditionSchema: prevSearchConditionSchema
       } = hunter;
       let prevSearchCondition: YahooAuctionGoodsSearchCondition;
       try {
@@ -278,6 +291,13 @@ export class YahooHunterService extends HunterBase {
       const instance = jobRecord.jobInstance;
       this.databaseTransactionWrapper({
         pending: async queryRunner => {
+          if (prevSearchCondition?.keyword !== newHunterInfo.searchCondition.keyword) {
+            await queryRunner.manager.delete(YahooAuctionRecord, {
+              hunter: {
+                hunterInstanceId: id
+              }
+            });
+          }
           await queryRunner.manager.update(
             YahooHunterModel,
             { hunterInstanceId: id },
@@ -287,12 +307,7 @@ export class YahooHunterService extends HunterBase {
                 newHunterInfo.searchCondition
               ),
               freezingStart: newHunterInfo?.freezingRange?.start,
-              freezingEnd: newHunterInfo?.freezingRange?.end,
-              lastSeenAuctionList:
-                prevSearchCondition?.keyword ===
-                  newHunterInfo.searchCondition.keyword
-                  ? null
-                  : prevLastShotList, // 关键词发生改变时，清空lastShotAt
+              freezingEnd: newHunterInfo?.freezingRange?.end
             }
           );
           if (prevSchedule !== newHunterInfo.schedule) {
@@ -344,3 +359,4 @@ export class YahooHunterService extends HunterBase {
     });
   }
 }
+

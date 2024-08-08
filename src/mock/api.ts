@@ -65,9 +65,7 @@ export class ApiMock implements ISimulation {
         this.yahooAuctionApi.fetchGoodsList = async function(...args: any) {
             const res: ReturnType<typeof originYahooAuctionFetchGoodsList> = originYahooAuctionFetchGoodsList.call(this, ...args);
             const data = await res;
-            const mutantIdxList = uniq(new Array(5).fill(null).map(() => random(data.length)));
-            mutantIdxList.forEach((idx) => data[idx].id = v4());
-            return data;
+            return data.map((item) => ({ ...item, id: v4() }));
         }
 
         const originSurugayaFetchGoodsList = this.surugayaApi.fetchGoodsList;
@@ -82,9 +80,7 @@ export class ApiMock implements ISimulation {
         this.surugayaApi.fetchGoodsList = async function(...args: any) {
             const res: ReturnType<typeof originSurugayaFetchGoodsList> = originSurugayaFetchGoodsList.call(this, ...args);
             const data = await res;
-            const mutantIdxList = uniq(new Array(5).fill(null).map(() => random(data.length)));
-            mutantIdxList.forEach((idx) => data[idx].id = `https://www.suruga-ya.jp/product/detail/${v4()}`);
-            return data;
+            return data.map((item) => ({ ...item, id: `https://www.suruga-ya.jp/product/detail/${v4()}` }));
         };
 
         this.mockService.mockClassProperty(EmailService, "sendEmail", (msg: Mail.Options) => {
@@ -96,4 +92,5 @@ export class ApiMock implements ISimulation {
         return !!process.env.enableMock
     }
 }
+
 

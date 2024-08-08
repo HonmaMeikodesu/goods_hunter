@@ -19,6 +19,7 @@ import { SurugayaApi } from "../../api/site/surugaya";
 import { SurugayaHunter as SurugayaHunterModel } from "../../model/surugaya";
 import { SurugayaGoodsSearchCondition, GoodsListResponse as SurugayaGoodsListResponse } from "../../api/site/surugaya/types";
 import { surugayaGoodsList } from "../../template";
+import { SurugayaGoodsRecord } from "../../model/surugayaGoodsRecord";
 
 @Provide()
 @Scope(ScopeEnum.Singleton)
@@ -31,6 +32,9 @@ export class SurugayaHunterService extends HunterBase {
 
     @InjectEntityModel(SurugayaHunterModel)
     surugayaHunterModel: Repository<SurugayaHunterModel>;
+
+    @InjectEntityModel(SurugayaGoodsRecord)
+    surugayaGoodsRecordModel: Repository<SurugayaGoodsRecord>;
 
     @Config("emailConfig")
     mailInfo: CustomConfig["emailConfig"];
@@ -147,24 +151,27 @@ export class SurugayaHunterService extends HunterBase {
             return;
         }
 
-        const lastSennGoodList =
+        const lastSeenGoodList =
             (
-                await this.surugayaHunterModel.findOne({
+                await this.surugayaGoodsRecordModel.find({
                     where: {
-                        hunterInstanceId: cronId,
+                        hunter: {
+                            hunterInstanceId: cronId
+                        },
                     },
                 })
-            )?.lastSeenGoodList;
+            );
 
-        let lastSeenGoodList: string[] = [];
-        try {
-            lastSeenGoodList = JSON.parse(lastSennGoodList) || [];
-        } catch (e) {
-            // pass
-        }
+        let filteredGoods = (goodsList || []).filter((good) => {
+            const existed = lastSeenGoodList?.find(item => item.id === good.id);
 
-        let filteredGoods: typeof goodsList = differenceBy(goodsList || [], lastSeenGoodList.map(id => ({ id })), "id");
+            if (!existed) return true;
 
+            if (good.price && existed.price !== good.price) return true;
+
+            if (good.marketPlacePrice && existed.marketPlacePrice !== good.marketPlacePrice) return true;
+
+        })
         // FIXME collision between different hunters when getting ignoring goods
         const ignoreGoods = await this.redisClient.smembers(
             `Surugaya_${CONST.USERIGNORE}_${user.email}`
@@ -196,14 +203,18 @@ export class SurugayaHunterService extends HunterBase {
                         html,
                     };
                     await this.emailService.sendEmail(emailMessage);
-                    await this.surugayaHunterModel.update(
-                        {
-                            hunterInstanceId: cronId,
-                        },
-                        {
-                            lastSeenGoodList: JSON.stringify((goodsList || []).map((item) => item.id)),
+                    await this.surugayaGoodsRecordModel.delete({
+                        hunter: {
+                            hunterInstanceId: cronId
                         }
-                    );
+                    });
+                    await this.surugayaGoodsRecordModel.createQueryBuilder().insert().values((goodsList || []).map(good => ({
+                        id: good.id,
+                        name: good.name,
+                        hunter: { hunterInstanceId: cronId },
+                        price: good.price || null,
+                        marketPlacePrice: good.marketPlacePrice || null,
+                    }))).execute();
                     this.logger.info(
                         `email sent to ${user.email
                         }, goodsNameRecord:\n${JSON.stringify(
@@ -247,8 +258,7 @@ export class SurugayaHunterService extends HunterBase {
         if (!isEmpty(hunter)) {
             const {
                 schedule: prevSchedule,
-                searchConditionSchema: prevSearchConditionSchema,
-                lastSeenGoodList: prevLastShotList,
+                searchConditionSchema: prevSearchConditionSchema
             } = hunter;
             let prevSearchCondition: SurugayaGoodsSearchCondition;
             try {
@@ -263,6 +273,13 @@ export class SurugayaHunterService extends HunterBase {
             const instance = jobRecord.jobInstance;
             this.databaseTransactionWrapper({
                 pending: async queryRunner => {
+                    if (prevSearchCondition?.keyword !== newHunterInfo.searchCondition.keyword) {
+                        await queryRunner.manager.delete(SurugayaGoodsRecord, {
+                            hunter: {
+                                hunterInstanceId: id
+                            }
+                        });
+                    }
                     await queryRunner.manager.update(
                         SurugayaHunterModel,
                         { hunterInstanceId: id },
@@ -272,12 +289,7 @@ export class SurugayaHunterService extends HunterBase {
                                 newHunterInfo.searchCondition
                             ),
                             freezingStart: newHunterInfo?.freezingRange?.start,
-                            freezingEnd: newHunterInfo?.freezingRange?.end,
-                            lastSeenGoodList:
-                                prevSearchCondition?.keyword ===
-                                    newHunterInfo.searchCondition.keyword
-                                    ? null
-                                    : prevLastShotList, // 关键词发生改变时，清空lastShotAt
+                            freezingEnd: newHunterInfo?.freezingRange?.end
                         }
                     );
                     if (prevSchedule !== newHunterInfo.schedule) {
@@ -329,3 +341,4 @@ export class SurugayaHunterService extends HunterBase {
         });
     }
 }
+

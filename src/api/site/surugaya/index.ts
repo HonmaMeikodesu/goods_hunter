@@ -31,12 +31,12 @@ export class SurugayaApi extends ApiBase {
                 keyword
             ],
             [
-                "searchbox",
-                "1"
-            ],
-            [
                 "is_marketplace",
                 "0"
+            ],
+            [
+                "rankBy",
+                "modificationTime:descending"
             ]
         ];
 
@@ -54,6 +54,7 @@ export class SurugayaApi extends ApiBase {
             }))
         })
 
+        const maxRetry = (epoch || 1) * 2;
 
         await Promise.all(surugayaSearchUrls.map(async (surugayaSearchUrl, idx) => {
 
@@ -61,7 +62,7 @@ export class SurugayaApi extends ApiBase {
 
             const domStr = await this.proxyGet<string>(surugayaSearchUrl, {
                 "Cookie": adultMode ? "safe_search_option=3; safe_search_expired=3;" : undefined
-            });
+            }, { maxRetry });
 
             const dom = new JSDOM(domStr);
 
@@ -90,6 +91,7 @@ export class SurugayaApi extends ApiBase {
     }
 
 }
+
 
 
 

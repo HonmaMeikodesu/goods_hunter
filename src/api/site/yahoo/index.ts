@@ -88,14 +88,15 @@ export class YahooAuctionApi extends ApiBase {
             }))
         })
 
+        const maxRetry = (epoch || 1) * 2;
+
         await Promise.all(yahooAuctionSearchUrls.map(async (yahooAuctionSearchUrl, idx) => {
 
             this.logger.info(`requesting to ${yahooAuctionSearchUrl}..., currentPage: ${idx}`);
 
             const domStr = await this.proxyGet<string>(yahooAuctionSearchUrl, {
                 "Cookie": this.cookie
-            });
-
+            }, { maxRetry });
 
             const dom = new JSDOM(domStr);
 
@@ -171,6 +172,7 @@ export class YahooAuctionApi extends ApiBase {
     }
 
 }
+
 
 
 

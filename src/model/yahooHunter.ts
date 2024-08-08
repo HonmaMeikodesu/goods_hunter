@@ -1,7 +1,8 @@
 import { EntityModel } from "@midwayjs/orm";
-import { ManyToOne, Column, CreateDateColumn, UpdateDateColumn } from "typeorm";
+import { ManyToOne, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from "typeorm";
 import { User } from "./user";
 import { GoodsHunterModelBase } from "./types";
+import { YahooAuctionRecord } from "./yahooAuctionRecord";
 
 @EntityModel()
 export class YahooHunter implements GoodsHunterModelBase {
@@ -10,11 +11,6 @@ export class YahooHunter implements GoodsHunterModelBase {
 
   @Column("varchar", { primary: true })
   hunterInstanceId: string;
-
-  @Column("longtext", {
-    default: null
-  })
-  lastSeenAuctionList: string;
 
   @Column("time", {
     default: null
@@ -37,6 +33,10 @@ export class YahooHunter implements GoodsHunterModelBase {
 
   @UpdateDateColumn()
   updatedAt: string;
+
+  @OneToMany(() => YahooAuctionRecord, "hunter", { cascade: true })
+  yahooAuctionRecords: YahooAuctionRecord[];
 }
+
 
 

@@ -11,7 +11,7 @@ export declare interface ProxyGet {
   <T>(
     url: string | URL,
     headers?: AxiosRequestConfig["headers"],
-    otherOptions?: Omit<AxiosRequestConfig, "headers">
+    otherOptions?: Omit<AxiosRequestConfig, "headers"> & { maxRetry?: number }
   ): Promise<T>;
 }
 export function proxyGet<T>(container: IMidwayContainer) {
@@ -76,5 +76,6 @@ providerWrapper([
     scope: ScopeEnum.Singleton,
   },
 ]);
+
 
 

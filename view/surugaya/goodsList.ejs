@@ -105,7 +105,7 @@
               src="http://<%= serverHost %>/proxy/getImage?iv=<%= data.thumbnailData.data.iv %>&message=<%= data.thumbnailData.data.message %>&digest=<%= data.thumbnailData.digest %>"
               alt="" class="image" onerror="this.src = this.parentElement.href" />
             <div class="price">
-              <%= data.price %>
+              <%= data.price || data.marketPlacePrice %>
             </div>
           </a>
           <div class="name">
@@ -124,5 +124,6 @@
 </body>
 
 </html>
+
 
 

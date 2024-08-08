@@ -1,7 +1,8 @@
 import { EntityModel } from "@midwayjs/orm";
-import { ManyToOne, Column, CreateDateColumn, UpdateDateColumn } from "typeorm";
+import { ManyToOne, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from "typeorm";
 import { User } from "./user";
 import { GoodsHunterModelBase } from "./types";
+import { SurugayaGoodsRecord } from "./surugayaGoodsRecord";
 
 @EntityModel()
 export class SurugayaHunter implements GoodsHunterModelBase {
@@ -10,11 +11,6 @@ export class SurugayaHunter implements GoodsHunterModelBase {
 
   @Column("varchar", { primary: true })
   hunterInstanceId: string;
-
-  @Column("longtext", {
-    default: null
-  })
-  lastSeenGoodList: string;
 
   @Column("time", {
     default: null
@@ -37,4 +33,8 @@ export class SurugayaHunter implements GoodsHunterModelBase {
 
   @UpdateDateColumn()
   updatedAt: string;
+
+  @OneToMany(() => SurugayaGoodsRecord, "hunter", { cascade: true })
+  surugayaGoodsRecords: SurugayaGoodsRecord[];
 }
+
