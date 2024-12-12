@@ -19,8 +19,9 @@ export class SurugayaApi extends ApiBase {
 
         const goodsList: GoodsBreif[] = [];
 
-        const { keyword, category, epoch, adultMode } = options;
+        const { keyword, category, epoch, adultMode, adultOnly } = options;
 
+        // https://www.suruga-ya.jp/search?category=110000&search_word=myKw&adult_s=3&inStock=Off
         const initSearchOptions: Array<[string, string]> = [
             [
                 "category",
@@ -39,6 +40,10 @@ export class SurugayaApi extends ApiBase {
                 "modificationTime:descending"
             ]
         ];
+
+        if (adultOnly && adultMode) {
+            initSearchOptions.push(["adult_s", "3"]);
+        }
 
         const surugayaSearchUrls: URL[] = new Array(epoch || 1).fill(null).map(() => new URL("https://www.suruga-ya.jp/search"));
 
@@ -91,6 +96,7 @@ export class SurugayaApi extends ApiBase {
     }
 
 }
+
 
 
 

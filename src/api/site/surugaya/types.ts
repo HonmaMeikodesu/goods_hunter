@@ -15,7 +15,9 @@ export type SurugayaGoodsSearchCondition = GoodsSearchConditionBase & {
     category?: string;
     epoch?: number;
     adultMode?: boolean;
+    adultOnly?: boolean;
 };
+
 
 
 
