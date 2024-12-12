@@ -7,18 +7,20 @@ import doThisUntilResolve from "../../utils/doThisUntilResolve";
 import { isNumber } from "lodash";
 const HttpsProxyAgent = require("https-proxy-agent");
 
+type RequestCustomOptions = Omit<AxiosRequestConfig, "headers"> & { maxRetry?: { count: number, breakOnCondition?: (e: any) => boolean } }
+
 export declare interface ProxyGet {
   <T>(
     url: string | URL,
     headers?: AxiosRequestConfig["headers"],
-    otherOptions?: Omit<AxiosRequestConfig, "headers"> & { maxRetry?: number }
+    otherOptions?: RequestCustomOptions
   ): Promise<T>;
 }
 export function proxyGet<T>(container: IMidwayContainer) {
   return async (
     url: string | URL,
     headers?: AxiosRequestConfig["headers"],
-    otherOptions?: Omit<AxiosRequestConfig, "headers"> & { maxRetry?: number }
+    otherOptions?: RequestCustomOptions
   ) => {
     const httpService = await container.getAsync<HttpService>(HttpService);
     const httpsAgent = new HttpsProxyAgent(proxyInbound);
@@ -28,7 +30,7 @@ export function proxyGet<T>(container: IMidwayContainer) {
       proxy: false,
       timeout: 5 * 1000,
       ...otherOptions,
-    }), isNumber(otherOptions?.maxRetry) ? otherOptions.maxRetry : 2);
+    }), isNumber(otherOptions?.maxRetry?.count) ? otherOptions.maxRetry.count : 2, undefined, otherOptions?.maxRetry?.breakOnCondition);
     return resp.data;
   };
 }
@@ -38,7 +40,7 @@ export declare interface ProxyPost {
     url: string | URL,
     headers?: AxiosRequestConfig["headers"],
     body?: any,
-    otherOptions?: Omit<AxiosRequestConfig, "headers">
+    otherOptions?: RequestCustomOptions
   ): Promise<T>;
 }
 export function proxyPost<T>(container: IMidwayContainer) {
@@ -46,7 +48,7 @@ export function proxyPost<T>(container: IMidwayContainer) {
     url: string | URL,
     headers?: AxiosRequestConfig["headers"],
     body?: any,
-    otherOptions?: Omit<AxiosRequestConfig, "headers"> & { maxRetry?: number }
+    otherOptions?: RequestCustomOptions
   ) => {
     const httpService = await container.getAsync<HttpService>(HttpService);
     const httpsAgent = new HttpsProxyAgent(proxyInbound);
@@ -56,7 +58,7 @@ export function proxyPost<T>(container: IMidwayContainer) {
       proxy: false,
       timeout: 5 * 1000,
       ...otherOptions,
-    }), isNumber(otherOptions?.maxRetry) ? otherOptions.maxRetry : 5);
+    }), isNumber(otherOptions?.maxRetry?.count) ? otherOptions.maxRetry.count : 5, undefined, otherOptions?.maxRetry?.breakOnCondition);
     return resp.data;
   };
 }
@@ -76,6 +78,7 @@ providerWrapper([
     scope: ScopeEnum.Singleton,
   },
 ]);
+
 
 
 

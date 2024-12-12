@@ -49,7 +49,10 @@ export class SurugayaApi extends ApiBase {
 
         const searchOptions = new Array(epoch || 1).fill(null).map((__, idx) => {
             const next = cloneDeep(initSearchOptions);
-            next.push(["page", idx.toString()]);
+            const pageIndex = idx + 1;
+            if (pageIndex > 1) {
+                next.push(["page", pageIndex.toString()]);
+            }
             return next;
         });
 
@@ -65,9 +68,25 @@ export class SurugayaApi extends ApiBase {
 
             this.logger.info(`requesting to ${surugayaSearchUrl}..., currentPage: ${idx}`);
 
-            const domStr = await this.proxyGet<string>(surugayaSearchUrl, {
-                "Cookie": adultMode ? "safe_search_option=3; safe_search_expired=3;" : undefined
-            }, { maxRetry });
+            let domStr: string;
+
+            try {
+                domStr = await this.proxyGet<string>(surugayaSearchUrl, {
+                    "Cookie": adultMode ? "safe_search_option=3; safe_search_expired=3;" : undefined
+                }, {
+                    maxRetry: {
+                        count: maxRetry,
+                        breakOnCondition: (error) => {
+                            if (error?.response?.data) {
+                                domStr = error.response.data;
+                                return true;
+                            }
+                        }
+                    }
+                });
+            } catch (error) {
+                if (!domStr) throw error;
+            }
 
             const dom = new JSDOM(domStr);
 

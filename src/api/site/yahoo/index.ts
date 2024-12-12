@@ -96,7 +96,7 @@ export class YahooAuctionApi extends ApiBase {
 
             const domStr = await this.proxyGet<string>(yahooAuctionSearchUrl, {
                 "Cookie": this.cookie
-            }, { maxRetry });
+            }, { maxRetry: { count: maxRetry } });
 
             const dom = new JSDOM(domStr);
 
