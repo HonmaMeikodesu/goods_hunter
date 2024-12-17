@@ -11,7 +11,7 @@ export default async function doThisUntilResolve<T>(func: () => Promise<T>, maxT
     if (breakCondition && breakCondition(e)) {
       return Promise.reject(e);
     }
-    return await doThisUntilResolve(func, maxTry, curr)
+    return await doThisUntilResolve(func, maxTry, curr, breakCondition)
   }
 }
 

@@ -24,13 +24,14 @@ export function proxyGet<T>(container: IMidwayContainer) {
   ) => {
     const httpService = await container.getAsync<HttpService>(HttpService);
     const httpsAgent = new HttpsProxyAgent(proxyInbound);
+    const { maxRetry, ...rest } = otherOptions || {};
     const resp = await doThisUntilResolve(() => httpService.get<T>(url instanceof URL ? url.toString() : encodeURI(url), {
       headers,
       httpsAgent,
       proxy: false,
       timeout: 5 * 1000,
-      ...otherOptions,
-    }), isNumber(otherOptions?.maxRetry?.count) ? otherOptions.maxRetry.count : 2, undefined, otherOptions?.maxRetry?.breakOnCondition);
+      ...rest,
+    }), isNumber(maxRetry?.count) ? maxRetry.count : 2, undefined, maxRetry?.breakOnCondition);
     return resp.data;
   };
 }
@@ -52,13 +53,14 @@ export function proxyPost<T>(container: IMidwayContainer) {
   ) => {
     const httpService = await container.getAsync<HttpService>(HttpService);
     const httpsAgent = new HttpsProxyAgent(proxyInbound);
+    const { maxRetry, ...rest } = otherOptions || {};
     const resp = await doThisUntilResolve(() => httpService.post<T>(url instanceof URL ? url.toString() : encodeURI(url), body, {
       headers,
       httpsAgent,
       proxy: false,
       timeout: 5 * 1000,
-      ...otherOptions,
-    }), isNumber(otherOptions?.maxRetry?.count) ? otherOptions.maxRetry.count : 5, undefined, otherOptions?.maxRetry?.breakOnCondition);
+      ...rest,
+    }), isNumber(maxRetry?.count) ? maxRetry.count : 5, undefined, maxRetry?.breakOnCondition);
     return resp.data;
   };
 }
