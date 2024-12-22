@@ -100,7 +100,9 @@ export class YahooAuctionApi extends ApiBase {
 
             const dom = new JSDOM(domStr);
 
-            const goodListElements: NodeListOf<HTMLLIElement> = dom.window.document.querySelectorAll(".Result__body .Products__items .Product");
+            const isResultEmpty = (dom.window.document.querySelector(".Result__body .Products .Notice") as HTMLDivElement)?.textContent?.includes("一致する商品はありません。キーワードの一部を利用した結果を表示しています");
+
+            const goodListElements: HTMLLIElement[] = isResultEmpty ? [] : [ ...dom.window.document.querySelectorAll(".Result__body .Products__items .Product") ] as HTMLLIElement[];
 
             goodListElements.forEach((good) => {
 
