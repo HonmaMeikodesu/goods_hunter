@@ -1,8 +1,8 @@
 const CONST = {
   REGISTERCODE: "registerCode",
-  HUNTERTYPE: ["Mercari", "Yahoo", "Surugaya"],
+  HUNTERTYPE: ["Mercari", "Yahoo", "Surugaya", "Surveillance"],
   USERIGNORE: "userIgnore",
-  CIPHERTRASHBIN: "cipherTrashBin",
+  CIPHERTRASHBIN: "cipherTrashBin"
 } as const;
 
 export default CONST;

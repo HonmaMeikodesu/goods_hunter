@@ -33,6 +33,10 @@ export interface SurugayaHunter extends GoodsHunter {
   [key: string]: any;
 }
 
+export interface SurveillanceHunter extends GoodsHunter {
+    snapshot: string
+}
+
 export interface CronDeail {
   id: string;
   type: GoodsHunter["type"];

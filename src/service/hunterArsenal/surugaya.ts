@@ -1,19 +1,15 @@
-import { Provide, Inject, Scope, ScopeEnum, Logger, Config, TaskLocal, Init } from "@midwayjs/decorator";
+import { Provide, Inject, Scope, ScopeEnum, Config, TaskLocal, Init } from "@midwayjs/decorator";
 import { In, Repository } from "typeorm";
 import { InjectEntityModel } from "@midwayjs/orm";
 import { Context } from "egg";
-import { CronDeail, SurugayaHunter as SurugayaHunterType, UserInfo } from "../../types";
-import { CronJob, CronTime } from "cron";
-import { v4 as uuid } from "uuid";
-import { User } from "../../model/user";
-import { differenceBy, isEmpty, values } from "lodash";
+import { SurugayaHunter as SurugayaHunterType } from "../../types";
+import { isEmpty } from "lodash";
 import isBetweenDayTime from "../../utils/isBetweenDayTime";
 import CONST from "../../const";
 import HunterBase from "./base";
 import { render } from "ejs";
 import Mail from "nodemailer/lib/mailer";
 import moment from "moment";
-import errorCode from "../../errorCode";
 import { CustomConfig } from "../../config/config.default";
 import { SurugayaApi } from "../../api/site/surugaya";
 import { SurugayaHunter as SurugayaHunterModel } from "../../model/surugaya";
@@ -31,7 +27,7 @@ export class SurugayaHunterService extends HunterBase {
     suruguyaApi: SurugayaApi;
 
     @InjectEntityModel(SurugayaHunterModel)
-    surugayaHunterModel: Repository<SurugayaHunterModel>;
+    hunterModel: Repository<SurugayaHunterModel>;
 
     @InjectEntityModel(SurugayaGoodsRecord)
     surugayaGoodsRecordModel: Repository<SurugayaGoodsRecord>;
@@ -46,67 +42,15 @@ export class SurugayaHunterService extends HunterBase {
 
     @Init()
     async init() {
-
-        const promiseList: Promise<void>[] = [];
-
-        const hunterList = await this.surugayaHunterModel.find({
-            relations: ["user"],
-        });
-
-        hunterList.forEach(hunter => {
-            const { hunterInstanceId, schedule } = hunter;
-            promiseList.push(this.spawnCronJob(hunterInstanceId, schedule));
-        });
-
-        Promise.all(promiseList)
-            .then(() => {
-                this.logger.info(
-                    "all surugaya hunters standing by!"
-                );
-            })
-            .catch(reason => {
-                this.logger.error("Oops....Something went wrong when waking up surugaya hunters:" + reason);
-                process.exit(-1);
-            });
+        await super.init();
     }
 
     async hire(ctx: Context, hunterInfo: SurugayaHunterType) {
-        const user = ctx.user as UserInfo;
-        const { email } = user;
-        const cronId = uuid();
-        await this.databaseTransactionWrapper({
-            pending: async queryRunner => {
-                // 先将新的hunterInfo绑定请求用户持久化到DB
-                const user = await queryRunner.manager.findOne(
-                    User,
-                    { email },
-                    { relations: ["surugayaHunters"] }
-                );
-                const newSurugayaHunter = new SurugayaHunterModel();
-                newSurugayaHunter.hunterInstanceId = cronId;
-                newSurugayaHunter.freezingStart = hunterInfo?.freezingRange?.start;
-                newSurugayaHunter.freezingEnd = hunterInfo?.freezingRange?.end;
-                newSurugayaHunter.schedule = hunterInfo?.schedule;
-                newSurugayaHunter.searchConditionSchema = JSON.stringify(
-                    hunterInfo?.searchCondition
-                );
-                newSurugayaHunter.createdAt = hunterInfo.bornAt;
-                user.surugayaHunters.push(newSurugayaHunter);
-
-                await queryRunner.manager.save(user);
-            },
-            resolved: async () => {
-                // 创建定时任务，定时任务实时从DB取数据进行定时任务的执行（schedule修改无法实时获取，需要重启cronJob）
-                await this.spawnCronJob(cronId, hunterInfo.schedule)
-            },
-            rejected: async () => {
-                throw new Error("Error when executing add surugayaHunter cronJob");
-            },
-        });
+        await super.hire(ctx, hunterInfo, SurugayaHunterModel, "surugayaHunters");
     }
 
     async goHunt(cronId: string) {
-        const currentHunterInfo = await this.surugayaHunterModel.findOne({
+        const currentHunterInfo = await this.hunterModel.findOne({
             where: {
                 hunterInstanceId: cronId,
             },
@@ -237,108 +181,32 @@ export class SurugayaHunterService extends HunterBase {
             });
     }
 
-    async dismiss(id: string) {
-        const cronJob = this.cronList[id];
-        if (!cronJob) return;
-        await this.surugayaHunterModel.delete({
-            hunterInstanceId: id,
-        });
-        cronJob.jobInstance?.stop();
-        delete this.cronList[id];
-        this.logger.info(`task ${id} removed`);
-    }
 
     async transfer(id: string, newHunterInfo: Pick<SurugayaHunterType, "freezingRange" | "user" | "schedule" | "type" | "searchCondition">) {
-        const hunter = await this.surugayaHunterModel.findOne({
+        await super.transfer(id, newHunterInfo, SurugayaHunterModel);
+        const hunter = await this.hunterModel.findOne({
             where: {
                 hunterInstanceId: id,
             },
         });
 
-        if (!isEmpty(hunter)) {
-            const {
-                schedule: prevSchedule,
-                searchConditionSchema: prevSearchConditionSchema
-            } = hunter;
-            let prevSearchCondition: SurugayaGoodsSearchCondition;
-            try {
-                prevSearchCondition = JSON.parse(prevSearchConditionSchema);
-            } catch (e) {
-                // pass
-            }
-            const jobRecord = this.cronList[id];
-            if (!jobRecord?.jobInstance) {
-                throw new Error(errorCode.commonHunterService.cronJobNotFound);
-            }
-            const instance = jobRecord.jobInstance;
-            this.databaseTransactionWrapper({
-                pending: async queryRunner => {
-                    if (prevSearchCondition?.keyword !== newHunterInfo.searchCondition.keyword) {
-                        await queryRunner.manager.delete(SurugayaGoodsRecord, {
-                            hunter: {
-                                hunterInstanceId: id
-                            }
-                        });
-                    }
-                    await queryRunner.manager.update(
-                        SurugayaHunterModel,
-                        { hunterInstanceId: id },
-                        {
-                            schedule: newHunterInfo.schedule,
-                            searchConditionSchema: JSON.stringify(
-                                newHunterInfo.searchCondition
-                            ),
-                            freezingStart: newHunterInfo?.freezingRange?.start,
-                            freezingEnd: newHunterInfo?.freezingRange?.end
-                        }
-                    );
-                    if (prevSchedule !== newHunterInfo.schedule) {
-                        // 需要重置crobJobInstance
-                        instance.stop();
-                        instance.setTime(new CronTime(newHunterInfo.schedule));
-                        instance.start();
-                    }
-                },
-                rejected: async () => {
-                    // 更新失败，尝试重启原先的cronjob
-                    await this.spawnCronJob(id, prevSchedule);
-                },
+        const {
+            searchConditionSchema: prevSearchConditionSchema
+        } = hunter;
+        let prevSearchCondition: SurugayaGoodsSearchCondition;
+        try {
+            prevSearchCondition = JSON.parse(prevSearchConditionSchema);
+        } catch (e) {
+            // pass
+        }
+        if (prevSearchCondition?.keyword !== newHunterInfo.searchCondition.keyword) {
+            await this.hunterModel.manager.delete(SurugayaGoodsRecord, {
+                hunter: {
+                    hunterInstanceId: id
+                }
             });
-        } else {
-            throw new Error(errorCode.commonHunterService.cronJobNotFound);
         }
     }
 
-    async spawnCronJob(id: string, schedule: string) {
-        const hunter = this.cronList[id];
-        if (hunter?.jobInstance?.running) {
-            // cronjob还跑着，直接返回
-            this.logger.warn(`task ${id} is alreay running`);
-            return;
-        }
-        const newCronJob = new CronJob(
-            schedule,
-            () => this.goHunt(id),
-            null,
-            false
-        );
-        this.logger.info(`task ${id} spawned and get set to go`);
-        const cronDetail: CronDeail = {
-            id,
-            type: "Surugaya",
-            schedule,
-            jobInstance: newCronJob,
-        };
-        this.cronList[id] = cronDetail;
-        newCronJob.start();
-    }
-
-    async getCronList(email: string) {
-        const cronIdList = values(this.cronList).map(cron => cron.id);
-        return await this.surugayaHunterModel.find({
-            hunterInstanceId: In(cronIdList),
-            user: { email }
-        });
-    }
 }
 

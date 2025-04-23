@@ -1,15 +1,11 @@
-import { Provide, Inject, Scope, ScopeEnum, Logger, Config, TaskLocal, Init } from "@midwayjs/decorator";
+import { Provide, Inject, Scope, ScopeEnum, Config, TaskLocal, Init } from "@midwayjs/decorator";
 import { YahooAuctionApi } from "../../api/site/yahoo";
-import { In, Repository } from "typeorm";
+import { Repository } from "typeorm";
 import { InjectEntityModel } from "@midwayjs/orm";
 import { Context } from "egg";
-import { CronDeail, UserInfo } from "../../types";
-import { CronJob, CronTime } from "cron";
-import { v4 as uuid } from "uuid";
-import { User } from "../../model/user";
 import { YahooHunter as YahooHunterModel } from "../../model/yahooHunter";
 import { YahooHunter as YahooHunterType } from "../../types";
-import { differenceBy, isEmpty, values } from "lodash";
+import { isEmpty } from "lodash";
 import isBetweenDayTime from "../../utils/isBetweenDayTime";
 import { YahooAuctionGoodsSearchCondition, GoodsListResponse as YahooGoodsListResponse } from "../../api/site/yahoo/types";
 import CONST from "../../const";
@@ -18,7 +14,6 @@ import { yahooGoodsList } from "../../template";
 import { render } from "ejs";
 import Mail from "nodemailer/lib/mailer";
 import moment from "moment";
-import errorCode from "../../errorCode";
 import { CustomConfig } from "../../config/config.default";
 import { YahooAuctionRecord } from "../../model/yahooAuctionRecord";
 
@@ -32,7 +27,7 @@ export class YahooHunterService extends HunterBase {
   yahooApi: YahooAuctionApi;
 
   @InjectEntityModel(YahooHunterModel)
-  yahooHunterModel: Repository<YahooHunterModel>;
+  hunterModel: Repository<YahooHunterModel>;
 
   @InjectEntityModel(YahooAuctionRecord)
   yahooAuctionRecordModel: Repository<YahooAuctionRecord>;
@@ -60,68 +55,16 @@ export class YahooHunterService extends HunterBase {
 
   @Init()
   async init() {
-
-    const promiseList: Promise<void>[] = [];
-
-    const hunterList = await this.yahooHunterModel.find({
-      relations: ["user"],
-    });
-
-    hunterList.forEach(hunter => {
-      const { hunterInstanceId, schedule } = hunter;
-      promiseList.push(this.spawnCronJob(hunterInstanceId, schedule));
-    });
-
-    Promise.all(promiseList)
-      .then(() => {
-        this.logger.info(
-          "all yahoo hunters standing by!"
-        );
-      })
-      .catch(reason => {
-        this.logger.error("Oops....Something went wrong when waking up yahoo hunters:" + reason);
-        process.exit(-1);
-      });
+      await super.init();
   }
 
   async hire(ctx: Context, hunterInfo: YahooHunterType) {
-    const user = ctx.user as UserInfo;
-    const { email } = user;
-    const cronId = uuid();
-    await this.databaseTransactionWrapper({
-      pending: async queryRunner => {
-        // 先将新的hunterInfo绑定请求用户持久化到DB
-        const user = await queryRunner.manager.findOne(
-          User,
-          { email },
-          { relations: ["yahooHunters"] }
-        );
-        const newYahooHunter = new YahooHunterModel();
-        newYahooHunter.hunterInstanceId = cronId;
-        newYahooHunter.freezingStart = hunterInfo?.freezingRange?.start;
-        newYahooHunter.freezingEnd = hunterInfo?.freezingRange?.end;
-        newYahooHunter.schedule = hunterInfo?.schedule;
-        newYahooHunter.searchConditionSchema = JSON.stringify(
-          hunterInfo?.searchCondition
-        );
-        newYahooHunter.createdAt = hunterInfo.bornAt;
-        user.yahooHunters.push(newYahooHunter);
-
-        await queryRunner.manager.save(user);
-      },
-      resolved: async () => {
-        // 创建定时任务，定时任务实时从DB取数据进行定时任务的执行（schedule修改无法实时获取，需要重启cronJob）
-        await this.spawnCronJob(cronId, hunterInfo.schedule)
-      },
-      rejected: async () => {
-        throw new Error("Error when executing add yahooHunter cronJob");
-      },
-    });
-
+      await super.hire(ctx, hunterInfo, YahooHunterModel, "yahooHunters");
   }
 
+
   async goHunt(cronId: string) {
-    const currentHunterInfo = await this.yahooHunterModel.findOne({
+    const currentHunterInfo = await this.hunterModel.findOne({
       where: {
         hunterInstanceId: cronId,
       },
@@ -255,108 +198,31 @@ export class YahooHunterService extends HunterBase {
       });
   }
 
-  async dismiss(id: string) {
-    const cronJob = this.cronList[id];
-    if (!cronJob) return;
-    await this.yahooHunterModel.delete({
-      hunterInstanceId: id,
-    });
-    cronJob.jobInstance?.stop();
-    delete this.cronList[id];
-    this.logger.info(`task ${id} removed`);
-  }
 
   async transfer(id: string, newHunterInfo: Pick<YahooHunterType, "freezingRange" | "user" | "schedule" | "type" | "searchCondition">) {
-    const hunter = await this.yahooHunterModel.findOne({
-      where: {
-        hunterInstanceId: id,
-      },
-    });
+      await super.transfer(id, newHunterInfo, YahooHunterModel);
+      const hunter = await this.hunterModel.findOne({
+          where: {
+              hunterInstanceId: id,
+          },
+      });
 
-    if (!isEmpty(hunter)) {
       const {
-        schedule: prevSchedule,
-        searchConditionSchema: prevSearchConditionSchema
+          searchConditionSchema: prevSearchConditionSchema
       } = hunter;
       let prevSearchCondition: YahooAuctionGoodsSearchCondition;
       try {
-        prevSearchCondition = JSON.parse(prevSearchConditionSchema);
+          prevSearchCondition = JSON.parse(prevSearchConditionSchema);
       } catch (e) {
-        // pass
+          // pass
       }
-      const jobRecord = this.cronList[id];
-      if (!jobRecord?.jobInstance) {
-        throw new Error(errorCode.commonHunterService.cronJobNotFound);
-      }
-      const instance = jobRecord.jobInstance;
-      this.databaseTransactionWrapper({
-        pending: async queryRunner => {
-          if (prevSearchCondition?.keyword !== newHunterInfo.searchCondition.keyword) {
-            await queryRunner.manager.delete(YahooAuctionRecord, {
+      if (prevSearchCondition?.keyword !== newHunterInfo.searchCondition.keyword) {
+          await this.hunterModel.manager.delete(YahooAuctionRecord, {
               hunter: {
-                hunterInstanceId: id
+                  hunterInstanceId: id
               }
-            });
-          }
-          await queryRunner.manager.update(
-            YahooHunterModel,
-            { hunterInstanceId: id },
-            {
-              schedule: newHunterInfo.schedule,
-              searchConditionSchema: JSON.stringify(
-                newHunterInfo.searchCondition
-              ),
-              freezingStart: newHunterInfo?.freezingRange?.start,
-              freezingEnd: newHunterInfo?.freezingRange?.end
-            }
-          );
-          if (prevSchedule !== newHunterInfo.schedule) {
-            // 需要重置crobJobInstance
-            instance.stop();
-            instance.setTime(new CronTime(newHunterInfo.schedule));
-            instance.start();
-          }
-        },
-        rejected: async () => {
-          // 更新失败，尝试重启原先的cronjob
-          await this.spawnCronJob(id, prevSchedule);
-        },
-      });
-    } else {
-      throw new Error(errorCode.commonHunterService.cronJobNotFound);
-    }
-  }
-
-  async spawnCronJob(id: string, schedule: string) {
-    const hunter = this.cronList[id];
-    if (hunter?.jobInstance?.running) {
-      // cronjob还跑着，直接返回
-      this.logger.warn(`task ${id} is alreay running`);
-      return;
-    }
-    const newCronJob = new CronJob(
-      schedule,
-      () => this.goHunt(id),
-      null,
-      false
-    );
-    this.logger.info(`task ${id} spawned and get set to go`);
-    const cronDetail: CronDeail = {
-      id,
-      type: "Yahoo",
-      schedule,
-      jobInstance: newCronJob,
-    };
-    this.cronList[id] = cronDetail;
-    newCronJob.start();
-  }
-
-  async getCronList(email: string) {
-    const cronIdList = values(this.cronList).map(cron => cron.id);
-    return await this.yahooHunterModel.find({
-      hunterInstanceId: In(cronIdList),
-      user: { email }
-    });
+          });
+      }
   }
 }
 

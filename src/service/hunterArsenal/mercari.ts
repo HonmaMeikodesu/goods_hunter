@@ -1,12 +1,15 @@
-import { Provide, Inject, Scope, ScopeEnum, Logger, Config, Init, TaskLocal } from "@midwayjs/decorator";
-import { In, Repository } from "typeorm";
+import {
+  Provide,
+  Inject,
+  Scope,
+  ScopeEnum,
+  Init,
+  TaskLocal,
+} from "@midwayjs/decorator";
+import { Repository } from "typeorm";
 import { InjectEntityModel } from "@midwayjs/orm";
 import { Context } from "egg";
-import { CronDeail, GoodsHunter, UserInfo } from "../../types";
-import { CronJob, CronTime } from "cron";
-import { v4 as uuid } from "uuid";
-import { User } from "../../model/user";
-import { first, isEmpty, toNumber, values } from "lodash";
+import { first, isEmpty, toNumber } from "lodash";
 import isBetweenDayTime from "../../utils/isBetweenDayTime";
 import CONST from "../../const";
 import HunterBase from "./base";
@@ -14,23 +17,24 @@ import { mercariGoodsList } from "../../template";
 import { render } from "ejs";
 import Mail from "nodemailer/lib/mailer";
 import moment from "moment";
-import errorCode from "../../errorCode";
 import { MercariApi } from "../../api/site/mercari";
 import { MercariHunter as MercariHunterModel } from "../../model/mercariHunter";
 import { MercariHunter as MercariHuntetType } from "../../types";
-import { MercariGoodsSearchCondition, GoodsListResponse as MercariGoodsListResponse } from "../../api/site/mercari/types";
+import {
+  MercariGoodsSearchCondition,
+  GoodsListResponse as MercariGoodsListResponse,
+} from "../../api/site/mercari/types";
 
 @Provide()
 @Scope(ScopeEnum.Singleton)
 export class MercariHunterService extends HunterBase {
-
-  hunterType: typeof CONST.HUNTERTYPE[number] = "Mercari";
+  hunterType: (typeof CONST.HUNTERTYPE)[number] = "Mercari";
 
   @Inject()
   mercariApi: MercariApi;
 
   @InjectEntityModel(MercariHunterModel)
-  mercariHunterModel: Repository<MercariHunterModel>;
+  hunterModel: Repository<MercariHunterModel>;
 
   @TaskLocal("0 */1 * * * *")
   private async selfPingPong() {
@@ -39,68 +43,15 @@ export class MercariHunterService extends HunterBase {
 
   @Init()
   async init() {
-
-    const promiseList: Promise<void>[] = [];
-
-    const hunterList = await this.mercariHunterModel.find({
-      relations: ["user"],
-    });
-
-    hunterList.forEach(hunter => {
-      const { hunterInstanceId, schedule } = hunter;
-      promiseList.push(this.spawnCronJob(hunterInstanceId, schedule));
-    });
-
-    Promise.all(promiseList)
-      .then(() => {
-        this.logger.info(
-          "all mercari hunters standing by!"
-        );
-      })
-      .catch(reason => {
-        this.logger.error("Oops....Something went wrong when waking up mercari hunters:" + reason);
-        process.exit(-1);
-      });
+    await super.init();
   }
 
   async hire(ctx: Context, hunterInfo: MercariHuntetType) {
-    const user = ctx.user as UserInfo;
-    const { email } = user;
-    const cronId = uuid();
-    await this.databaseTransactionWrapper({
-      pending: async queryRunner => {
-        // 先将新的hunterInfo绑定请求用户持久化到DB
-        const user = await queryRunner.manager.findOne(
-          User,
-          { email },
-          { relations: ["mercariHunters"] }
-        );
-        const newMercariHunter = new MercariHunterModel();
-        newMercariHunter.hunterInstanceId = cronId;
-        newMercariHunter.freezingStart = hunterInfo?.freezingRange?.start;
-        newMercariHunter.freezingEnd = hunterInfo?.freezingRange?.end;
-        newMercariHunter.lastShotAt = hunterInfo?.lastShotAt;
-        newMercariHunter.schedule = hunterInfo?.schedule;
-        newMercariHunter.searchConditionSchema = JSON.stringify(
-          hunterInfo?.searchCondition
-        );
-        newMercariHunter.createdAt = hunterInfo.bornAt;
-        user.mercariHunters.push(newMercariHunter);
-
-        await queryRunner.manager.save(user);
-      },
-      resolved: async () => {
-        await this.spawnCronJob(cronId, hunterInfo?.schedule);
-      },
-      rejected: async () => {
-        throw new Error("Error when executing add mercariHunter cronJob");
-      },
-    });
-
+    await super.hire(ctx, hunterInfo, MercariHunterModel, "mercariHunters");
   }
 
   async goHunt(cronId: string) {
-    const currentHunterInfo = await this.mercariHunterModel.findOne({
+    const currentHunterInfo = await this.hunterModel.findOne({
       where: {
         hunterInstanceId: cronId,
       },
@@ -140,9 +91,7 @@ export class MercariHunterService extends HunterBase {
     }
     const goodsList = resp.items;
     if (isEmpty(goodsList)) {
-      this.logger.info(
-        `task ${cronId} gets an empty goodsList, exiting...`
-      );
+      this.logger.info(`task ${cronId} gets an empty goodsList, exiting...`);
       return;
     }
     let filteredGoods: typeof goodsList = [];
@@ -153,7 +102,7 @@ export class MercariHunterService extends HunterBase {
     );
     const lastShotAtDateTime = toNumber(
       (
-        await this.mercariHunterModel.findOne({
+        await this.hunterModel.findOne({
           where: {
             hunterInstanceId: cronId,
           },
@@ -177,9 +126,7 @@ export class MercariHunterService extends HunterBase {
     );
     Promise.all(
       filteredGoods.map(async good => {
-        good.thumbnailData = await this.cipher.encode(
-          first(good.thumbnails)
-        );
+        good.thumbnailData = await this.cipher.encode(first(good.thumbnails));
         good.ignoreInstruction = await this.cipher.encode(
           `${user.email} ${good.id}`
         );
@@ -202,7 +149,7 @@ export class MercariHunterService extends HunterBase {
           const lastestTime = moment
             .unix(nextLatestTime)
             .format("YYYY-MM-DD HH:mm:ss");
-          await this.mercariHunterModel.update(
+          await this.hunterModel.update(
             {
               hunterInstanceId: cronId,
             },
@@ -211,8 +158,7 @@ export class MercariHunterService extends HunterBase {
             }
           );
           this.logger.info(
-            `email sent to ${user.email
-            }, goodsNameRecord:\n${JSON.stringify(
+            `email sent to ${user.email}, goodsNameRecord:\n${JSON.stringify(
               filteredGoods.map(good => good.name)
             )}\n`
           );
@@ -232,107 +178,41 @@ export class MercariHunterService extends HunterBase {
       });
   }
 
-  async dismiss(id: string) {
-    const cronJob = this.cronList[id];
-    if (!cronJob) return;
-    await this.mercariHunterModel.delete({
-      hunterInstanceId: id,
-    });
-    cronJob.jobInstance?.stop();
-    delete this.cronList[id];
-    this.logger.info(`task ${id} removed`);
-  }
+  async transfer(
+    id: string,
+    newHunterInfo: Pick<
+      MercariHuntetType,
+      "freezingRange" | "user" | "schedule" | "type" | "searchCondition"
+    >
+  ) {
+    await super.transfer(id, newHunterInfo, MercariHunterModel);
 
-  async transfer(id: string, newHunterInfo: Pick<MercariHuntetType, "freezingRange" | "user" | "schedule" | "type" | "searchCondition">) {
-    const hunter = await this.mercariHunterModel.findOne({
+    const hunter = await this.hunterModel.findOne({
       where: {
         hunterInstanceId: id,
       },
     });
 
-    if (!isEmpty(hunter)) {
-      const {
-        schedule: prevSchedule,
-        searchConditionSchema: prevSearchConditionSchema,
-        lastShotAt: prevLastShotAt,
-      } = hunter;
-      let prevSearchCondition: MercariGoodsSearchCondition;
-      try {
-        prevSearchCondition = JSON.parse(prevSearchConditionSchema);
-      } catch (e) {
-        // pass
-      }
-      const jobRecord = this.cronList[id];
-      if (!jobRecord?.jobInstance) {
-        throw new Error(errorCode.commonHunterService.cronJobNotFound);
-      }
-      const instance = jobRecord.jobInstance;
-      this.databaseTransactionWrapper({
-        pending: async queryRunner => {
-          await queryRunner.manager.update(
-            MercariHunterModel,
-            { hunterInstanceId: id },
-            {
-              schedule: newHunterInfo.schedule,
-              searchConditionSchema: JSON.stringify(
-                newHunterInfo.searchCondition
-              ),
-              freezingStart: newHunterInfo?.freezingRange?.start,
-              freezingEnd: newHunterInfo?.freezingRange?.end,
-              lastShotAt:
-                prevSearchCondition?.keyword ===
-                  newHunterInfo.searchCondition.keyword
-                  ? null
-                  : prevLastShotAt, // 关键词发生改变时，清空lastShotAt
-            }
-          );
-          if (prevSchedule !== newHunterInfo.schedule) {
-            // 需要重置crobJobInstance
-            instance.stop();
-            instance.setTime(new CronTime(newHunterInfo.schedule));
-            instance.start();
-          }
-        },
-        rejected: async () => {
-          // 更新失败，尝试重启原先的cronjob
-          await this.spawnCronJob(id, prevSchedule);
-        },
-      });
-    } else {
-      throw new Error(errorCode.commonHunterService.cronJobNotFound);
+    const {
+      searchConditionSchema: prevSearchConditionSchema,
+      lastShotAt: prevLastShotAt,
+    } = hunter;
+    let prevSearchCondition: MercariGoodsSearchCondition;
+    try {
+      prevSearchCondition = JSON.parse(prevSearchConditionSchema);
+    } catch (e) {
+      // pass
     }
+    await this.hunterModel
+      .createQueryBuilder()
+      .update(MercariHunterModel)
+      .set({
+        lastShotAt:
+          prevSearchCondition?.keyword === newHunterInfo.searchCondition.keyword
+            ? null
+            : prevLastShotAt, // 关键词发生改变时，清空lastShotAt
+      })
+      .where("hunterInstanceId = :id", { id })
+      .execute();
   }
-
-  async spawnCronJob(id: string, schedule: string) {
-    const hunter = this.cronList[id];
-    if (hunter?.jobInstance?.running) {
-      // cronjob还跑着，直接返回
-      this.logger.warn(`task ${id} is alreay running`);
-      return;
-    }
-    const newCronJob = new CronJob(
-      schedule,
-      () => this.goHunt(id),
-      null,
-      false
-    );
-    this.logger.info(`task ${id} spawned and get set to go`);
-    const cronDetail: CronDeail = {
-      id,
-      type: "Mercari",
-      schedule,
-      jobInstance: newCronJob,
-    };
-    this.cronList[id] = cronDetail;
-    newCronJob.start();
-  }
-
-  async getCronList(email: string) {
-    const cronIdList = values(this.cronList).map(cron => cron.id);
-    return await this.mercariHunterModel.find({
-      hunterInstanceId: In(cronIdList),
-      user: { email }
-    });
-  }
-
 }
