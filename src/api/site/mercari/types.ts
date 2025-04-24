@@ -1,5 +1,4 @@
-import { CipherPayload } from "../../../types";
-import { GoodsBreifExtension, GoodsSearchConditionBase } from "../types";
+import { GoodsBreifExtension, GoodsSearchConditionBase, GoodsSurveillanceConditionBase } from "../types";
 
 export interface GoodsListResponse {
   meta: any;
@@ -38,4 +37,6 @@ export type MercariGoodsSearchCondition = GoodsSearchConditionBase & {
   pageSize: number;
 }
 
-
+export type MercariGoodsSurveillanceCondition = GoodsSurveillanceConditionBase & {
+   criteria: Array<"price">;
+}

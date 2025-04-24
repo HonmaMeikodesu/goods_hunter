@@ -45,6 +45,10 @@ export class MercariApi extends ApiBase {
       withShopname: false
     });
   }
+
+  async fetchGoodDetail(searchOptions: any): Promise<any> {
+      return Promise.resolve();
+  }
 }
 
 

@@ -14,7 +14,6 @@ import {Context} from "egg";
 import { v4 as uuid } from "uuid";
 import {GoodsHunterModelBase} from "../../model/types";
 import {isEmpty, values} from "lodash";
-import {GoodsSearchConditionBase} from "../../api/site/types";
 import errorCode from "../../errorCode";
 
 interface CronList {

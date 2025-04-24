@@ -1,5 +1,5 @@
 import { CronJob } from "cron";
-import { GoodsSearchCondition } from "./api/site/types";
+import { GoodsSearchCondition, GoodsSurveillanceCondition } from "./api/site/types";
 import CONST from "./const";
 
 export interface UserInfo {
@@ -14,7 +14,7 @@ export interface FreezingRange {
 export interface GoodsHunter {
   type: typeof CONST.HUNTERTYPE[number];
   user: UserInfo;
-  searchCondition: GoodsSearchCondition;
+  searchCondition: GoodsSearchCondition | GoodsSurveillanceCondition;
   schedule: string;
   freezingRange?: FreezingRange;
   lastShotAt?: string;

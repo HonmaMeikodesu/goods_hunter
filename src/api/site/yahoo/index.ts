@@ -173,6 +173,9 @@ export class YahooAuctionApi extends ApiBase {
         };
     }
 
+    async fetchGoodDetail(searchOptions: any): Promise<any> {
+        return Promise.resolve();
+    }
 }
 
 
