@@ -1,6 +1,6 @@
 import { CipherPayload } from "../../types";
-import { MercariGoodsSearchCondition, MercariGoodsSurveillanceCondition } from "./mercari/types";
-import { YahooAuctionGoodsSearchCondition, YahooGoodsSurveillanceCondition } from "./yahoo/types";
+import { MercariGoodsSearchCondition } from "./mercari/types";
+import { YahooAuctionGoodsSearchCondition } from "./yahoo/types";
 
 export type GoodsSearchConditionBase = {
   keyword: string;
@@ -8,12 +8,10 @@ export type GoodsSearchConditionBase = {
 
 export type GoodsSurveillanceConditionBase = {
     type: "mercari" | "yahoo"
-    url: string,
-    criteria: string[]
+    goodId: string
 }
 
 export type GoodsSearchCondition = MercariGoodsSearchCondition | YahooAuctionGoodsSearchCondition;
-export type GoodsSurveillanceCondition = MercariGoodsSurveillanceCondition | YahooGoodsSurveillanceCondition;
 
 export type GoodsBreifExtension = {
   thumbnailData: CipherPayload

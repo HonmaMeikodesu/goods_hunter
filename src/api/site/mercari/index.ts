@@ -2,7 +2,7 @@ import { Provide, Inject, Logger, Scope, ScopeEnum } from "@midwayjs/decorator";
 import { ProxyPost } from "../../request";
 import { ILogger } from "@midwayjs/logger";
 import generateJwt from "generate-mercari-jwt";
-import { GoodsListResponse, MercariGoodsSearchCondition } from "./types";
+import { GoodDetailResponse, GoodsListResponse, MercariGoodsSearchCondition } from "./types";
 import { v4 } from "uuid";
 import { ApiBase } from "../base";
 
@@ -46,10 +46,20 @@ export class MercariApi extends ApiBase {
     });
   }
 
-  async fetchGoodDetail(searchOptions: any): Promise<any> {
-      return Promise.resolve();
+  async fetchGoodDetail(searchOptions: { id: string }) {
+      const { id  } = searchOptions;
+      const mercariDetailUrl = `https://api.mercari.jp/items/get?id=${id}`
+          const jwt = await generateJwt(mercariDetailUrl, "POST");
+      const res =await this.proxyGet<GoodDetailResponse>(mercariDetailUrl, {
+          "X-Platform": "web",
+          DPoP: jwt,
+      });
+      if (res.result !== "OK") {
+          throw new Error(`Unable to fetch mercari good detail of {${id}}, ${JSON.stringify(res)}`
+                         );
+      }
+      return res.data;
   }
 }
-
 
 

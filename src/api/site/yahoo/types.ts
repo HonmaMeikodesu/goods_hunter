@@ -1,4 +1,4 @@
-import { GoodsBreifExtension, GoodsSearchConditionBase, GoodsSurveillanceConditionBase } from "../types";
+import { GoodsBreifExtension, GoodsSearchConditionBase } from "../types";
 
 export type GoodsListResponse = GoodsBreif[];
 
@@ -19,9 +19,4 @@ export type YahooAuctionGoodsSearchCondition = GoodsSearchConditionBase & {
     category?: string;
     epoch?: number;
 };
-
-
-export type YahooGoodsSurveillanceCondition = GoodsSurveillanceConditionBase & {
-   criteria: Array<"price">;
-}
 

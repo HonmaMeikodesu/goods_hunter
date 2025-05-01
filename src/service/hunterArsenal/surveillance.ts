@@ -21,6 +21,7 @@ import isBetweenDayTime from "../../utils/isBetweenDayTime";
 import {GoodsSurveillanceCondition, GoodsSurveillanceConditionBase} from "../../api/site/types";
 import {YahooAuctionApi} from "../../api/site/yahoo";
 import {MercariApi} from "../../api/site/mercari";
+import {GoodsDetailData} from "../../api/site/mercari/types";
 
 @Provide()
 @Scope(ScopeEnum.Singleton)
@@ -64,7 +65,7 @@ export class SurveillanceHunterService extends HunterBase {
       relations: ["user"],
     });
     if (isEmpty(currentHunterInfo)) return;
-    const { searchConditionSchema, freezingStart, freezingEnd, user } =
+    const { searchConditionSchema, freezingStart, freezingEnd, user, snapshot } =
       currentHunterInfo;
     if (
       freezingStart &&
@@ -77,8 +78,8 @@ export class SurveillanceHunterService extends HunterBase {
     let searchCondition: GoodsSurveillanceConditionBase;
     try {
       searchCondition = JSON.parse(searchConditionSchema);
-      if (!searchCondition.url || !searchCondition.type) {
-        throw new Error("no url or type found!");
+      if (!searchCondition.goodId || !searchCondition.type) {
+        throw new Error("no goodId or type found!");
       }
     } catch (e) {
       this.logger.error(
@@ -86,16 +87,19 @@ export class SurveillanceHunterService extends HunterBase {
       );
       return;
     }
-    
-    let curr: any = null;
-    switch(searchCondition.type) {
-        case "mercari":
-            curr = await this.mercariApi.fetchGoodDetail({});
-            break;
-        case "yahoo":
-            curr = await this.yahooApi.fetchGoodDetail({});
-    };
-    judgeGood({ prev: currentHunterInfo.snapshot, curr, type: searchCondition.type, criteria: searchCondition.criteria  });
+
+    const sendUpdateAndUpdateDb = async (newSnapshot: string) => {
+
+    }
+
+    if (searchCondition?.type === "mercari") {
+        // TODO 商品被削除的情况
+        const prev = JSON.parse(snapshot) as GoodsDetailData;
+        const latestGoodsDetail = await this.mercariApi.fetchGoodDetail({ id: searchCondition.goodId });
+        if (isEmpty(snapshot) || latestGoodsDetail.price !== prev.price || latestGoodsDetail.status === "sold_out" && prev.status !== latestGoodsDetail.status) {
+            await sendUpdateAndUpdateDb(JSON.stringify(latestGoodsDetail));
+        }
+    }
   }
 
   async transfer(
@@ -109,6 +113,3 @@ export class SurveillanceHunterService extends HunterBase {
   }
 }
 
-function judgeGood(params: { curr: any; prev: any; type: GoodsSurveillanceConditionBase["type"], criteria: GoodsSurveillanceConditionBase["criteria"] }) {
-
-}

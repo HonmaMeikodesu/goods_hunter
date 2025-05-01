@@ -7,7 +7,7 @@ import {GoodsHunterModelBase} from "./types";
 export class SurveillanceRecord implements GoodsHunterModelBase {
   @ManyToOne(() => User, "surveillanceRecords", { primary: true })
   user: User;
- 
+
   @Column("varchar", { primary: true })
   hunterInstanceId: string;
 
