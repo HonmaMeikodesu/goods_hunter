@@ -1,0 +1,229 @@
+{
+    "result": "OK",
+    "data": {
+        "id": "m76591871603",
+        "seller": {
+            "id": 430028251,
+            "name": "パンダメダカ",
+            "photo_url": "https://static.mercdn.net/members/430028251.jpg?1741168178",
+            "photo_thumbnail_url": "https://static.mercdn.net/thumb/members/430028251.jpg?1741168178",
+            "register_sms_confirmation": "yes",
+            "register_sms_confirmation_at": "2022-11-03 15:58:46",
+            "created": 1667458726,
+            "num_sell_items": 1105,
+            "ratings": {
+                "good": 993,
+                "normal": 0,
+                "bad": 0
+            },
+            "num_ratings": 993,
+            "score": 993,
+            "is_official": false,
+            "quick_shipper": false,
+            "is_followable": true,
+            "is_blocked": false,
+            "star_rating_score": 5
+        },
+        "converted_price": {
+            "price": 23.82,
+            "currency_code": "USD",
+            "rate_updated": 1746151802
+        },
+        "status": "sold_out",
+        "name": "ぺたん娘　本間芽衣子　フィギュア　あの日見た花の名前を僕達はまだ知らない めんま",
+        "price": 3280,
+        "description": "ご覧いただきありがとうございます\n\n⭐︎ぺたんと座った手のひらサイズ\n\nぺたん娘　本間芽衣子　フィギュア「あの日見た花の名前を僕達はまだ知らない。」\n\n※パッケージにダメージ、汚れ、ビニールが破れています(画像5)ので状態は画像でご確認ください。細かい事を気にしない方におすすめします\n\n匿名配送らくらくメルカリ便で送りますのでご購入前にプロフご確認お願いします\n\nめんまちゃん\nペンギンパレード\n制服 ver.",
+        "photos": [
+            "https://static.mercdn.net/item/detail/orig/photos/m76591871603_1.jpg?1742973889",
+            "https://static.mercdn.net/item/detail/orig/photos/m76591871603_2.jpg?1742973889",
+            "https://static.mercdn.net/item/detail/orig/photos/m76591871603_3.jpg?1742973889",
+            "https://static.mercdn.net/item/detail/orig/photos/m76591871603_4.jpg?1742973889",
+            "https://static.mercdn.net/item/detail/orig/photos/m76591871603_5.jpg?1742973889",
+            "https://static.mercdn.net/item/detail/orig/photos/m76591871603_6.jpg?1742973889",
+            "https://static.mercdn.net/item/detail/orig/photos/m76591871603_7.jpg?1742973889",
+            "https://static.mercdn.net/item/detail/orig/photos/m76591871603_8.jpg?1743071928"
+        ],
+        "photo_paths": [
+            "photos/m76591871603_1.jpg",
+            "photos/m76591871603_2.jpg",
+            "photos/m76591871603_3.jpg",
+            "photos/m76591871603_4.jpg",
+            "photos/m76591871603_5.jpg",
+            "photos/m76591871603_6.jpg",
+            "photos/m76591871603_7.jpg",
+            "photos/m76591871603_8.jpg"
+        ],
+        "thumbnails": [
+            "https://static.mercdn.net/c!/w=240/thumb/photos/m76591871603_1.jpg?1742973889"
+        ],
+        "item_category": {
+            "id": 740,
+            "name": "その他",
+            "display_order": 9999,
+            "parent_category_id": 81,
+            "parent_category_name": "フィギュア",
+            "root_category_id": 1328,
+            "root_category_name": "ゲーム・おもちゃ・グッズ",
+            "brand_group_id": 1
+        },
+        "item_category_ntiers": {
+            "id": 740,
+            "name": "その他",
+            "display_order": 9999,
+            "parent_category_id": 81,
+            "parent_category_name": "フィギュア",
+            "root_category_id": 1328,
+            "root_category_name": "ゲーム・おもちゃ・グッズ",
+            "brand_group_id": 1
+        },
+        "parent_categories_ntiers": [
+            {
+                "id": 1328,
+                "name": "ゲーム・おもちゃ・グッズ",
+                "display_order": 0
+            },
+            {
+                "id": 81,
+                "name": "フィギュア",
+                "display_order": 0
+            }
+        ],
+        "item_condition": {
+            "id": 1,
+            "name": "新品、未使用",
+            "subname": "新品で購入し、一度も使用していない"
+        },
+        "colors": [],
+        "shipping_payer": {
+            "id": 2,
+            "name": "送料込み(出品者負担)",
+            "code": "seller"
+        },
+        "shipping_method": {
+            "id": 14,
+            "name": "らくらくメルカリ便",
+            "is_deprecated": "no"
+        },
+        "shipping_from_area": {
+            "id": 6,
+            "name": "山形県"
+        },
+        "shipping_duration": {
+            "id": 2,
+            "name": "2~3日で発送",
+            "min_days": 2,
+            "max_days": 3
+        },
+        "shipping_class": {
+            "id": 3,
+            "name": "宅急便 60サイズ",
+            "description": "宅急便 60サイズ",
+            "fee": 750,
+            "carrier": "yamato",
+            "carrier_display_name": "ヤマト運輸",
+            "request_class_display_name": "宅急便 60サイズ",
+            "icon_id": 0,
+            "pickup_fee": 0,
+            "shipping_fee": 750,
+            "total_fee": 750,
+            "is_pickup": false
+        },
+        "num_likes": 1,
+        "num_comments": 1,
+        "registered_prices_count": 0,
+        "comments": [
+            {
+                "id": 3862615640221299151,
+                "user": {
+                    "id": 430028251,
+                    "name": "パンダメダカ",
+                    "photo_url": "https://static.mercdn.net/members/430028251.jpg?1741168178",
+                    "photo_thumbnail_url": "https://static.mercdn.net/thumb/members/430028251.jpg?1741168178"
+                },
+                "message": "値下げしました",
+                "created": 1745056065
+            }
+        ],
+        "updated": 1745312506,
+        "created": 1742973889,
+        "pager_id": 5649387650,
+        "liked": false,
+        "checksum": "ff86918b1b7f3ad52ea3cc2f6374e550",
+        "is_dynamic_shipping_fee": false,
+        "application_attributes": {},
+        "is_shop_item": "no",
+        "hash_tags": [],
+        "is_anonymous_shipping": true,
+        "is_web_visible": true,
+        "is_offerable": false,
+        "is_organizational_user": false,
+        "organizational_user_status": "",
+        "is_stock_item": false,
+        "is_cancelable": true,
+        "shipped_by_worker": false,
+        "transaction_evidence": {
+            "id": 1948805246,
+            "status": "done"
+        },
+        "additional_services": [],
+        "has_additional_service": false,
+        "has_like_list": false,
+        "is_offerable_v2": false,
+        "item_attributes": [
+            {
+                "id": "f7f186cc-a16e-474b-a7a9-ee179b5565c0",
+                "text": "photo_description",
+                "values": [
+                    {
+                        "id": "",
+                        "text": ""
+                    },
+                    {
+                        "id": "",
+                        "text": ""
+                    },
+                    {
+                        "id": "",
+                        "text": ""
+                    },
+                    {
+                        "id": "",
+                        "text": ""
+                    },
+                    {
+                        "id": "",
+                        "text": ""
+                    },
+                    {
+                        "id": "",
+                        "text": ""
+                    },
+                    {
+                        "id": "",
+                        "text": ""
+                    },
+                    {
+                        "id": "",
+                        "text": ""
+                    }
+                ],
+                "deep_facet_filterable": false,
+                "show_on_ui": false
+            }
+        ],
+        "is_dismissed": false,
+        "photo_descriptions": [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+        ],
+        "meta_title": "ぺたん娘　本間芽衣子　フィギュア　あの日見た花の名前を僕達はまだ知らない めんま",
+        "meta_subtitle": "新品、未使用"
+    },
+    "meta": {}
+}

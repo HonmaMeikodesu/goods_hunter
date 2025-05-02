@@ -182,7 +182,7 @@ export class SurugayaHunterService extends HunterBase {
     }
 
 
-    async transfer(id: string, newHunterInfo: Pick<SurugayaHunterType, "freezingRange" | "user" | "schedule" | "type" | "searchCondition">) {
+    async transfer(id: string, newHunterInfo: Pick<SurugayaHunterType, "freezingRange" | "schedule" | "searchCondition">) {
         await super.transfer(id, newHunterInfo, SurugayaHunterModel);
         const hunter = await this.hunterModel.findOne({
             where: {

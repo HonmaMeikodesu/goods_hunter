@@ -10,13 +10,13 @@ import {
 import { HunterRouteService } from "../service/hunterRouteService";
 import { Context } from "egg";
 import { toNumber } from "lodash";
-import { CipherPayload, UserInfo } from "../types";
+import { CipherPayload, GoodsHunter, UserInfo } from "../types";
 import { GoodsService } from "../service/goods";
 import errorCode from "../errorCode";
 import CONST from "../const";
 import moment from "moment";
 import { isValidCron } from "cron-validator";
-import { GoodsSearchCondition } from "../api/site/types";
+import { GoodsSearchCondition, GoodsSurveillanceConditionBase } from "../api/site/types";
 
 @Provide()
 @Controller("/goods", { middleware: ["loginStateCheck"] })
@@ -41,9 +41,9 @@ export class GoodsController {
     @Body("freezeEnd")
     freezeEnd: string,
     @Body("searchCondition")
-    searchCondition: GoodsSearchCondition,
+    searchCondition: GoodsHunter["searchCondition"],
   ) {
-    if (!CONST.HUNTERTYPE.includes(type) || !searchCondition?.keyword || !isValidCron(schedule)) throw new Error(errorCode.common.invalidRequestBody);
+    if (!CONST.HUNTERTYPE.includes(type) || ( !( searchCondition as GoodsSearchCondition )?.keyword && ( !(searchCondition as GoodsSurveillanceConditionBase)?.goodId || !(searchCondition as GoodsSurveillanceConditionBase)?.type ) ) || !isValidCron(schedule)) throw new Error(errorCode.common.invalidRequestBody);
     if (freezeStart || freezeEnd) {
       freezeStart = freezeStart || "";
       freezeEnd = freezeEnd || "";
@@ -134,14 +134,10 @@ export class GoodsController {
     }
     await this.hunterRouteService.transferHunter(id, {
       searchCondition,
-      type,
       schedule,
       freezingRange: {
         start: freezeStart,
         end: freezeEnd,
-      },
-      user: {
-        email: this.ctx.user?.email
       },
     });
   }

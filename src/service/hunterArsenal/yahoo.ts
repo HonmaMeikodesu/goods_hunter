@@ -199,7 +199,7 @@ export class YahooHunterService extends HunterBase {
   }
 
 
-  async transfer(id: string, newHunterInfo: Pick<YahooHunterType, "freezingRange" | "user" | "schedule" | "type" | "searchCondition">) {
+  async transfer(id: string, newHunterInfo: Pick<YahooHunterType, "freezingRange" | "schedule" | "searchCondition">) {
       await super.transfer(id, newHunterInfo, YahooHunterModel);
       const hunter = await this.hunterModel.findOne({
           where: {

@@ -182,7 +182,7 @@ export class MercariHunterService extends HunterBase {
     id: string,
     newHunterInfo: Pick<
       MercariHuntetType,
-      "freezingRange" | "user" | "schedule" | "type" | "searchCondition"
+      "freezingRange" | "schedule" | "searchCondition"
     >
   ) {
     await super.transfer(id, newHunterInfo, MercariHunterModel);

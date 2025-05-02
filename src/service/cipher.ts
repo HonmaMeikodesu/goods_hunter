@@ -5,8 +5,8 @@ import errorCode from "../errorCode";
 import { RedisService } from "@midwayjs/redis";
 import CONST from "../const";
 import { CipherPayload as Payload } from "../types"
-// FIXME node version upgrade needed
-const { subtle } = require('node:crypto').webcrypto;
+const { subtle } = globalThis.crypto;
+
 
 @Provide()
 @Scope(ScopeEnum["Singleton"])

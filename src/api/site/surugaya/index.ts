@@ -1,10 +1,10 @@
-import { Config, Inject, Logger, Provide, Scope, ScopeEnum } from "@midwayjs/decorator";
+import { Inject, Logger, Provide, Scope, ScopeEnum } from "@midwayjs/decorator";
 import { ProxyGet } from "../../request";
 import { ILogger } from "@midwayjs/logger";
 import { ApiBase } from "../base";
 import { GoodsBreif, GoodsListResponse, SurugayaGoodsSearchCondition } from "./types";
 import { JSDOM } from "jsdom";
-import { cloneDeep, toNumber } from "lodash";
+import { cloneDeep } from "lodash";
 
 @Provide()
 @Scope(ScopeEnum.Request, { allowDowngrade: true })

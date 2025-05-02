@@ -58,7 +58,7 @@ export default abstract class HunterBase {
         });
     }
 
-    async hire(ctx: Context, hunterInfo: GoodsHunter, HunterModel: { new (): GoodsHunterModelBase }, hunterRelationName: keyof User) {
+    async hire(ctx: Context, hunterInfo: GoodsHunter, HunterModel: { new (): GoodsHunterModelBase }, hunterRelationName: keyof User): Promise<string | void> {
         const user = ctx.user as UserInfo;
         const { email } = user;
         const cronId = uuid();
@@ -90,6 +90,7 @@ export default abstract class HunterBase {
                 throw new Error(`Error when executing add ${this.hunterType} cronJob`);
             },
         });
+        return cronId;
     }
 
     async pingpongTask() {
@@ -164,7 +165,7 @@ export default abstract class HunterBase {
         this.logger.info(`task ${id} removed`);
     }
 
-    async transfer(id: string, newHunterInfo: Pick<GoodsHunter, "freezingRange" | "user" | "schedule" | "type" | "searchCondition">, HunterModel: { new (): GoodsHunterModelBase }) {
+    async transfer(id: string, newHunterInfo: Partial<Pick<GoodsHunter, "freezingRange" | "schedule"| "searchCondition">>, HunterModel: { new (): GoodsHunterModelBase }) {
         const hunter = await this.hunterModel.findOne({
             where: {
                 hunterInstanceId: id,
@@ -179,20 +180,26 @@ export default abstract class HunterBase {
             if (!jobRecord?.jobInstance) {
                 throw new Error(errorCode.commonHunterService.cronJobNotFound);
             }
+            const newFields: Partial<GoodsHunterModelBase> = {};
+            Object.keys(newHunterInfo).forEach(( key: keyof typeof newHunterInfo ) => {
+                if (key === "schedule") {
+                    newFields.schedule = newHunterInfo.schedule;
+                } else if (key === "searchCondition") {
+                    newFields.searchConditionSchema = JSON.stringify(
+                        newHunterInfo.searchCondition
+                    );
+                } else if (key === "freezingRange") {
+                    newFields.freezingStart = newHunterInfo.freezingRange?.start;
+                    newFields.freezingEnd = newHunterInfo.freezingRange?.end;
+                }
+            })
             const instance = jobRecord.jobInstance;
             this.databaseTransactionWrapper({
                 pending: async queryRunner => {
                     await queryRunner.manager.update(
                         HunterModel,
                         { hunterInstanceId: id },
-                        {
-                            schedule: newHunterInfo.schedule,
-                            searchConditionSchema: JSON.stringify(
-                                newHunterInfo.searchCondition
-                            ),
-                            freezingStart: newHunterInfo?.freezingRange?.start,
-                            freezingEnd: newHunterInfo?.freezingRange?.end,
-                        }
+                        newFields
                     );
                     if (prevSchedule !== newHunterInfo.schedule) {
                         // 需要重置crobJobInstance

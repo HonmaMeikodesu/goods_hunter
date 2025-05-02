@@ -12,17 +12,18 @@ import {
   GoodsHunter,
   MercariHunter as MercariHunterType,
   YahooHunter as YahooHunterType,
-  CronDeail,
+  SurugayaHunter as SurugayaHunterType,
   CipherPayload,
+  SurveillanceHunter as SurveillanceHunterType,
 } from "../types";
 import CONST from "../const";
 import { Context } from "egg";
 import { CustomConfig } from "../config/config.default";
 import CipherServive from "./cipher";
-import { YahooHunter, MercariHunter, SurugayaHunter } from "./hunterArsenal";
+import { YahooHunter, MercariHunter, SurugayaHunter, SurveillanceHunter } from "./hunterArsenal";
 
 function hunterCognition<T extends GoodsHunter>(
-  hunterInfo: GoodsHunter,
+  hunterInfo: Partial<GoodsHunter>,
   cognitionFunc: (info: typeof hunterInfo) => boolean
 ): hunterInfo is T {
   return cognitionFunc(hunterInfo);
@@ -41,6 +42,9 @@ export class HunterRouteService {
   @Inject()
   surugayaHunter: SurugayaHunter;
 
+  @Inject()
+  surveillanceHunter: SurveillanceHunter;
+
   @Config("serverInfo")
   serverInfo: CustomConfig["serverInfo"];
 
@@ -57,7 +61,8 @@ export class HunterRouteService {
     const mercariHunterList = await this.mercariHunter.getCronList(email);
     const yahooHunterList = await this.yahooHunter.getCronList(email);
     const surugayaHunterList = await this.surugayaHunter.getCronList(email);
-    return [...mercariHunterList, ...yahooHunterList, ...surugayaHunterList];
+    const  surveillanceHunterList = await this.surveillanceHunter.getCronList(email);
+    return [...mercariHunterList, ...yahooHunterList, ...surugayaHunterList, ...surveillanceHunterList];
   }
 
   // FIXME unlikely conflict between different sites
@@ -84,17 +89,20 @@ export class HunterRouteService {
     id: string,
     newHunterInfo: Pick<
       GoodsHunter,
-      "freezingRange" | "user" | "schedule" | "type" | "searchCondition"
+      "freezingRange" | "schedule" | "searchCondition"
     >
   ) {
-    if (hunterCognition<MercariHunterType>(newHunterInfo as any, (info) => info.type === "Mercari")) {
+    if (hunterCognition<MercariHunterType>(newHunterInfo, (info) => info.type === "Mercari")) {
       await this.mercariHunter.transfer(id, newHunterInfo)
     }
-    if (hunterCognition<YahooHunterType>(newHunterInfo as any, (info) => info.type === "Yahoo")) {
+    if (hunterCognition<YahooHunterType>(newHunterInfo, (info) => info.type === "Yahoo")) {
       await this.yahooHunter.transfer(id, newHunterInfo)
     }
-    if (hunterCognition<YahooHunterType>(newHunterInfo as any, (info) => info.type === "Surugaya")) {
+    if (hunterCognition<SurugayaHunterType>(newHunterInfo, (info) => info.type === "Surugaya")) {
       await this.surugayaHunter.transfer(id, newHunterInfo);
+    }
+    if (hunterCognition<SurveillanceHunterType>(newHunterInfo, (info) => info.type === "Surveillance")) {
+      await this.surveillanceHunter.transfer(id, newHunterInfo);
     }
   }
 
@@ -108,6 +116,9 @@ export class HunterRouteService {
         break;
       case "Surugaya":
         await this.surugayaHunter.dismiss(id);
+        break;
+      case "Surveillance":
+        await this.surveillanceHunter.dismiss(id);
     }
   }
 
@@ -138,6 +149,16 @@ export class HunterRouteService {
     ) {
       this.surugayaHunter.hire(ctx, hunterInfo);
     }
+
+    if (
+      hunterCognition<SurveillanceHunterType>(
+        hunterInfo,
+        info => info.type === "Surveillance"
+      )
+    ) {
+      this.surveillanceHunter.hire(ctx, hunterInfo);
+    }
+
   }
 }
 
