@@ -73,6 +73,26 @@ export class GoodsController {
     });
   }
 
+  @Get("/registerSurveillanceWatcher")
+  async registerSurveillanceWatcher(
+    @Query("type")
+    type: "mercari" | "yahoo",
+    @Query("id")
+    goodId: string
+  ) {
+    if (!type || !goodId) throw new Error(errorCode.common.invalidRequestBody);
+    const user = this.ctx.user as UserInfo;
+    await this.hunterRouteService.hireNewHunterForUser(this.ctx, {
+      searchCondition: {
+        type,
+        goodId
+      },
+      type: "Surveillance",
+      schedule: "*/3 * * * * *",
+      user: { email: user.email },
+    });
+  }
+
   @Get("/unregisterGoodsWatcher")
   async unregisterGoodsWatcher(
     @Query("id")

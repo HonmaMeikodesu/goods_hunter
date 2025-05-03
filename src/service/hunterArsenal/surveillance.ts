@@ -119,7 +119,8 @@ export class SurveillanceHunterService extends HunterBase {
           status,
           name,
           oldPrice: prev.price,
-          newPrice: price
+          newPrice: price,
+          hunterId: cronId,
         },
         serverHost: this.serverInfo.serverHost,
       });

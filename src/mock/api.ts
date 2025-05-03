@@ -105,7 +105,7 @@ export class ApiMock implements ISimulation {
         };
 
         this.mockService.mockClassProperty(EmailService, "sendEmail", (msg: Mail.Options) => {
-            console.log(msg);
+            process.stdout.write(JSON.stringify(msg));
         })
     }
 

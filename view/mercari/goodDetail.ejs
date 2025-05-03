@@ -65,33 +65,44 @@
         margin-top: 24px;
         text-align: center;
       }
-
+      .link {
+        flex: 0 0 1em;
+        text-align: center;
+      }
     </style>
   </head>
 
   <body>
     <div class="container">
       <div class="grid-unit">
-          <a
-            class="img-container"
-            href="https://jp.mercari.com/item/<%= data.id %>"
-          >
-            <img
-              src="http://<%= serverHost %>/proxy/getImage?iv=<%= data.thumbnailData.data.iv %>&message=<%= data.thumbnailData.data.message %>&digest=<%= data.thumbnailData.digest %>"
-              alt=""
-              class="image"
-              onerror="this.src = this.parentElement.href"
-            />
-            <% if(data.status ==="sold_out" ) { %>
-            <div class="sold">
-              <div>SOLD</div>
-            </div>
-            <% } %>
-          </a>
-          <div class="name"><%= data.name %></div>
+        <a
+          class="img-container"
+          href="https://jp.mercari.com/item/<%= data.id %>"
+        >
+          <img
+            src="http://<%= serverHost %>/proxy/getImage?iv=<%= data.thumbnailData.data.iv %>&message=<%= data.thumbnailData.data.message %>&digest=<%= data.thumbnailData.digest %>"
+            alt=""
+            class="image"
+            onerror="this.src = this.parentElement.href"
+          />
+          <% if(data.status ==="sold_out" ) { %>
+          <div class="sold">
+            <div>SOLD</div>
+          </div>
+          <% } %>
+        </a>
+        <div class="name"><%= data.name %></div>
+        <a
+          class="link"
+          href="http://<%= serverHost %>/goods/unregisterGoodsWatcher?id=<%= data.hunterId %>&type=Mercari"
+        >
+          Click here to cancel subscrption
+        </a>
       </div>
       <div class="price-change">
-          <span><%= data.oldPrice %></span>&nbsp;->&nbsp;<span><%= data.newPrice %></span>
+        <span><%= data.oldPrice %></span>&nbsp;->&nbsp;<span
+          ><%= data.newPrice %></span
+        >
       </div>
     </div>
   </body>
