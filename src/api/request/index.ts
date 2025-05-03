@@ -7,6 +7,8 @@ import doThisUntilResolve from "../../utils/doThisUntilResolve";
 import { isNumber } from "lodash";
 const HttpsProxyAgent = require("https-proxy-agent");
 
+const httpsAgent = proxyInbound ?  new HttpsProxyAgent(proxyInbound) : undefined;
+
 type RequestCustomOptions = Omit<AxiosRequestConfig, "headers"> & { maxRetry?: { count: number, breakOnCondition?: (e: any) => boolean } }
 
 export declare interface ProxyGet {
@@ -23,7 +25,6 @@ export function proxyGet<T>(container: IMidwayContainer) {
     otherOptions?: RequestCustomOptions
   ) => {
     const httpService = await container.getAsync<HttpService>(HttpService);
-    const httpsAgent = new HttpsProxyAgent(proxyInbound);
     const { maxRetry, ...rest } = otherOptions || {};
     const resp = await doThisUntilResolve(() => httpService.get<T>(url instanceof URL ? url.toString() : encodeURI(url), {
       headers,
@@ -52,7 +53,6 @@ export function proxyPost<T>(container: IMidwayContainer) {
     otherOptions?: RequestCustomOptions
   ) => {
     const httpService = await container.getAsync<HttpService>(HttpService);
-    const httpsAgent = new HttpsProxyAgent(proxyInbound);
     const { maxRetry, ...rest } = otherOptions || {};
     const resp = await doThisUntilResolve(() => httpService.post<T>(url instanceof URL ? url.toString() : encodeURI(url), body, {
       headers,

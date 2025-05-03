@@ -1,4 +1,4 @@
-import * as unittestConfig from "./config/config.unittest";
+import unittestConfig from "./config/config.unittest";
 import * as localConfig from "./config/config.local";
 import * as defaultConfig from "./config/config.default";
 import * as webFramework from "@midwayjs/web";

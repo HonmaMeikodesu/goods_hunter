@@ -5,7 +5,7 @@ import {GoodsHunterModelBase} from "./types";
 
 @EntityModel()
 export class SurveillanceRecord implements GoodsHunterModelBase {
-  @ManyToOne(() => User, "surveillanceRecords", { primary: true })
+  @ManyToOne(() => User, "surveillanceRecords", { primary: true, onDelete: "CASCADE", onUpdate: "CASCADE" })
   user: User;
 
   @Column("varchar", { primary: true })
@@ -27,7 +27,7 @@ export class SurveillanceRecord implements GoodsHunterModelBase {
   @Column("varchar")
   schedule: string;
 
-  @Column("longtext")
+  @Column("longtext", { nullable: true })
   snapshot: string;
 
   @CreateDateColumn()

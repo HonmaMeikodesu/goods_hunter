@@ -1,4 +1,4 @@
-import { createApp, createHttpRequest, close } from "@midwayjs/mock";
+import { createApp, close } from "@midwayjs/mock";
 import { Framework } from "@midwayjs/web";
 import { Application } from "egg";
 import { EmailService } from "../../src/service/email";
@@ -35,11 +35,9 @@ describe('view/*.ejs', () => {
     const serverInfo: CustomConfig["serverInfo"] = app.getConfig("serverInfo");
 
     const goodDetailDemo: MercariGoodsDetailData = JSON.parse(readFileSync(
-      path.join(__dirname, "./fixtures/mercariGoodDetail.json"),
+      path.join(__dirname, "../../src/api/site/mercari/mock/goodDetail.json"),
       { encoding: "utf-8" }
     )).data;
-
-    debugger;
 
     const { id, thumbnails, price, name, status } = goodDetailDemo;
 

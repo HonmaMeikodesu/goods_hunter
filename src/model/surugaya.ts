@@ -6,7 +6,7 @@ import { SurugayaGoodsRecord } from "./surugayaGoodsRecord";
 
 @EntityModel()
 export class SurugayaHunter implements GoodsHunterModelBase {
-  @ManyToOne(() => User, "surugayaHunters", { primary: true })
+  @ManyToOne(() => User, "surugayaHunters", { primary: true, onDelete: "CASCADE", onUpdate: "CASCADE" })
   user: User;
 
   @Column("varchar", { primary: true })

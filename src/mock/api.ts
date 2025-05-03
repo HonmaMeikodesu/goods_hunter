@@ -30,13 +30,34 @@ export class ApiMock implements ISimulation {
     async setup(): Promise<void> {
 
         const originMercariFetchGoodsList = this.mercariApi.fetchGoodsList;
+        const originMercariFetchGoodDetail = this.mercariApi.fetchGoodDetail;
 
         this.mercariApi.proxyPost = async (url: URL | string) => {
-            if (url.toString().includes("entities:search")) {
+            const urlStr = url.toString();
+            if (urlStr.includes("entities:search")) {
                 const fileContent = await readFile(resolve(__dirname, "../api/site/mercari/mock/goodsList.json"));
                 return JSON.parse(fileContent.toString());
             }
         };
+
+        this.mercariApi.proxyGet = async (url: URL | string) => {
+            const urlStr = url.toString();
+            if (urlStr.includes("items/get")) {
+                const fileContent = await readFile(resolve(__dirname, "../api/site/mercari/mock/goodDetail.json"));
+                return JSON.parse(fileContent.toString());
+            }
+        };
+
+
+        this.mercariApi.fetchGoodDetail = async function (...args: any[]) {
+            const res: ReturnType<typeof originMercariFetchGoodDetail> = originMercariFetchGoodDetail.call(this, ...args);
+            const data = await res;
+            const nextPrice = Math.round(Math.random() * 10000);
+            return {
+                ...data,
+                price: nextPrice
+            }
+        }
 
         this.mercariApi.fetchGoodsList = async function (...args: any[]) {
             const res: ReturnType<typeof originMercariFetchGoodsList> = originMercariFetchGoodsList.call(this, ...args);
@@ -62,7 +83,7 @@ export class ApiMock implements ISimulation {
             }
         }
 
-        this.yahooAuctionApi.fetchGoodsList = async function(...args: any) {
+        this.yahooAuctionApi.fetchGoodsList = async function (...args: any) {
             const res: ReturnType<typeof originYahooAuctionFetchGoodsList> = originYahooAuctionFetchGoodsList.call(this, ...args);
             const data = await res;
             return data.map((item) => ({ ...item, id: v4() }));
@@ -77,7 +98,7 @@ export class ApiMock implements ISimulation {
             }
         };
 
-        this.surugayaApi.fetchGoodsList = async function(...args: any) {
+        this.surugayaApi.fetchGoodsList = async function (...args: any) {
             const res: ReturnType<typeof originSurugayaFetchGoodsList> = originSurugayaFetchGoodsList.call(this, ...args);
             const data = await res;
             return data.map((item) => ({ ...item, id: `https://www.suruga-ya.jp/product/detail/${v4()}` }));

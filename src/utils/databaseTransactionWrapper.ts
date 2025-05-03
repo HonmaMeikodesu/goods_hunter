@@ -8,7 +8,7 @@ export declare interface DatabaseTransactionWrapper {
   (funcs: {
     pending: (queryRunner: QueryRunner) => Promise<void>;
     resolved?: (queryRunner: QueryRunner) => Promise<any>;
-    rejected?: (queryRunner: QueryRunner) => Promise<void>;
+    rejected?: (queryRunner: QueryRunner, error: any) => Promise<void>;
   }): Promise<void>;
 }
 
@@ -19,7 +19,7 @@ export default async function databaseTransactionWrapper(
   return async function (funcs: {
     pending: (queryRunner: QueryRunner) => Promise<void>;
     resolved?: (queryRunner: QueryRunner) => Promise<any>;
-    rejected?: (queryRunner: QueryRunner) => Promise<void>;
+    rejected?: (queryRunner: QueryRunner, error: any) => Promise<void>;
   }) {
     const { pending, resolved, rejected } = funcs;
     const connection = getConnection();
@@ -32,7 +32,7 @@ export default async function databaseTransactionWrapper(
       if (isFunction(resolved)) return await resolved(queryRunner);
     } catch (error) {
       await queryRunner.rollbackTransaction();
-      if (isFunction(rejected)) await rejected(queryRunner);
+      if (isFunction(rejected)) await rejected(queryRunner, error);
       appLogger.error(error || "Unknown database operate error");
     } finally {
       await queryRunner.release();

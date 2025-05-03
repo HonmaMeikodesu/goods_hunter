@@ -129,7 +129,7 @@ export class HunterRouteService {
         info => info.type === "Mercari"
       )
     ) {
-      this.mercariHunter.hire(ctx, hunterInfo);
+      await this.mercariHunter.hire(ctx, hunterInfo);
     }
 
     if (
@@ -138,7 +138,7 @@ export class HunterRouteService {
         info => info.type === "Yahoo"
       )
     ) {
-      this.yahooHunter.hire(ctx, hunterInfo);
+      await this.yahooHunter.hire(ctx, hunterInfo);
     }
 
     if (
@@ -147,7 +147,7 @@ export class HunterRouteService {
         info => info.type === "Surugaya"
       )
     ) {
-      this.surugayaHunter.hire(ctx, hunterInfo);
+      await this.surugayaHunter.hire(ctx, hunterInfo);
     }
 
     if (
@@ -156,7 +156,7 @@ export class HunterRouteService {
         info => info.type === "Surveillance"
       )
     ) {
-      this.surveillanceHunter.hire(ctx, hunterInfo);
+      await this.surveillanceHunter.hire(ctx, hunterInfo);
     }
 
   }

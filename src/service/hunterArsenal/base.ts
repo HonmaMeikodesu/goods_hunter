@@ -31,7 +31,7 @@ export default abstract class HunterBase {
     @Inject("redis:redisService")
     redisClient: RedisService;
 
-    abstract hunterModel: Repository<any>;
+    abstract hunterModel: Repository<GoodsHunterModelBase>;
 
     async init() {
 
@@ -46,7 +46,7 @@ export default abstract class HunterBase {
             promiseList.push(this.spawnCronJob(hunterInstanceId, schedule));
         });
 
-        Promise.all(promiseList)
+        return Promise.all(promiseList)
         .then(() => {
             this.logger.info(
                 `all ${this.hunterType} hunters standing by!`
@@ -86,8 +86,8 @@ export default abstract class HunterBase {
                 // 创建定时任务，定时任务实时从DB取数据进行定时任务的执行（schedule修改无法实时获取，需要重启cronJob）
                 await this.spawnCronJob(cronId, hunterInfo.schedule)
             },
-            rejected: async () => {
-                throw new Error(`Error when executing add ${this.hunterType} cronJob`);
+            rejected: async (qr, e) => {
+                throw new Error(`Error when executing add ${this.hunterType} cronJob, ${e.message}`);
             },
         });
         return cronId;

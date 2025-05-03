@@ -53,7 +53,7 @@ export class SurveillanceHunterService extends HunterBase {
 
   async hire(ctx: Context, hunterInfo: SurveillanceHunter) {
     let snapshot: string;
-    if (hunterInfo?.type === "Mercari") {
+    if (hunterInfo?.searchCondition?.type === "mercari") {
       snapshot = JSON.stringify(await this.mercariApi.fetchGoodDetail({
         id: hunterInfo.searchCondition.goodId,
       }));

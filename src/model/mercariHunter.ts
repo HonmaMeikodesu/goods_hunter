@@ -5,7 +5,7 @@ import { GoodsHunterModelBase } from "./types";
 
 @EntityModel()
 export class MercariHunter implements GoodsHunterModelBase {
-  @ManyToOne(() => User, "mercariHunters", { primary: true })
+  @ManyToOne(() => User, "mercariHunters", { primary: true, onDelete: "CASCADE", onUpdate: "CASCADE" })
   user: User;
 
   @Column("varchar", { primary: true })

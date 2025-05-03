@@ -4,7 +4,7 @@ import { SurugayaHunter } from "./surugaya";
 
 @EntityModel()
 export class SurugayaGoodsRecord {
-  @ManyToOne(() => SurugayaHunter, "surugayaGoodsRecords", { primary: true })
+  @ManyToOne(() => SurugayaHunter, "surugayaGoodsRecords", { primary: true, onDelete: "CASCADE", onUpdate: "CASCADE" })
   hunter: SurugayaHunter;
 
   @PrimaryColumn("varchar", { nullable: false })

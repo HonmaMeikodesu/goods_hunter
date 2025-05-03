@@ -6,7 +6,7 @@ import { YahooAuctionRecord } from "./yahooAuctionRecord";
 
 @EntityModel()
 export class YahooHunter implements GoodsHunterModelBase {
-  @ManyToOne(() => User, "yahooHunters", { primary: true })
+  @ManyToOne(() => User, "yahooHunters", { primary: true, onDelete: "CASCADE", onUpdate: "CASCADE" })
   user: User;
 
   @Column("varchar", { primary: true })
