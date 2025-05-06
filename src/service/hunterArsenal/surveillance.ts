@@ -137,13 +137,15 @@ export class SurveillanceHunterService extends HunterBase {
       await this.updateSnapshot(cronId, JSON.stringify(newSnapshot));
     }
 
-
     if (searchCondition?.type === "mercari") {
-      // TODO sold_out，削除情况自动删除订阅
       const prev = JSON.parse(snapshot) as GoodsDetailData;
       const latestGoodsDetail = await this.mercariApi.fetchGoodDetail({ id: searchCondition.goodId });
-      if (isEmpty(snapshot) || latestGoodsDetail.price !== prev.price || latestGoodsDetail.status === "sold_out" && prev.status !== latestGoodsDetail.status) {
+      if (( isEmpty(snapshot) || latestGoodsDetail.price !== prev.price || prev.status !== latestGoodsDetail.status ) && latestGoodsDetail.status !== "invalid") {
         await sendMercariUpdateAndSaveDb(latestGoodsDetail);
+      }
+      if (latestGoodsDetail.status === "invalid" || latestGoodsDetail.status === "sold_out") {
+        await this.dismiss(cronId);
+        this.logger.info(`Mercari item ${searchCondition.goodId} becomes no longer available, deleting the subscription...`);
       }
     }
   }

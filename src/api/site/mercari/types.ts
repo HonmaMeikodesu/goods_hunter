@@ -97,7 +97,7 @@ interface TransactionEvidence {
 export interface GoodsDetailData {
     id: string;
     seller: Seller;
-    status: "sold_out";
+    status: "sold_out" | "invalid" | "on_sale";
     name: string;
     price: number;
     description: string;

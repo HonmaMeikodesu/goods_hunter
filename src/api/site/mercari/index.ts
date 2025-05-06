@@ -54,6 +54,13 @@ export class MercariApi extends ApiBase {
           "X-Platform": "web",
           DPoP: jwt,
       });
+      if (res.result === "InvisibleItemException") {
+        // @ts-expect-error pass
+        res.data = {
+          status: "sold_out"
+        }
+        return res.data;
+      }
       if (res.result !== "OK") {
           throw new Error(`Unable to fetch mercari good detail of {${id}}, ${JSON.stringify(res)}`
                          );
