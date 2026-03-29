@@ -91,7 +91,7 @@ export class AliCloudApi {
       this.logger.info(`Requesting Serverless FC target_url: ${targetUrl}`);
       const resp = await axios.post(url, body, {
         headers: headers,
-        timeout: 60000, // 60s timeout for browser rendering
+        timeout: 120000, // 120s timeout for browser rendering
       });
       return resp.data as FetchHtmlViaServerlessResponse;
     } catch (e) {
