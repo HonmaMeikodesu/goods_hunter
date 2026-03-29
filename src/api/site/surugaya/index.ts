@@ -2,6 +2,7 @@ import { Inject, Logger, Provide, Scope, ScopeEnum } from "@midwayjs/decorator";
 import { ProxyGet } from "../../request";
 import { ILogger } from "@midwayjs/logger";
 import { ApiBase } from "../base";
+import { AliCloudApi } from "../../alicloud/index";
 import { GoodsBreif, GoodsListResponse, SurugayaGoodsSearchCondition } from "./types";
 import { JSDOM } from "jsdom";
 import { cloneDeep } from "lodash";
@@ -14,6 +15,9 @@ export class SurugayaApi extends ApiBase {
 
     @Logger()
     logger: ILogger;
+
+    @Inject()
+    alicloudApi: AliCloudApi;
 
     async fetchGoodsList(options: SurugayaGoodsSearchCondition): Promise<GoodsListResponse> {
 
@@ -70,23 +74,21 @@ export class SurugayaApi extends ApiBase {
 
             let domStr: string;
 
-            try {
-                domStr = await this.proxyGet<string>(surugayaSearchUrl, {
-                    "Cookie": adultMode ? "safe_search_option=3; safe_search_expired=3;" : undefined
-                }, {
-                    maxRetry: {
-                        count: maxRetry,
-                        breakOnCondition: (error) => {
-                            if (error?.response?.data) {
-                                domStr = error.response.data;
-                                return true;
-                            }
-                        }
-                    }
-                });
-            } catch (error) {
-                if (!domStr) throw error;
-            }
+            const resp = await this.alicloudApi.fetchHtmlViaServerless(surugayaSearchUrl.toString(), "search_result", [
+                {
+                    name: "safe_search_option",
+                    value: "3",
+                    domain: "www.suruga-ya.jp",
+                    path: "/"
+                },
+                {
+                    name: "safe_search_expired",
+                    value: "3",
+                    domain: "www.suruga-ya.jp",
+                    path: "/"
+                },
+            ], undefined, maxRetry);
+            domStr = resp.content;
 
             const dom = new JSDOM(domStr);
 

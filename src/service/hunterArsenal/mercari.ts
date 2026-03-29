@@ -20,6 +20,7 @@ import moment from "moment";
 import { MercariApi } from "../../api/site/mercari";
 import { MercariHunter as MercariHunterModel } from "../../model/mercariHunter";
 import { MercariHunter as MercariHuntetType } from "../../types";
+import { MercariGoodsRecord } from "../../model/mercariGoodsRecord";
 import {
   MercariGoodsSearchCondition,
   GoodsListResponse as MercariGoodsListResponse,
@@ -35,6 +36,9 @@ export class MercariHunterService extends HunterBase {
 
   @InjectEntityModel(MercariHunterModel)
   hunterModel: Repository<MercariHunterModel>;
+
+  @InjectEntityModel(MercariGoodsRecord)
+  mercariGoodsRecordModel: Repository<MercariGoodsRecord>;
 
   @TaskLocal("0 */1 * * * *")
   private async selfPingPong() {
@@ -94,36 +98,18 @@ export class MercariHunterService extends HunterBase {
       this.logger.info(`task ${cronId} gets an empty goodsList, exiting...`);
       return;
     }
-    let filteredGoods: typeof goodsList = [];
-    const nextLatestTime = goodsList.reduce(
-      (max, current) =>
-        toNumber(current.updated) > max ? toNumber(current.updated) : max,
-      toNumber(goodsList[0].updated)
-    );
-    const lastShotAtDateTime = toNumber(
-      (
-        await this.hunterModel.findOne({
-          where: {
-            hunterInstanceId: cronId,
-          },
-        })
-      )?.lastShotAt
-    );
-    if (isNaN(lastShotAtDateTime)) {
-      // first time for this cron shot record
-      filteredGoods = goodsList;
-    } else {
-      const lastShotAt = moment(lastShotAtDateTime).unix();
-      filteredGoods = goodsList.filter(
-        good => toNumber(good.updated) > lastShotAt
-      );
-    }
-    const ignoreGoods = await this.redisClient.smembers(
-      `${CONST.USERIGNORE}_${user.email}`
-    );
-    filteredGoods = filteredGoods.filter(
-      good => !ignoreGoods.includes(good.id)
-    );
+    const lastSeenGoodList = await this.mercariGoodsRecordModel.find({
+      where: {
+        hunter: {
+          hunterInstanceId: cronId,
+        },
+      },
+    });
+
+    let filteredGoods = goodsList.filter(good => {
+      const existed = lastSeenGoodList?.find(item => item.id === good.id);
+      return !existed;
+    });
     Promise.all(
       filteredGoods.map(async good => {
         good.thumbnailData = await this.cipher.encode(first(good.thumbnails));
@@ -146,17 +132,14 @@ export class MercariHunterService extends HunterBase {
             html,
           };
           await this.emailService.sendEmail(emailMessage);
-          const lastestTime = moment
-            .unix(nextLatestTime)
-            .format("YYYY-MM-DD HH:mm:ss");
-          await this.hunterModel.update(
-            {
-              hunterInstanceId: cronId,
-            },
-            {
-              lastShotAt: lastestTime,
-            }
-          );
+
+          await this.mercariGoodsRecordModel.createQueryBuilder().insert().values(filteredGoods.map(good => ({
+            id: good.id,
+            name: good.name,
+            hunter: { hunterInstanceId: cronId },
+            price: good.price || null,
+          }))).execute();
+
           this.logger.info(
             `email sent to ${user.email}, goodsNameRecord:\n${JSON.stringify(
               filteredGoods.map(good => good.name)
@@ -195,7 +178,6 @@ export class MercariHunterService extends HunterBase {
 
     const {
       searchConditionSchema: prevSearchConditionSchema,
-      lastShotAt: prevLastShotAt,
     } = hunter;
     let prevSearchCondition: MercariGoodsSearchCondition;
     try {
@@ -203,16 +185,13 @@ export class MercariHunterService extends HunterBase {
     } catch (e) {
       // pass
     }
-    await this.hunterModel
-      .createQueryBuilder()
-      .update(MercariHunterModel)
-      .set({
-        lastShotAt:
-          prevSearchCondition?.keyword === newHunterInfo.searchCondition.keyword
-            ? null
-            : prevLastShotAt, // 关键词发生改变时，清空lastShotAt
-      })
-      .where("hunterInstanceId = :id", { id })
-      .execute();
+
+    if (prevSearchCondition?.keyword !== newHunterInfo.searchCondition.keyword) {
+      await this.hunterModel.manager.delete(MercariGoodsRecord, {
+        hunter: {
+          hunterInstanceId: id
+        }
+      });
+    }
   }
 }

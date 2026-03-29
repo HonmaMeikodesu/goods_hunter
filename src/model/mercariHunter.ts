@@ -1,7 +1,8 @@
 import { EntityModel } from "@midwayjs/orm";
-import { ManyToOne, Column, CreateDateColumn, UpdateDateColumn } from "typeorm";
+import { ManyToOne, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from "typeorm";
 import { User } from "./user";
 import { GoodsHunterModelBase } from "./types";
+import { MercariGoodsRecord } from "./mercariGoodsRecord";
 
 @EntityModel()
 export class MercariHunter implements GoodsHunterModelBase {
@@ -37,5 +38,8 @@ export class MercariHunter implements GoodsHunterModelBase {
 
   @UpdateDateColumn()
   updatedAt: string;
+
+  @OneToMany(() => MercariGoodsRecord, "hunter", { cascade: true })
+  mercariGoodsRecords: MercariGoodsRecord[];
 }
 

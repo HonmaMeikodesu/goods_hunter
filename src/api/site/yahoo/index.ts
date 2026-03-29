@@ -2,6 +2,7 @@ import { Config, Inject, Logger, Provide, Scope, ScopeEnum } from "@midwayjs/dec
 import { ProxyGet } from "../../request";
 import { ILogger } from "@midwayjs/logger";
 import { ApiBase } from "../base";
+import { AliCloudApi } from "../../alicloud/index";
 import { GoodsBreif, GoodsListResponse, YahooAuctionGoodsSearchCondition } from "./types";
 import { JSDOM } from "jsdom";
 import { cloneDeep } from "lodash";
@@ -19,6 +20,9 @@ export class YahooAuctionApi extends ApiBase {
 
     @Config("yahooAuctionCookie")
     cookie: string;
+
+    @Inject()
+    alicloudApi: AliCloudApi;
 
     async fetchGoodsList(options: YahooAuctionGoodsSearchCondition): Promise<GoodsListResponse> {
 
@@ -90,13 +94,21 @@ export class YahooAuctionApi extends ApiBase {
 
         const maxRetry = (epoch || 1) * 2;
 
+        const parsedCookies = this.cookie ? this.cookie.split(";").map(c => {
+            const [name, ...valueParts] = c.trim().split("=");
+            return {
+                name: name,
+                value: valueParts.join("="),
+                domain: "auctions.yahoo.co.jp",
+                path: "/"
+            };
+        }).filter(c => c.name) : undefined;
+
         await Promise.all(yahooAuctionSearchUrls.map(async (yahooAuctionSearchUrl, idx) => {
 
             this.logger.info(`requesting to ${yahooAuctionSearchUrl}..., currentPage: ${idx}`);
 
-            const domStr = await this.proxyGet<string>(yahooAuctionSearchUrl, {
-                "Cookie": this.cookie
-            }, { maxRetry: { count: maxRetry } });
+            const { content: domStr } = await this.alicloudApi.fetchHtmlViaServerless(yahooAuctionSearchUrl.toString(), "Result__body", parsedCookies, undefined, maxRetry);
 
             const dom = new JSDOM(domStr);
 

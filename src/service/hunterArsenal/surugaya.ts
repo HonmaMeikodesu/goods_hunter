@@ -106,23 +106,11 @@ export class SurugayaHunterService extends HunterBase {
                 })
             );
 
-        let filteredGoods = (goodsList || []).filter((good) => {
+        const filteredGoods = (goodsList || []).filter((good) => {
             const existed = lastSeenGoodList?.find(item => item.id === good.id);
 
-            if (!existed) return true;
-
-            if (good.price && existed.price !== good.price) return true;
-
-            if (good.marketPlacePrice && existed.marketPlacePrice !== good.marketPlacePrice) return true;
-
-        })
-        // FIXME collision between different hunters when getting ignoring goods
-        const ignoreGoods = await this.redisClient.smembers(
-            `Surugaya_${CONST.USERIGNORE}_${user.email}`
-        );
-        filteredGoods = filteredGoods.filter(
-            good => !ignoreGoods.includes(good.id)
-        );
+            return !existed;
+        });
         Promise.all(
             filteredGoods.map(async good => {
                 good.thumbnailData = await this.cipher.encode(
@@ -147,12 +135,7 @@ export class SurugayaHunterService extends HunterBase {
                         html,
                     };
                     await this.emailService.sendEmail(emailMessage);
-                    await this.surugayaGoodsRecordModel.delete({
-                        hunter: {
-                            hunterInstanceId: cronId
-                        }
-                    });
-                    await this.surugayaGoodsRecordModel.createQueryBuilder().insert().values((goodsList || []).map(good => ({
+                    await this.surugayaGoodsRecordModel.createQueryBuilder().insert().values(filteredGoods.map(good => ({
                         id: good.id,
                         name: good.name,
                         hunter: { hunterInstanceId: cronId },

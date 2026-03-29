@@ -112,28 +112,6 @@ export class GoodsController {
     return list;
   }
 
-  @Get("/ignoreGood")
-  async ignoreGood(
-    @Query("iv")
-    iv: string,
-    @Query("message")
-    message: string,
-    @Query("digest")
-    digest: string
-  ) {
-    if (!iv || !message || !digest) throw new Error(errorCode.common.invalidRequestBody);
-    await this.hunterRouteService.addUserIgnoreGoods({ digest, data: { iv, message } });
-  }
-
-  @Post("/cancelGoodIgnore")
-  async cancelGoodIgnore(
-    @Body()
-    payload: CipherPayload
-  ) {
-    if (!payload?.data?.iv || !payload?.data?.message) throw new Error(errorCode.common.invalidRequestBody);
-    await this.hunterRouteService.cancelUserIgnoreGoods(payload);
-  }
-
   @Post("/updateGoodsWatcher")
   async updateGoodsWatcher(
     @Body("id")

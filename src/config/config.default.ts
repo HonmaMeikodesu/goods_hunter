@@ -14,6 +14,11 @@ systemOwner: string;
 contactSystemOwner: string;
 	     },
 secretKeyJwkData: JsonWebKey;
+alicloudConfig?: {
+accessKeyId: string;
+accessKeySecret: string;
+url: string;
+};
 }
 
 export type DefaultConfig = PowerPartial<EggAppConfig> & CustomConfig;
@@ -75,6 +80,12 @@ tz: "Asia/Shanghai",
 		config.yahooAuctionCookie = readFileSync(path.resolve(__dirname, "../private/yahoo.json")).toString().replace(/[\n\r]/g, '');
 	} catch (e) {
 		config.yahooAuctionCookie = "";
+	}
+
+	try {
+		config.alicloudConfig = JSON.parse(readFileSync(path.resolve(__dirname, "../private/alicloud.json")).toString());
+	} catch (e) {
+		config.alicloudConfig = { accessKeyId: "", accessKeySecret: "", url: "" };
 	}
 
 

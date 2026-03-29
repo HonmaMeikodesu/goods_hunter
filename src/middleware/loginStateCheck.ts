@@ -1,6 +1,6 @@
 import { Provide, Logger } from "@midwayjs/decorator";
 import { ILogger } from "@midwayjs/logger";
-import { IMiddleware } from "@midwayjs/core";
+import { IgnoreMatcher, IMiddleware } from "@midwayjs/core";
 import { NextFunction } from "@midwayjs/web";
 import { Context } from "egg";
 import { InjectEntityModel } from "@midwayjs/orm";
@@ -17,11 +17,9 @@ export class LoginStateCheck implements IMiddleware<Context, NextFunction> {
 
   @Logger()
   logger: ILogger;
-
   ignore(ctx?: Context<any>) {
-    return ["/ignoreGood", "/cancelGoodIgnore", "/proxy"].some(path => ctx.path.includes(path))
+    return ["/proxy"].some(path => ctx.path.includes(path));
   }
-
   resolve() {
     return async (ctx: Context, next: NextFunction) => {
       const loginState = ctx.cookies.get("loginState") as string | undefined;

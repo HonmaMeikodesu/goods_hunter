@@ -48,6 +48,43 @@ export class ApiMock implements ISimulation {
             }
         };
 
+        this.mercariApi.alicloudApi = {
+            alicloudConfig: {
+                accessKeyId: "",
+                accessKeySecret: "",
+                url: "",
+            },
+            logger: {} as any,
+            fetchHtmlViaServerless: async (targetUrl: string, pageLoadedAssertion?: string, cookies?: Array<{ name: string; value: string; domain: string; path: string }>, maxAssertionWaitSeconds?: number, maxRetries?: number) => {
+                if (targetUrl.includes("items/get")) {
+                    const fileContent = await readFile(resolve(__dirname, "../api/site/mercari/mock/goodDetail.html"));
+                    const content = fileContent.toString();
+                    return {
+                        success: true,
+                        url: targetUrl,
+                        title: "Mock Title",
+                        content: content,
+                        content_length: content.length,
+                        cookies_count: 0,
+                        cookies: [],
+                        cloudflare_detected: false,
+                        retry_count: 1
+                    } as any;
+                }
+                return {
+                    success: true,
+                    url: targetUrl,
+                    title: "",
+                    content: "",
+                    content_length: 0,
+                    cookies_count: 0,
+                    cookies: [],
+                    cloudflare_detected: false,
+                    retry_count: 1
+                } as any;
+            }
+        }
+
 
         this.mercariApi.fetchGoodDetail = async function (...args: any[]) {
             const res: ReturnType<typeof originMercariFetchGoodDetail> = originMercariFetchGoodDetail.call(this, ...args);

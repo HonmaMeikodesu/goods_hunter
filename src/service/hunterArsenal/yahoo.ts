@@ -120,23 +120,12 @@ export class YahooHunterService extends HunterBase {
         })
       );
 
-    let filteredGoods = (goodsList || []).filter((good) => {
+    const filteredGoods = (goodsList || []).filter((good) => {
       const existed = lastSeenAuctionList?.find(item => item.auctionId === good.id);
 
-      if (!existed) return true;
+      return !existed;
+    });
 
-      if (good.currentPrice && existed.currentPrice !== good.currentPrice) return true;
-
-      if (good.buyNowPrice && existed.buyNowPrice !== good.buyNowPrice) return true;
-    })
-
-    // FIXME collision between different hunters when getting ignoring goods
-    const ignoreGoods = await this.redisClient.smembers(
-      `Yahoo_${CONST.USERIGNORE}_${user.email}`
-    );
-    filteredGoods = filteredGoods.filter(
-      good => !ignoreGoods.includes(good.id)
-    );
     Promise.all(
       filteredGoods.map(async good => {
         good.thumbnailData = await this.cipher.encode(
@@ -161,15 +150,7 @@ export class YahooHunterService extends HunterBase {
             html,
           };
           await this.emailService.sendEmail(emailMessage);
-          await this.yahooAuctionRecordModel.delete(
-            {
-              hunter: {
-                hunterInstanceId: cronId
-              }
-            }
-          );
-
-          await this.yahooAuctionRecordModel.createQueryBuilder().insert().values((goodsList || []).map(good => ({
+          await this.yahooAuctionRecordModel.createQueryBuilder().insert().values(filteredGoods.map(good => ({
             hunter: { hunterInstanceId: cronId },
             auctionId: good.id,
             auctionName: good.name,

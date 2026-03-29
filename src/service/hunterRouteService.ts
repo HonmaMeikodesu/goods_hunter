@@ -65,26 +65,6 @@ export class HunterRouteService {
     return [...mercariHunterList, ...yahooHunterList, ...surugayaHunterList, ...surveillanceHunterList];
   }
 
-  // FIXME unlikely conflict between different sites
-  async addUserIgnoreGoods(payload: CipherPayload) {
-    await this.cipher.checkIfMessageConsumed(payload.data.message);
-    const decodedMessage = await this.cipher.decode(payload);
-    const [user, goodId] = decodedMessage.split(" ");
-
-    await this.redisClient.sadd(`${CONST.USERIGNORE}_${user}`, goodId);
-    await this.cipher.addMessageToConsume(payload.data.message);
-  }
-
-  async cancelUserIgnoreGoods(payload: CipherPayload) {
-    await this.cipher.checkIfMessageConsumed(payload.data.message);
-    const decodedMessage = await this.cipher.decode(payload);
-
-    const [user, goodId] = decodedMessage.split(" ");
-
-    await this.redisClient.srem(`${CONST.USERIGNORE}_${user}`, goodId);
-    await this.cipher.addMessageToConsume(payload.data.message);
-  }
-
   async transferHunter(
     id: string,
     newHunterInfo: Pick<
