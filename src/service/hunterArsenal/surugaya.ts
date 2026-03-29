@@ -95,21 +95,21 @@ export class SurugayaHunterService extends HunterBase {
             return;
         }
 
-        const lastSeenGoodList =
-            (
-                await this.surugayaGoodsRecordModel.find({
-                    where: {
-                        hunter: {
-                            hunterInstanceId: cronId
-                        },
-                    },
-                })
-            );
+        const goodsIds = goodsList.map(good => good.id);
+        const lastSeenGoodList = await this.surugayaGoodsRecordModel.find({
+            where: {
+                hunter: {
+                    hunterInstanceId: cronId
+                },
+                id: In(goodsIds),
+            },
+            select: ["id"],
+        });
 
-        const filteredGoods = (goodsList || []).filter((good) => {
-            const existed = lastSeenGoodList?.find(item => item.id === good.id);
+        const lastSeenGoodIds = new Set(lastSeenGoodList.map(item => item.id));
 
-            return !existed;
+        const filteredGoods = goodsList.filter((good) => {
+            return !lastSeenGoodIds.has(good.id);
         });
         Promise.all(
             filteredGoods.map(async good => {

@@ -1,6 +1,6 @@
 import { Provide, Inject, Scope, ScopeEnum, Config, TaskLocal, Init } from "@midwayjs/decorator";
 import { YahooAuctionApi } from "../../api/site/yahoo";
-import { Repository } from "typeorm";
+import { In, Repository } from "typeorm";
 import { InjectEntityModel } from "@midwayjs/orm";
 import { Context } from "egg";
 import { YahooHunter as YahooHunterModel } from "../../model/yahooHunter";
@@ -109,21 +109,21 @@ export class YahooHunterService extends HunterBase {
       return;
     }
 
-    const lastSeenAuctionList =
-      (
-        await this.yahooAuctionRecordModel.find({
-          where: {
-            hunter: {
-              hunterInstanceId: cronId,
-            }
-          },
-        })
-      );
+    const goodsIds = goodsList.map(good => good.id);
+    const lastSeenAuctionList = await this.yahooAuctionRecordModel.find({
+      where: {
+        hunter: {
+          hunterInstanceId: cronId,
+        },
+        auctionId: In(goodsIds),
+      },
+      select: ["auctionId"],
+    });
 
-    const filteredGoods = (goodsList || []).filter((good) => {
-      const existed = lastSeenAuctionList?.find(item => item.auctionId === good.id);
+    const lastSeenAuctionIds = new Set(lastSeenAuctionList.map(item => item.auctionId));
 
-      return !existed;
+    const filteredGoods = goodsList.filter((good) => {
+      return !lastSeenAuctionIds.has(good.id);
     });
 
     Promise.all(

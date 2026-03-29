@@ -6,7 +6,7 @@ import {
   Init,
   TaskLocal,
 } from "@midwayjs/decorator";
-import { Repository } from "typeorm";
+import { In, Repository } from "typeorm";
 import { InjectEntityModel } from "@midwayjs/orm";
 import { Context } from "egg";
 import { first, isEmpty, toNumber } from "lodash";
@@ -98,17 +98,21 @@ export class MercariHunterService extends HunterBase {
       this.logger.info(`task ${cronId} gets an empty goodsList, exiting...`);
       return;
     }
+    const goodsIds = goodsList.map(good => good.id);
     const lastSeenGoodList = await this.mercariGoodsRecordModel.find({
       where: {
         hunter: {
           hunterInstanceId: cronId,
         },
+        id: In(goodsIds),
       },
+      select: ["id"],
     });
 
+    const lastSeenGoodIds = new Set(lastSeenGoodList.map(item => item.id));
+
     let filteredGoods = goodsList.filter(good => {
-      const existed = lastSeenGoodList?.find(item => item.id === good.id);
-      return !existed;
+      return !lastSeenGoodIds.has(good.id);
     });
     Promise.all(
       filteredGoods.map(async good => {
