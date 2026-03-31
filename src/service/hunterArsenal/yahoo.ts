@@ -48,7 +48,7 @@ export class YahooHunterService extends HunterBase {
     this.logger.info("cookie heart beat check finished")
   }
 
-  @TaskLocal("0 */1 * * * *")
+  @TaskLocal("*/5 * * * *")
   private async selfPingPong() {
     await super.pingpongTask();
   }

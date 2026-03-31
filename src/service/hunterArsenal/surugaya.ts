@@ -35,7 +35,7 @@ export class SurugayaHunterService extends HunterBase {
     @Config("emailConfig")
     mailInfo: CustomConfig["emailConfig"];
 
-    @TaskLocal("0 */1 * * * *")
+    @TaskLocal("*/5 * * * *")
     private async selfPingPong() {
         await super.pingpongTask();
     }

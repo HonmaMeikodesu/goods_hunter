@@ -40,7 +40,7 @@ export class MercariHunterService extends HunterBase {
   @InjectEntityModel(MercariGoodsRecord)
   mercariGoodsRecordModel: Repository<MercariGoodsRecord>;
 
-  @TaskLocal("0 */1 * * * *")
+  @TaskLocal("*/5 * * * *")
   private async selfPingPong() {
     await super.pingpongTask();
   }

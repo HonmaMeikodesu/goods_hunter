@@ -41,7 +41,7 @@ export class SurveillanceHunterService extends HunterBase {
   yahooApi: YahooAuctionApi;
 
 
-  @TaskLocal("0 */1 * * * *")
+  @TaskLocal("*/5 * * * *")
   private async selfPingPong() {
     await super.pingpongTask();
   }

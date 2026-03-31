@@ -88,7 +88,7 @@ export class GoodsController {
         goodId
       },
       type: "Surveillance",
-      schedule: "*/3 * * * * *",
+      schedule: "*/3 * * * *",
       user: { email: user.email },
     });
   }
