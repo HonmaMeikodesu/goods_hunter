@@ -14,7 +14,7 @@
     "@midwayjs/redis": "^3.0.0",
     "@midwayjs/task": "^3.0.0",
     "@midwayjs/web": "^3.12.0",
-    "cron": "^3.0.0",
+    "cron": "^4.4.0",
     "cron-validator": "^1.2.1",
     "crypto-js": "^4.1.1",
     "egg": "^2.0.0",

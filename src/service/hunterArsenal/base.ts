@@ -96,7 +96,7 @@ export default abstract class HunterBase {
     async pingpongTask() {
         Object.keys(this.cronList).map(async key => {
             const { jobInstance, id, schedule } = this.cronList[key];
-            if (!jobInstance.running) {
+            if (!jobInstance.isActive) {
                 this.logger.error(
                     `task ${id} terminated unexpectedly, try respawning...`
                 );
@@ -112,7 +112,7 @@ export default abstract class HunterBase {
 
     async spawnCronJob(id: string, schedule: string) {
         const hunter = this.cronList[id];
-        if (hunter?.jobInstance?.running) {
+        if (hunter?.jobInstance?.isActive) {
             // cronjob还跑着，直接返回
             this.logger.warn(`task ${id} is alreay running`);
             return;
