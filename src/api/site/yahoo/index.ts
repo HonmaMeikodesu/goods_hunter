@@ -156,9 +156,7 @@ export class YahooAuctionApi extends ApiBase {
                     currentBidCount: parseInt(currentBidCount),
                     endTime: parseInt(auctionEndtime) * 1000,
                     isFreeShipping: auctionIsfreeshipping === "1",
-                    isBrandNew: !!isBrandNew,
-                    thumbnailData: null,
-                    ignoreInstruction: null
+                    isBrandNew: !!isBrandNew
                 });
             })
         }));

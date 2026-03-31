@@ -80,7 +80,7 @@
           href="https://jp.mercari.com/item/<%= data.id %>"
         >
           <img
-            src="http://<%= serverHost %>/proxy/getImage?iv=<%= data.thumbnailData.data.iv %>&message=<%= data.thumbnailData.data.message %>&digest=<%= data.thumbnailData.digest %>"
+            src="<%= data.thumbnails[0] %>"
             alt=""
             class="image"
             onerror="this.src = this.parentElement.href"

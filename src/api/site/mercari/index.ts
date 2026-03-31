@@ -25,11 +25,12 @@ export class MercariApi extends ApiBase {
   async fetchGoodsList(searchOptions: MercariGoodsSearchCondition): Promise<GoodsListResponse> {
     const { keyword } = searchOptions;
     // We only keep `keyword` as per the spec.
-    const targetUrl = `https://jp.mercari.com/search?keyword=${encodeURIComponent(keyword)}&sort=created_time&order=desc`;
+    const targetUrl = `https://jp.mercari.com/search?keyword=${encodeURIComponent(keyword)}&order=desc&sort=created_time`;
+    
     
     let html: string;
     try {
-      const resp = await this.alicloudApi.fetchHtmlViaServerless(targetUrl, "item-grid", [], undefined, 3);
+      const resp = await this.alicloudApi.fetchHtmlViaServerless(targetUrl, "merItemThumbnail", [], undefined, 3);
       html = resp.content;
     } catch (e) {
       this.logger.error("Failed to fetch mercari from Serverless FC", e);

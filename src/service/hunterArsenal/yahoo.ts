@@ -48,7 +48,7 @@ export class YahooHunterService extends HunterBase {
     this.logger.info("cookie heart beat check finished")
   }
 
-  @TaskLocal("*/5 * * * *")
+  @TaskLocal("*/2 * * * *")
   private async selfPingPong() {
     await super.pingpongTask();
   }
@@ -126,57 +126,46 @@ export class YahooHunterService extends HunterBase {
       return !lastSeenAuctionIds.has(good.id);
     });
 
-    Promise.all(
-      filteredGoods.map(async good => {
-        good.thumbnailData = await this.cipher.encode(
-          good.thumbImgUrl
-        );
-        good.ignoreInstruction = await this.cipher.encode(
-          `${user.email} ${good.id}`
-        );
-        return good;
-      })
-    )
-      .then(async () => {
-        if (!isEmpty(filteredGoods)) {
-          const html = render(yahooGoodsList, {
-            data: filteredGoods,
-            serverHost: this.serverInfo.serverHost,
-          });
+    try {
+      if (!isEmpty(filteredGoods)) {
+        const html = render(yahooGoodsList, {
+          data: filteredGoods,
+          serverHost: this.serverInfo.serverHost,
+        });
 
-          const emailMessage: Mail.Options = {
-            to: user.email,
-            subject: `New update on yahoo auctions of your interest, keyword:${searchCondition.keyword}`,
-            html,
-          };
-          await this.emailService.sendEmail(emailMessage);
-          await this.yahooAuctionRecordModel.createQueryBuilder().insert().values(filteredGoods.map(good => ({
-            hunter: { hunterInstanceId: cronId },
-            auctionId: good.id,
-            auctionName: good.name,
-            currentPrice: good.currentPrice || null,
-            buyNowPrice: good.buyNowPrice || null,
-            currentBidCount: good.currentBidCount || null
-          }))).execute();
-          this.logger.info(
-            `email sent to ${user.email
-            }, goodsNameRecord:\n${JSON.stringify(
-              filteredGoods.map(good => good.name)
-            )}\n`
-          ); }
+        const emailMessage: Mail.Options = {
+          to: user.email,
+          subject: `New update on yahoo auctions of your interest, keyword:${searchCondition.keyword}`,
+          html,
+        };
+        await this.emailService.sendEmail(emailMessage);
+        await this.yahooAuctionRecordModel.createQueryBuilder().insert().values(filteredGoods.map(good => ({
+          hunter: { hunterInstanceId: cronId },
+          auctionId: good.id,
+          auctionName: good.name,
+          currentPrice: good.currentPrice || null,
+          buyNowPrice: good.buyNowPrice || null,
+          currentBidCount: good.currentBidCount || null
+        }))).execute();
         this.logger.info(
-          `task ${cronId} executed steady and sound at ${moment().format(
-            "YYYY:MM:DD hh:mm:ss"
-          )}`
+          `email sent to ${user.email
+          }, goodsNameRecord:\n${JSON.stringify(
+            filteredGoods.map(good => good.name)
+          )}\n`
         );
-      })
-      .catch(e => {
-        this.logger.error(
-          `task ${cronId} execution failed at ${moment().format(
-            "YYYY:MM:DD hh:mm:ss"
-          )}, here is the error message:\n${e}`
-        );
-      });
+      }
+      this.logger.info(
+        `task ${cronId} executed steady and sound at ${moment().format(
+          "YYYY:MM:DD hh:mm:ss"
+        )}`
+      );
+    } catch (e) {
+      this.logger.error(
+        `task ${cronId} execution failed at ${moment().format(
+          "YYYY:MM:DD hh:mm:ss"
+        )}, here is the error message:\n${e}`
+      );
+    };
   }
 
 

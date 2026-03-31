@@ -40,7 +40,7 @@ export class MercariHunterService extends HunterBase {
   @InjectEntityModel(MercariGoodsRecord)
   mercariGoodsRecordModel: Repository<MercariGoodsRecord>;
 
-  @TaskLocal("*/5 * * * *")
+  @TaskLocal("*/2 * * * *")
   private async selfPingPong() {
     await super.pingpongTask();
   }
@@ -114,17 +114,9 @@ export class MercariHunterService extends HunterBase {
     let filteredGoods = goodsList.filter(good => {
       return !lastSeenGoodIds.has(good.id);
     });
-    Promise.all(
-      filteredGoods.map(async good => {
-        good.thumbnailData = await this.cipher.encode(first(good.thumbnails));
-        good.ignoreInstruction = await this.cipher.encode(
-          `${user.email} ${good.id}`
-        );
-        return good;
-      })
-    )
-      .then(async () => {
-        if (!isEmpty(filteredGoods)) {
+
+    try {
+         if (!isEmpty(filteredGoods)) {
           const html = render(mercariGoodsList, {
             data: filteredGoods,
             serverHost: this.serverInfo.serverHost,
@@ -154,15 +146,14 @@ export class MercariHunterService extends HunterBase {
           `task ${cronId} executed steady and sound at ${moment().format(
             "YYYY:MM:DD hh:mm:ss"
           )}`
-        );
-      })
-      .catch(e => {
+        );     
+    } catch(e) {
         this.logger.error(
           `task ${cronId} execution failed at ${moment().format(
             "YYYY:MM:DD hh:mm:ss"
           )}, here is the error message:\n${e}`
         );
-      });
+    }
   }
 
   async transfer(

@@ -35,7 +35,7 @@ export class SurugayaHunterService extends HunterBase {
     @Config("emailConfig")
     mailInfo: CustomConfig["emailConfig"];
 
-    @TaskLocal("*/5 * * * *")
+    @TaskLocal("*/2 * * * *")
     private async selfPingPong() {
         await super.pingpongTask();
     }
@@ -111,18 +111,8 @@ export class SurugayaHunterService extends HunterBase {
         const filteredGoods = goodsList.filter((good) => {
             return !lastSeenGoodIds.has(good.id);
         });
-        Promise.all(
-            filteredGoods.map(async good => {
-                good.thumbnailData = await this.cipher.encode(
-                    good.thumbImgUrl
-                );
-                good.ignoreInstruction = await this.cipher.encode(
-                    `${user.email} ${good.id}`
-                );
-                return good;
-            })
-        )
-            .then(async () => {
+
+        try {
                 if (!isEmpty(filteredGoods)) {
                     const html = render(surugayaGoodsList, {
                         data: filteredGoods,
@@ -154,14 +144,13 @@ export class SurugayaHunterService extends HunterBase {
                         "YYYY:MM:DD hh:mm:ss"
                     )}`
                 );
-            })
-            .catch(e => {
-                this.logger.error(
-                    `task ${cronId} execution failed at ${moment().format(
-                        "YYYY:MM:DD hh:mm:ss"
-                    )}, here is the error message:\n${e}`
-                );
-            });
+        } catch (e) {
+            this.logger.error(
+                `task ${cronId} execution failed at ${moment().format(
+                    "YYYY:MM:DD hh:mm:ss"
+                )}, here is the error message:\n${e}`
+            );
+        }
     }
 
 

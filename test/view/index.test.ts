@@ -67,16 +67,6 @@ describe('view/*.ejs', () => {
       { encoding: "utf-8" }
     ));
 
-    goodsListDemo.items = await Promise.all(goodsListDemo.items.map(async (item) => {
-      return {
-        ...item,
-        thumbnailData: await cipher.encode(first(item.thumbnails)!),
-        ignoreInstruction: await cipher.encode(
-          `user@email.com ${item.id}`
-        )
-      }
-    })) ;
-
     const htmlPage = render(mercariGoodsList, {
       data: goodsListDemo.items,
       serverHost: serverInfo.serverHost,

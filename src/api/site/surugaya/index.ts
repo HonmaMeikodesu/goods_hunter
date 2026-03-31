@@ -105,9 +105,7 @@ export class SurugayaApi extends ApiBase {
                     name: title,
                     thumbImgUrl,
                     price,
-                    marketPlacePrice,
-                    thumbnailData: null,
-                    ignoreInstruction: null
+                    marketPlacePrice
                 });
             })
         }));

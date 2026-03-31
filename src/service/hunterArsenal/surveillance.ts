@@ -41,7 +41,7 @@ export class SurveillanceHunterService extends HunterBase {
   yahooApi: YahooAuctionApi;
 
 
-  @TaskLocal("*/5 * * * *")
+  @TaskLocal("*/2 * * * *")
   private async selfPingPong() {
     await super.pingpongTask();
   }
@@ -115,7 +115,7 @@ export class SurveillanceHunterService extends HunterBase {
       const html = render(mercariGoodsDetail, {
         data: {
           id,
-          thumbnailData: await this.cipher.encode(first(thumbnails)),
+          thumbnails,
           status,
           name,
           oldPrice: prev.price,

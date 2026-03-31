@@ -16,15 +16,6 @@ export abstract class ApiBase {
 
   abstract fetchGoodsList(searchOptions: any): Promise<any>
 
-  async fetchThumbNail(url: string): Promise<ReadStream> {
-    const imgStream = await this.proxyGet<ReadStream>(
-      url,
-      {},
-      { responseType: "stream" }
-    );
-    return imgStream;
-  }
-
 }
 
 

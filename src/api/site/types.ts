@@ -13,8 +13,5 @@ export type GoodsSurveillanceConditionBase = {
 
 export type GoodsSearchCondition = MercariGoodsSearchCondition | YahooAuctionGoodsSearchCondition;
 
-export type GoodsBreifExtension = {
-  thumbnailData: CipherPayload
-  ignoreInstruction: CipherPayload;
-}
+export type GoodsBreifExtension = {}
 
