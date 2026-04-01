@@ -30,7 +30,14 @@ export class MercariApi extends ApiBase {
     
     let html: string;
     try {
-      const resp = await this.alicloudApi.fetchHtmlViaServerless(targetUrl, "merItemThumbnail", [], undefined, 3);
+      const resp = await this.alicloudApi.fetchHtmlViaServerless(
+        targetUrl,
+        "merItemThumbnail",
+        [],
+        undefined,
+        3,
+        `localStorage.setItem("userPreferenceCurrencyCode", '"JPY"')`
+      );
       html = resp.content;
     } catch (e) {
       this.logger.error("Failed to fetch mercari from Serverless FC", e);

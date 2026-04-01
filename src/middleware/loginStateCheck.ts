@@ -18,7 +18,7 @@ export class LoginStateCheck implements IMiddleware<Context, NextFunction> {
   @Logger()
   logger: ILogger;
   ignore(ctx?: Context<any>) {
-    return [].some(path => ctx.path.includes(path));
+    return ["/api/config/proxy"].some(path => ctx.path.includes(path));
   }
   resolve() {
     return async (ctx: Context, next: NextFunction) => {

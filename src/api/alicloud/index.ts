@@ -33,7 +33,8 @@ export class AliCloudApi {
     pageLoadedAssertion?: string,
     cookies?: Array<{ name: string; value: string; domain: string; path: string }>,
     maxAssertionWaitSeconds?: number,
-    maxRetries?: number
+    maxRetries?: number,
+    evaluateScript?: string
   ): Promise<FetchHtmlViaServerlessResponse> {
     const { accessKeyId, accessKeySecret, url } = this.alicloudConfig;
     if (!accessKeyId || !accessKeySecret || !url) {
@@ -55,6 +56,9 @@ export class AliCloudApi {
     }
     if (maxRetries !== undefined) {
       body.max_retries = maxRetries;
+    }
+    if (evaluateScript) {
+      body.evaluate_script = evaluateScript;
     }
 
     const date = new Date().toISOString();
