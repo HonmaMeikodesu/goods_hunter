@@ -11,6 +11,7 @@ import { MercariHunter } from "./mercariHunter";
 import { YahooHunter } from "./yahooHunter";
 import { SurugayaHunter as SurugayaHunterType } from "./surugaya";
 import { SurveillanceRecord } from "./surveillanceRecord";
+import { MandarakeHunter } from "./mandarakeHunter";
 
 @EntityModel()
 export class User {
@@ -40,6 +41,9 @@ export class User {
 
   @OneToMany(() => SurugayaHunterType, "user", { cascade: true })
   surugayaHunters: SurugayaHunterType[];
+
+  @OneToMany(() => MandarakeHunter, "user", { cascade: true })
+  mandarakeHunters: MandarakeHunter[];
 }
 
 

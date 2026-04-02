@@ -33,6 +33,10 @@ export interface SurugayaHunter extends GoodsHunter {
   searchCondition: GoodsSearchCondition;
 }
 
+export interface MandarakeHunter extends GoodsHunter {
+  searchCondition: GoodsSearchCondition;
+}
+
 export interface SurveillanceHunter extends GoodsHunter {
   searchCondition: GoodsSurveillanceConditionBase
   snapshot: string

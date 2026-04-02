@@ -13,6 +13,7 @@ import {
   MercariHunter as MercariHunterType,
   YahooHunter as YahooHunterType,
   SurugayaHunter as SurugayaHunterType,
+  MandarakeHunter as MandarakeHunterType,
   CipherPayload,
   SurveillanceHunter as SurveillanceHunterType,
 } from "../types";
@@ -20,7 +21,7 @@ import CONST from "../const";
 import { Context } from "egg";
 import { CustomConfig } from "../config/config.default";
 import CipherServive from "./cipher";
-import { YahooHunter, MercariHunter, SurugayaHunter, SurveillanceHunter } from "./hunterArsenal";
+import { YahooHunter, MercariHunter, SurugayaHunter, MandarakeHunter, SurveillanceHunter } from "./hunterArsenal";
 
 function hunterCognition<T extends GoodsHunter>(
   hunterInfo: Partial<GoodsHunter>,
@@ -43,6 +44,9 @@ export class HunterRouteService {
   surugayaHunter: SurugayaHunter;
 
   @Inject()
+  mandarakeHunter: MandarakeHunter;
+
+  @Inject()
   surveillanceHunter: SurveillanceHunter;
 
   @Config("serverInfo")
@@ -61,8 +65,15 @@ export class HunterRouteService {
     const mercariHunterList = await this.mercariHunter.getCronList(email);
     const yahooHunterList = await this.yahooHunter.getCronList(email);
     const surugayaHunterList = await this.surugayaHunter.getCronList(email);
-    const  surveillanceHunterList = await this.surveillanceHunter.getCronList(email);
-    return [...mercariHunterList, ...yahooHunterList, ...surugayaHunterList, ...surveillanceHunterList];
+    const mandarakeHunterList = await this.mandarakeHunter.getCronList(email);
+    const surveillanceHunterList = await this.surveillanceHunter.getCronList(email);
+    return [
+      ...mercariHunterList,
+      ...yahooHunterList,
+      ...surugayaHunterList,
+      ...mandarakeHunterList,
+      ...surveillanceHunterList,
+    ];
   }
 
   async transferHunter(
@@ -81,6 +92,9 @@ export class HunterRouteService {
     if (hunterCognition<SurugayaHunterType>(newHunterInfo, (info) => info.type === "Surugaya")) {
       await this.surugayaHunter.transfer(id, newHunterInfo);
     }
+    if (hunterCognition<MandarakeHunterType>(newHunterInfo, (info) => info.type === "Mandarake")) {
+      await this.mandarakeHunter.transfer(id, newHunterInfo);
+    }
     if (hunterCognition<SurveillanceHunterType>(newHunterInfo, (info) => info.type === "Surveillance")) {
       await this.surveillanceHunter.transfer(id, newHunterInfo);
     }
@@ -96,6 +110,9 @@ export class HunterRouteService {
         break;
       case "Surugaya":
         await this.surugayaHunter.dismiss(id);
+        break;
+      case "Mandarake":
+        await this.mandarakeHunter.dismiss(id);
         break;
       case "Surveillance":
         await this.surveillanceHunter.dismiss(id);
@@ -122,12 +139,21 @@ export class HunterRouteService {
     }
 
     if (
-      hunterCognition<YahooHunterType>(
+      hunterCognition<SurugayaHunterType>(
         hunterInfo,
         info => info.type === "Surugaya"
       )
     ) {
       await this.surugayaHunter.hire(ctx, hunterInfo);
+    }
+
+    if (
+      hunterCognition<MandarakeHunterType>(
+        hunterInfo,
+        info => info.type === "Mandarake"
+      )
+    ) {
+      await this.mandarakeHunter.hire(ctx, hunterInfo);
     }
 
     if (

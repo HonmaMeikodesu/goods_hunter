@@ -12,6 +12,7 @@ import { YahooHunter } from "../model/yahooHunter";
 import { GoodsHunterModelBase } from "../model/types";
 import { SurugayaHunter } from "../model/surugaya";
 import { SurveillanceRecord } from "../model/surveillanceRecord";
+import { MandarakeHunter } from "../model/mandarakeHunter";
 
 @Provide()
 export class GoodsService {
@@ -32,6 +33,9 @@ export class GoodsService {
   @InjectEntityModel(SurugayaHunter)
   surugayaHunterModel: Repository<SurugayaHunter>;
 
+  @InjectEntityModel(MandarakeHunter)
+  mandarakeHunterModel: Repository<MandarakeHunter>;
+
   @InjectEntityModel(SurveillanceRecord)
   surveillanceRecord: Repository<SurveillanceRecord>;
 
@@ -41,7 +45,16 @@ export class GoodsService {
 
   async deleteTask(id: string, type: GoodsHunter["type"]) {
     const user = this.ctx.user as UserInfo;
-    const targetModel: Repository<GoodsHunterModelBase> = type === "Mercari" ? this.mercariHunterModel : type === "Yahoo" ? this.yahooHunterModel : type === "Surugaya" ? this.surugayaHunterModel : this.surveillanceRecord;
+    const targetModel: Repository<GoodsHunterModelBase> =
+      type === "Mercari"
+        ? this.mercariHunterModel
+        : type === "Yahoo"
+        ? this.yahooHunterModel
+        : type === "Surugaya"
+        ? this.surugayaHunterModel
+        : type === "Mandarake"
+        ? this.mandarakeHunterModel
+        : this.surveillanceRecord;
     const abortingHunter = await targetModel.findOne({
       where: {
         hunterInstanceId: id

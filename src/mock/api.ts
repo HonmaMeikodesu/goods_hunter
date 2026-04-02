@@ -2,6 +2,7 @@ import { App, IMidwayApplication, Inject, ISimulation, MidwayMockService, Mock }
 import { MercariApi } from "../api/site/mercari";
 import { YahooAuctionApi } from "../api/site/yahoo";
 import { SurugayaApi } from "../api/site/surugaya";
+import { MandarakeApi } from "../api/site/mandarake";
 import { readFile } from "fs/promises";
 import { resolve } from "path";
 import { ProxyGet, ProxyPost } from "../api/request";
@@ -26,6 +27,9 @@ export class ApiMock implements ISimulation {
 
     @Inject()
     surugayaApi: SurugayaApi;
+
+    @Inject()
+    mandarakeApi: MandarakeApi;
 
     async setup(): Promise<void> {
 
@@ -139,6 +143,44 @@ export class ApiMock implements ISimulation {
             const res: ReturnType<typeof originSurugayaFetchGoodsList> = originSurugayaFetchGoodsList.call(this, ...args);
             const data = await res;
             return data.map((item) => ({ ...item, id: `https://www.suruga-ya.jp/product/detail/${v4()}` }));
+        };
+
+        const originMandarakeFetchGoodsList = this.mandarakeApi.fetchGoodsList;
+
+        this.mandarakeApi.alicloudApi = {
+            alicloudConfig: {
+                accessKeyId: "",
+                accessKeySecret: "",
+                url: "",
+            },
+            logger: {} as any,
+            fetchHtmlViaServerless: async (targetUrl: string) => {
+                if (targetUrl.includes("mandarake")) {
+                    const fileContent = await readFile(resolve(__dirname, "../api/site/mandarake/mock/goodsList.html"));
+                    const content = fileContent.toString();
+                    return {
+                        success: true,
+                        url: targetUrl,
+                        title: "Mock Mandarake",
+                        content: content,
+                        content_length: content.length,
+                        cookies_count: 0,
+                        cookies: [],
+                        cloudflare_detected: false,
+                        retry_count: 1
+                    } as any;
+                }
+                return { success: false } as any;
+            }
+        };
+
+        this.mandarakeApi.fetchGoodsList = async function (...args: any) {
+            const res: ReturnType<typeof originMandarakeFetchGoodsList> = originMandarakeFetchGoodsList.call(this, ...args);
+            const data = await res;
+            return {
+                ...data,
+                items: (data.items || []).map(item => ({ ...item, id: v4() }))
+            };
         };
 
         this.mockService.mockClassProperty(EmailService, "sendEmail", (msg: Mail.Options) => {

@@ -21,6 +21,10 @@ export const surugayaGoodsList = fs.readFileSync(
   { encoding: "utf-8" }
 );
 
+export const mandarakeGoodsList = fs.readFileSync(
+  path.join(__dirname, "../view/mandarake/goodsList.ejs"),
+  { encoding: "utf-8" }
+);
 
 export const indexPage = fs.readFileSync(
   path.join(__dirname, "../view/index.ejs"),
