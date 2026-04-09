@@ -1,9 +1,6 @@
 import { Provide, Inject, Logger, Scope, ScopeEnum } from "@midwayjs/decorator";
-import { ProxyPost } from "../../request";
 import { ILogger } from "@midwayjs/logger";
-import generateJwt from "generate-mercari-jwt";
-import { GoodDetailResponse, GoodsListResponse, MercariGoodsSearchCondition } from "./types";
-import { v4 } from "uuid";
+import { GoodsListResponse, MercariGoodsSearchCondition } from "./types";
 import { ApiBase } from "../base";
 import { AliCloudApi } from "../../alicloud/index";
 
@@ -12,9 +9,6 @@ import { AliCloudApi } from "../../alicloud/index";
   allowDowngrade: true,
 })
 export class MercariApi extends ApiBase {
-
-  @Inject("proxyPost")
-  proxyPost: ProxyPost;
 
   @Logger()
   logger: ILogger;

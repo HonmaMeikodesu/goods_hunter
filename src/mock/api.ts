@@ -5,7 +5,6 @@ import { SurugayaApi } from "../api/site/surugaya";
 import { MandarakeApi } from "../api/site/mandarake";
 import { readFile } from "fs/promises";
 import { resolve } from "path";
-import { ProxyGet, ProxyPost } from "../api/request";
 import { EmailService } from "../service/email";
 import Mail from "nodemailer/lib/mailer";
 import moment from "moment";
@@ -35,22 +34,6 @@ export class ApiMock implements ISimulation {
 
         const originMercariFetchGoodsList = this.mercariApi.fetchGoodsList;
         const originMercariFetchGoodDetail = this.mercariApi.fetchGoodDetail;
-
-        this.mercariApi.proxyPost = async (url: URL | string) => {
-            const urlStr = url.toString();
-            if (urlStr.includes("entities:search")) {
-                const fileContent = await readFile(resolve(__dirname, "../api/site/mercari/mock/goodsList.json"));
-                return JSON.parse(fileContent.toString());
-            }
-        };
-
-        this.mercariApi.proxyGet = async (url: URL | string) => {
-            const urlStr = url.toString();
-            if (urlStr.includes("items/get")) {
-                const fileContent = await readFile(resolve(__dirname, "../api/site/mercari/mock/goodDetail.json"));
-                return JSON.parse(fileContent.toString());
-            }
-        };
 
         this.mercariApi.alicloudApi = {
             alicloudConfig: {
@@ -117,13 +100,6 @@ export class ApiMock implements ISimulation {
 
         const originYahooAuctionFetchGoodsList = this.yahooAuctionApi.fetchGoodsList;
 
-        this.yahooAuctionApi.proxyGet = async (url: URL | string) => {
-            if (url.toString().includes("search")) {
-                const fileContent = await readFile(resolve(__dirname, "../api/site/yahoo/mock/goodsList.html"));
-                return fileContent.toString() as any;
-            }
-        }
-
         this.yahooAuctionApi.fetchGoodsList = async function (...args: any) {
             const res: ReturnType<typeof originYahooAuctionFetchGoodsList> = originYahooAuctionFetchGoodsList.call(this, ...args);
             const data = await res;
@@ -131,13 +107,6 @@ export class ApiMock implements ISimulation {
         }
 
         const originSurugayaFetchGoodsList = this.surugayaApi.fetchGoodsList;
-
-        this.surugayaApi.proxyGet = async (url: URL | string) => {
-            if (url.toString().includes("search")) {
-                const fileContent = await readFile(resolve(__dirname, "../api/site/surugaya/mock/goodsList.html"));
-                return fileContent.toString() as any;
-            }
-        };
 
         this.surugayaApi.fetchGoodsList = async function (...args: any) {
             const res: ReturnType<typeof originSurugayaFetchGoodsList> = originSurugayaFetchGoodsList.call(this, ...args);

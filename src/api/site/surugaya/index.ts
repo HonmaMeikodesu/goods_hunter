@@ -1,5 +1,4 @@
 import { Inject, Logger, Provide, Scope, ScopeEnum } from "@midwayjs/decorator";
-import { ProxyGet } from "../../request";
 import { ILogger } from "@midwayjs/logger";
 import { ApiBase } from "../base";
 import { AliCloudApi } from "../../alicloud/index";
@@ -10,8 +9,6 @@ import { cloneDeep } from "lodash";
 @Provide()
 @Scope(ScopeEnum.Request, { allowDowngrade: true })
 export class SurugayaApi extends ApiBase {
-    @Inject("proxyGet")
-    proxyGet: ProxyGet;
 
     @Logger()
     logger: ILogger;

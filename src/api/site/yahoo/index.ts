@@ -1,5 +1,4 @@
 import { Config, Inject, Logger, Provide, Scope, ScopeEnum } from "@midwayjs/decorator";
-import { ProxyGet } from "../../request";
 import { ILogger } from "@midwayjs/logger";
 import { ApiBase } from "../base";
 import { AliCloudApi } from "../../alicloud/index";
@@ -12,9 +11,6 @@ const PAGE_SIZE = 60;
 @Provide()
 @Scope(ScopeEnum.Request, { allowDowngrade: true })
 export class YahooAuctionApi extends ApiBase {
-    @Inject("proxyGet")
-    proxyGet: ProxyGet;
-
     @Logger()
     logger: ILogger;
 
@@ -169,11 +165,17 @@ export class YahooAuctionApi extends ApiBase {
     async checkCookieHeartBeat(): Promise<{ result: boolean; cookie: string }> {
         const userPageUrl = "https://auctions.yahoo.co.jp/user/jp/show/mystatus";
 
-        const domStr = await this.proxyGet<string>(
-            userPageUrl,
-            {
-                "Cookie": this.cookie
-            });
+        const parsedCookies = this.cookie ? this.cookie.split(";").map(c => {
+            const [name, ...valueParts] = c.trim().split("=");
+            return {
+                name: name,
+                value: valueParts.join("="),
+                domain: "auctions.yahoo.co.jp",
+                path: "/"
+            };
+        }).filter(c => c.name) : undefined;
+
+        const { content: domStr } = await this.alicloudApi.fetchHtmlViaServerless(userPageUrl, "#acMdStatus", parsedCookies, undefined, 3);
 
         const dom = new JSDOM(domStr);
 
