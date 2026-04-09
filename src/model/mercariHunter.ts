@@ -12,11 +12,6 @@ export class MercariHunter implements GoodsHunterModelBase {
   @Column("varchar", { primary: true })
   hunterInstanceId: string;
 
-  @Column("datetime", {
-    default: null
-  })
-  lastShotAt: string;
-
   @Column("time", {
     default: null
   })

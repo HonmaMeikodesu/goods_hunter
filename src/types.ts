@@ -17,7 +17,6 @@ export interface GoodsHunter {
   searchCondition: GoodsSearchCondition | GoodsSurveillanceConditionBase;
   schedule: string;
   freezingRange?: FreezingRange;
-  lastShotAt?: string;
   createdAt?: string;
 }
 
