@@ -6,6 +6,21 @@ import { GoodsBreif, GoodsListResponse, SurugayaGoodsSearchCondition } from "./t
 import { JSDOM } from "jsdom";
 import { cloneDeep } from "lodash";
 
+export const SURUGAYA_FETCH_COOKIES = [
+    {
+        name: "safe_search_option",
+        value: "3",
+        domain: "www.suruga-ya.jp",
+        path: "/"
+    },
+    {
+        name: "safe_search_expired",
+        value: "3",
+        domain: "www.suruga-ya.jp",
+        path: "/"
+    },
+];
+
 @Provide()
 @Scope(ScopeEnum.Request, { allowDowngrade: true })
 export class SurugayaApi extends ApiBase {
@@ -71,20 +86,13 @@ export class SurugayaApi extends ApiBase {
 
             let domStr: string;
 
-            const resp = await this.alicloudApi.fetchHtmlViaServerless(surugayaSearchUrl.toString(), "search_result", [
-                {
-                    name: "safe_search_option",
-                    value: "3",
-                    domain: "www.suruga-ya.jp",
-                    path: "/"
-                },
-                {
-                    name: "safe_search_expired",
-                    value: "3",
-                    domain: "www.suruga-ya.jp",
-                    path: "/"
-                },
-            ], undefined, maxRetry);
+            const resp = await this.alicloudApi.fetchHtmlViaServerless(
+                surugayaSearchUrl.toString(),
+                "search_result",
+                SURUGAYA_FETCH_COOKIES,
+                undefined,
+                maxRetry
+            );
             domStr = resp.content;
 
             const dom = new JSDOM(domStr);

@@ -4,6 +4,39 @@ import { ApiBase } from "../base";
 import { AliCloudApi } from "../../alicloud/index";
 import { GoodsListResponse, MandarakeGoodsSearchCondition } from "./types";
 
+export const MANDARAKE_FETCH_COOKIES = [
+  {
+    name: "_ga",
+    value: "0",
+    domain: "order.mandarake.co.jp",
+    path: "/",
+  },
+  {
+    name: "_gat",
+    value: "0",
+    domain: "order.mandarake.co.jp",
+    path: "/",
+  },
+  {
+    name: "_gid",
+    value: "0",
+    domain: "order.mandarake.co.jp",
+    path: "/",
+  },
+  {
+    name: "mandarake_url",
+    value: "0",
+    domain: "order.mandarake.co.jp",
+    path: "/",
+  },
+  {
+    name: "tr_mndrk_user",
+    value: "0",
+    domain: "order.mandarake.co.jp",
+    path: "/"
+  }
+];
+
 @Provide()
 @Scope(ScopeEnum.Request, {
   allowDowngrade: true,
@@ -25,38 +58,7 @@ export class MandarakeApi extends ApiBase {
       const resp = await this.alicloudApi.fetchHtmlViaServerless(
         targetUrl,
         "entry", // page_loaded_assertion
-        [
-          {
-            name: "_ga",
-            value: "0",
-            domain: "order.mandarake.co.jp",
-            path: "/",
-          },
-          {
-            name: "_gat",
-            value: "0",
-            domain: "order.mandarake.co.jp",
-            path: "/",
-          },
-          {
-            name: "_gid",
-            value: "0",
-            domain: "order.mandarake.co.jp",
-            path: "/",
-          },
-          {
-            name: "mandarake_url",
-            value: "0",
-            domain: "order.mandarake.co.jp",
-            path: "/",
-          },
-          {
-            name: "tr_mndrk_user",
-            value: "0",
-            domain: "order.mandarake.co.jp",
-            path: "/"
-          }
-        ],
+        MANDARAKE_FETCH_COOKIES,
         undefined,
         3
       );

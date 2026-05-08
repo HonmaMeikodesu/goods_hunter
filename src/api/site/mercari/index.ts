@@ -4,6 +4,8 @@ import { GoodsListResponse, MercariGoodsSearchCondition } from "./types";
 import { ApiBase } from "../base";
 import { AliCloudApi } from "../../alicloud/index";
 
+export const MERCARI_FETCH_SCRIPT = `localStorage.setItem("userPreferenceCurrencyCode", '"JPY"')`;
+
 @Provide()
 @Scope(ScopeEnum.Request, {
   allowDowngrade: true,
@@ -30,7 +32,7 @@ export class MercariApi extends ApiBase {
         [],
         undefined,
         3,
-        `localStorage.setItem("userPreferenceCurrencyCode", '"JPY"')`
+        MERCARI_FETCH_SCRIPT
       );
       html = resp.content;
     } catch (e) {

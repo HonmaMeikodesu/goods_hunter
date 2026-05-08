@@ -23,6 +23,10 @@ import { GoodsSurveillanceConditionBase } from "../../api/site/types";
 import { render } from "ejs";
 import { AliCloudApi } from "../../api/alicloud";
 import { JSDOM } from "jsdom";
+import { MERCARI_FETCH_SCRIPT } from "../../api/site/mercari/index";
+import { SURUGAYA_FETCH_COOKIES } from "../../api/site/surugaya/index";
+import { MANDARAKE_FETCH_COOKIES } from "../../api/site/mandarake/index";
+import { YahooAuctionApi } from "../../api/site/yahoo/index";
 
 @Provide()
 @Scope(ScopeEnum.Singleton)
@@ -34,6 +38,9 @@ export class SurveillanceHunterService extends HunterBase {
 
   @Inject()
   alicloudApi: AliCloudApi;
+
+  @Inject()
+  yahooApi: YahooAuctionApi;
 
   @TaskLocal("*/2 * * * *")
   private async selfPingPong() {
@@ -47,18 +54,30 @@ export class SurveillanceHunterService extends HunterBase {
 
   async fetchItemSnapshot(type: string, id: string) {
     let url = "";
+    let cookies: any[] | undefined = undefined;
+    let evaluateScript: string | undefined = undefined;
+    let pageLoadedAssertion: string | undefined = undefined;
+
     if (type === "mercari") {
       url = `https://jp.mercari.com/item/${id}`;
+      evaluateScript = MERCARI_FETCH_SCRIPT;
+      pageLoadedAssertion ="data-testid=\"price\"";
     } else if (type === "surugaya") {
       url = `https://www.suruga-ya.jp/product/detail/${id}`;
+      cookies = SURUGAYA_FETCH_COOKIES;
+      pageLoadedAssertion = "price_group";
     } else if (type === "yahoo") {
       url = `https://auctions.yahoo.co.jp/jp/auction/${id}`;
+      cookies = this.yahooApi.getParsedCookies();
+      pageLoadedAssertion = "itemStatus";
     } else if (type === "mandarake") {
       url = `https://order.mandarake.co.jp/order/detailPage/item?itemCode=${id}`;
+      cookies = MANDARAKE_FETCH_COOKIES;
+      pageLoadedAssertion = "在庫";
     }
 
     try {
-      const resp = await this.alicloudApi.fetchHtmlViaServerless(url);
+      const resp = await this.alicloudApi.fetchHtmlViaServerless(url, pageLoadedAssertion, cookies, undefined, 3, evaluateScript);
       const dom = new JSDOM(resp.content);
       const document = dom.window.document;
 
@@ -66,7 +85,7 @@ export class SurveillanceHunterService extends HunterBase {
       let isSold = false;
 
       if (type === "mercari") {
-        price = document.body.querySelector('div[data-testid="price"]')?.textContent || "";
+        price = document.body.querySelector('[data-testid="converted-currency-section"] > p:nth-child(3)')?.textContent || "";
         isSold = !!document.body.querySelector('div[role="img"][data-testid="thumbnail-sticker"][aria-label="売り切れ"]');
       } else if (type === "surugaya") {
         price = document.body.querySelector(".text-price-detail.price-buy")?.textContent || "";

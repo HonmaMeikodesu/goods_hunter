@@ -20,6 +20,18 @@ export class YahooAuctionApi extends ApiBase {
     @Inject()
     alicloudApi: AliCloudApi;
 
+    getParsedCookies() {
+        return this.cookie ? this.cookie.split(";").map(c => {
+            const [name, ...valueParts] = c.trim().split("=");
+            return {
+                name: name,
+                value: valueParts.join("="),
+                domain: "auctions.yahoo.co.jp",
+                path: "/"
+            };
+        }).filter(c => c.name) : undefined;
+    }
+
     async fetchGoodsList(options: YahooAuctionGoodsSearchCondition): Promise<GoodsListResponse> {
 
         const goodsList: GoodsBreif[] = [];
@@ -90,15 +102,7 @@ export class YahooAuctionApi extends ApiBase {
 
         const maxRetry = (epoch || 1) * 2;
 
-        const parsedCookies = this.cookie ? this.cookie.split(";").map(c => {
-            const [name, ...valueParts] = c.trim().split("=");
-            return {
-                name: name,
-                value: valueParts.join("="),
-                domain: "auctions.yahoo.co.jp",
-                path: "/"
-            };
-        }).filter(c => c.name) : undefined;
+        const parsedCookies = this.getParsedCookies();
 
         await Promise.all(yahooAuctionSearchUrls.map(async (yahooAuctionSearchUrl, idx) => {
 
@@ -165,15 +169,7 @@ export class YahooAuctionApi extends ApiBase {
     async checkCookieHeartBeat(): Promise<{ result: boolean; cookie: string }> {
         const userPageUrl = "https://auctions.yahoo.co.jp/user/jp/show/mystatus";
 
-        const parsedCookies = this.cookie ? this.cookie.split(";").map(c => {
-            const [name, ...valueParts] = c.trim().split("=");
-            return {
-                name: name,
-                value: valueParts.join("="),
-                domain: "auctions.yahoo.co.jp",
-                path: "/"
-            };
-        }).filter(c => c.name) : undefined;
+        const parsedCookies = this.getParsedCookies();
 
         const { content: domStr } = await this.alicloudApi.fetchHtmlViaServerless(userPageUrl, "#acMdStatus", parsedCookies, undefined, 3);
 
