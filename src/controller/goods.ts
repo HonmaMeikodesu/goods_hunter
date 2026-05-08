@@ -76,8 +76,8 @@ export class GoodsController {
   @Get("/registerSurveillanceWatcher")
   async registerSurveillanceWatcher(
     @Query("type")
-    type: "mercari" | "yahoo",
-    @Query("id")
+    type: "mercari" | "yahoo" | "surugaya" | "mandarake",
+    @Query("goodId")
     goodId: string
   ) {
     if (!type || !goodId) throw new Error(errorCode.common.invalidRequestBody);
@@ -88,7 +88,7 @@ export class GoodsController {
         goodId
       },
       type: "Surveillance",
-      schedule: "*/3 * * * *",
+      schedule: "*/20 * * * *",
       user: { email: user.email },
     });
   }

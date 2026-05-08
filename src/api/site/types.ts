@@ -8,8 +8,8 @@ export type GoodsSearchConditionBase = {
 }
 
 export type GoodsSurveillanceConditionBase = {
-    type: "mercari" | "yahoo"
-    goodId: string
+    type: "mercari" | "yahoo" | "surugaya" | "mandarake";
+    goodId: string;
 }
 
 export type GoodsSearchCondition =

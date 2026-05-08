@@ -111,6 +111,12 @@
           <div class="name">
             <%= data.name %>
           </div>
+          <a
+            class="link"
+            href="http://<%= serverHost %>/goods/registerSurveillanceWatcher?type=surugaya&goodId=<%= data.id ? data.id.split('/').pop() : '' %>"
+          >
+              Click here to subscribe this good
+          </a>
         </div>
       </div>
       <% }) %>

@@ -91,6 +91,12 @@
           <div class="name">
             <%= item.name %>
           </div>
+          <a
+            class="link"
+            href="http://<%= serverHost %>/goods/registerSurveillanceWatcher?type=mandarake&goodId=<%= item.id %>"
+          >
+              Click here to subscribe this good
+          </a>
         </div>
       </div>
       <% }) %>

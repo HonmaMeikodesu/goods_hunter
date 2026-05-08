@@ -1,4 +1,4 @@
-import { Provide, Config, Logger } from "@midwayjs/decorator";
+import { Provide, Config, Logger, Scope, ScopeEnum } from "@midwayjs/decorator";
 import util from "@alicloud/openapi-util";
 import axios from "axios";
 import { ILogger } from "@midwayjs/logger";
@@ -17,6 +17,7 @@ export interface FetchHtmlViaServerlessResponse {
 }
 
 @Provide()
+@Scope(ScopeEnum.Request, { allowDowngrade: true })
 export class AliCloudApi {
   @Config("alicloudConfig")
   alicloudConfig: {

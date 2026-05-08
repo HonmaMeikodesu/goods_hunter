@@ -9,22 +9,20 @@ import {
 import { Repository } from "typeorm";
 import { InjectEntityModel } from "@midwayjs/orm";
 import Mail from "nodemailer/lib/mailer";
-import { mercariGoodsDetail } from "../../template";
+import { mercariGoodsDetail, yahooGoodDetail, surugayaGoodDetail, mandarakeGoodDetail } from "../../template";
 import { Context } from "egg";
 import CONST from "../../const";
 import HunterBase from "./base";
 import {
-  MercariHunter as MercariHuntetType,
   SurveillanceHunter,
 } from "../../types";
 import { SurveillanceRecord } from "../../model/surveillanceRecord";
-import { first, isEmpty } from "lodash";
+import { isEmpty } from "lodash";
 import isBetweenDayTime from "../../utils/isBetweenDayTime";
 import { GoodsSurveillanceConditionBase } from "../../api/site/types";
-import { YahooAuctionApi } from "../../api/site/yahoo";
-import { MercariApi } from "../../api/site/mercari";
-import { GoodsDetailData } from "../../api/site/mercari/types";
 import { render } from "ejs";
+import { AliCloudApi } from "../../api/alicloud";
+import { JSDOM } from "jsdom";
 
 @Provide()
 @Scope(ScopeEnum.Singleton)
@@ -35,11 +33,7 @@ export class SurveillanceHunterService extends HunterBase {
   hunterModel: Repository<SurveillanceRecord>;
 
   @Inject()
-  mercariApi: MercariApi;
-
-  @Inject()
-  yahooApi: YahooAuctionApi;
-
+  alicloudApi: AliCloudApi;
 
   @TaskLocal("*/2 * * * *")
   private async selfPingPong() {
@@ -51,12 +45,72 @@ export class SurveillanceHunterService extends HunterBase {
     await super.init();
   }
 
+  async fetchItemSnapshot(type: string, id: string) {
+    let url = "";
+    if (type === "mercari") {
+      url = `https://jp.mercari.com/item/${id}`;
+    } else if (type === "surugaya") {
+      url = `https://www.suruga-ya.jp/product/detail/${id}`;
+    } else if (type === "yahoo") {
+      url = `https://auctions.yahoo.co.jp/jp/auction/${id}`;
+    } else if (type === "mandarake") {
+      url = `https://order.mandarake.co.jp/order/detailPage/item?itemCode=${id}`;
+    }
+
+    try {
+      const resp = await this.alicloudApi.fetchHtmlViaServerless(url);
+      const dom = new JSDOM(resp.content);
+      const document = dom.window.document;
+
+      let price = "";
+      let isSold = false;
+
+      if (type === "mercari") {
+        price = document.body.querySelector('div[data-testid="price"]')?.textContent || "";
+        isSold = !!document.body.querySelector('div[role="img"][data-testid="thumbnail-sticker"][aria-label="売り切れ"]');
+      } else if (type === "surugaya") {
+        price = document.body.querySelector(".text-price-detail.price-buy")?.textContent || "";
+        isSold = !!document.body.querySelector("[value='入荷待ちリストへ']");
+      } else if (type === "yahoo") {
+        price = document.body.querySelector("div > div > div > dl > dd > span")?.textContent || "";
+        isSold = false;
+      } else if (type === "mandarake") {
+        price = document.body.querySelector(".shohin_price.__price+p")?.textContent || "";
+        isSold = !!document.body.querySelector(".operate .soldout");
+      }
+
+      const title = document.querySelector('meta[property="og:title"]')?.getAttribute("content") || "";
+      const image = document.querySelector('meta[property="og:image"]')?.getAttribute("content") || "";
+
+      let status = isSold ? "sold_out" : "on_sale";
+      if (!price && !title) {
+        status = "invalid";
+      }
+
+      return {
+        id,
+        name: title,
+        price,
+        status,
+        thumbnails: [image],
+      };
+    } catch (e) {
+      this.logger.error(`Failed to fetch item snapshot for ${type} ${id}: ${e}`);
+      return {
+        id,
+        name: "",
+        price: "",
+        status: "invalid",
+        thumbnails: [],
+      };
+    }
+  }
+
   async hire(ctx: Context, hunterInfo: SurveillanceHunter) {
-    let snapshot: string;
-    if (hunterInfo?.searchCondition?.type === "mercari") {
-      snapshot = JSON.stringify(await this.mercariApi.fetchGoodDetail({
-        id: hunterInfo.searchCondition.goodId,
-      }));
+    let snapshot: string = "";
+    if (hunterInfo?.searchCondition?.type && hunterInfo?.searchCondition?.goodId) {
+      const data = await this.fetchItemSnapshot(hunterInfo.searchCondition.type, hunterInfo.searchCondition.goodId);
+      snapshot = JSON.stringify(data);
     }
     const hunterId = await super.hire(
       ctx,
@@ -68,16 +122,17 @@ export class SurveillanceHunterService extends HunterBase {
     await this.updateSnapshot(hunterId as string, snapshot);
   }
 
-    async updateSnapshot(hunterId: string, newShapshot: string) {
-      await this.hunterModel.update(
-        {
-          hunterInstanceId: hunterId,
-        },
-        {
-          snapshot: newShapshot,
-        }
-      );
-    }
+  async updateSnapshot(hunterId: string, newShapshot: string) {
+    await this.hunterModel.update(
+      {
+        hunterInstanceId: hunterId,
+      },
+      {
+        snapshot: newShapshot,
+      }
+    );
+  }
+
   async goHunt(cronId: string) {
     const currentHunterInfo = await this.hunterModel.findOne({
       where: {
@@ -104,15 +159,24 @@ export class SurveillanceHunterService extends HunterBase {
       }
     } catch (e) {
       this.logger.error(
-        `Invalid Mercari Hunter search condition when executiong cronjob{${cronId}}, ${e}`
+        `Invalid Surveillance Hunter search condition when executiong cronjob{${cronId}}, ${e}`
       );
       return;
     }
 
-    const sendMercariUpdateAndSaveDb = async (newSnapshot: GoodsDetailData) => {
-      const prev = JSON.parse(snapshot || "{}") as GoodsDetailData;
+    const sendUpdateAndSaveDb = async (newSnapshot: any) => {
+      const prev = JSON.parse(snapshot || "{}");
       const { name, status, price, id, thumbnails } = newSnapshot;
-      const html = render(mercariGoodsDetail, {
+      
+      let template;
+      if (searchCondition.type === "mercari") template = mercariGoodsDetail;
+      else if (searchCondition.type === "yahoo") template = yahooGoodDetail;
+      else if (searchCondition.type === "surugaya") template = surugayaGoodDetail;
+      else if (searchCondition.type === "mandarake") template = mandarakeGoodDetail;
+
+      if (!template) return;
+
+      const html = render(template, {
         data: {
           id,
           thumbnails,
@@ -124,29 +188,35 @@ export class SurveillanceHunterService extends HunterBase {
         },
         serverHost: this.serverInfo.serverHost,
       });
+
       const emailMessage: Mail.Options = {
         to: user.email,
-        subject: `Mercari item: ${name}`,
+        subject: `${searchCondition.type} item: ${name}`,
         html,
       };
       await this.emailService.sendEmail(emailMessage);
       this.logger.info(
-        `Mercari Subscription email sent to ${user.email}, goodRecord:${id}/${name}}\n`
+        `Surveillance Subscription email sent to ${user.email}, goodRecord:${id}/${name}}\n`
       );
 
       await this.updateSnapshot(cronId, JSON.stringify(newSnapshot));
     }
 
-    if (searchCondition?.type === "mercari") {
-      const prev = JSON.parse(snapshot) as GoodsDetailData;
-      const latestGoodsDetail = await this.mercariApi.fetchGoodDetail({ id: searchCondition.goodId });
-      if (( isEmpty(snapshot) || latestGoodsDetail.price !== prev.price || prev.status !== latestGoodsDetail.status ) && latestGoodsDetail.status !== "invalid") {
-        await sendMercariUpdateAndSaveDb(latestGoodsDetail);
+    const prev = JSON.parse(snapshot || "{}");
+    const latestGoodsDetail = await this.fetchItemSnapshot(searchCondition.type, searchCondition.goodId);
+    
+    if (latestGoodsDetail.status !== "invalid") {
+      const priceChanged = latestGoodsDetail.price !== prev.price;
+      const statusChanged = latestGoodsDetail.status !== prev.status && latestGoodsDetail.status === "sold_out";
+
+      if (isEmpty(snapshot) || priceChanged || statusChanged) {
+        await sendUpdateAndSaveDb(latestGoodsDetail);
       }
-      if (latestGoodsDetail.status === "invalid" || latestGoodsDetail.status === "sold_out") {
-        await this.dismiss(cronId);
-        this.logger.info(`Mercari item ${searchCondition.goodId} becomes no longer available, deleting the subscription...`);
-      }
+    }
+
+    if (latestGoodsDetail.status === "invalid" || latestGoodsDetail.status === "sold_out") {
+      await this.dismiss(cronId);
+      this.logger.info(`${searchCondition.type} item ${searchCondition.goodId} becomes no longer available or sold out, deleting the subscription...`);
     }
   }
 

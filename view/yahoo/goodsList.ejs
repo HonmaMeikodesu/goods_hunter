@@ -111,6 +111,12 @@
           <div class="name">
             <%= data.name %>
           </div>
+          <a
+            class="link"
+            href="http://<%= serverHost %>/goods/registerSurveillanceWatcher?type=yahoo&goodId=<%= data.id %>"
+          >
+              Click here to subscribe this good
+          </a>
         </div>
       </div>
       <% }) %>

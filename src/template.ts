@@ -26,6 +26,21 @@ export const mandarakeGoodsList = fs.readFileSync(
   { encoding: "utf-8" }
 );
 
+export const yahooGoodDetail = fs.readFileSync(
+  path.join(__dirname, "../view/yahoo/goodDetail.ejs"),
+  { encoding: "utf-8" }
+);
+
+export const surugayaGoodDetail = fs.readFileSync(
+  path.join(__dirname, "../view/surugaya/goodDetail.ejs"),
+  { encoding: "utf-8" }
+);
+
+export const mandarakeGoodDetail = fs.readFileSync(
+  path.join(__dirname, "../view/mandarake/goodDetail.ejs"),
+  { encoding: "utf-8" }
+);
+
 export const indexPage = fs.readFileSync(
   path.join(__dirname, "../view/index.ejs"),
   { encoding: "utf-8" }
