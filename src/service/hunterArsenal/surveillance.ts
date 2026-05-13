@@ -223,19 +223,22 @@ export class SurveillanceHunterService extends HunterBase {
 
     const prev = JSON.parse(snapshot || "{}");
     const latestGoodsDetail = await this.fetchItemSnapshot(searchCondition.type, searchCondition.goodId);
-    
-    if (latestGoodsDetail.status !== "invalid") {
-      const priceChanged = latestGoodsDetail.price !== prev.price;
-      const statusChanged = latestGoodsDetail.status !== prev.status && latestGoodsDetail.status === "sold_out";
 
-      if (isEmpty(snapshot) || priceChanged || statusChanged) {
-        await sendUpdateAndSaveDb(latestGoodsDetail);
-      }
+    if (latestGoodsDetail.status === "invalid") {
+      this.logger.error(`Failed to fetch latest goods detail for hunter ${cronId}, status invalid.`);
+      return;
+    }
+    
+    const priceChanged = latestGoodsDetail.price !== prev.price;
+    const statusChanged = latestGoodsDetail.status !== prev.status && latestGoodsDetail.status === "sold_out";
+
+    if (isEmpty(snapshot) || priceChanged || statusChanged) {
+      await sendUpdateAndSaveDb(latestGoodsDetail);
     }
 
-    if (latestGoodsDetail.status === "invalid" || latestGoodsDetail.status === "sold_out") {
+    if (latestGoodsDetail.status === "sold_out") {
       await this.dismiss(cronId);
-      this.logger.info(`${searchCondition.type} item ${searchCondition.goodId} becomes no longer available or sold out, deleting the subscription...`);
+      this.logger.info(`${searchCondition.type} item ${searchCondition.goodId} becomes sold out, deleting the subscription...`);
     }
   }
 

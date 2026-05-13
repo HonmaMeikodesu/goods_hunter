@@ -82,13 +82,20 @@ export class GoodsController {
   ) {
     if (!type || !goodId) throw new Error(errorCode.common.invalidRequestBody);
     const user = this.ctx.user as UserInfo;
+    const DEFAULT_SURVERILLANCE_OPTIONS: Pick<GoodsHunter, "schedule" | "freezingRange">  ={
+      schedule: "0 * * * *",
+      freezingRange: {
+        start: "12:30",
+        end: "08:00",
+      },
+    };
     await this.hunterRouteService.hireNewHunterForUser(this.ctx, {
       searchCondition: {
         type,
         goodId
       },
       type: "Surveillance",
-      schedule: "*/20 * * * *",
+      ...DEFAULT_SURVERILLANCE_OPTIONS,
       user: { email: user.email },
     });
   }
