@@ -85,7 +85,7 @@ export class GoodsController {
     const DEFAULT_SURVERILLANCE_OPTIONS: Pick<GoodsHunter, "schedule" | "freezingRange">  ={
       schedule: "0 * * * *",
       freezingRange: {
-        start: "12:30",
+        start: "00:30",
         end: "08:00",
       },
     };
