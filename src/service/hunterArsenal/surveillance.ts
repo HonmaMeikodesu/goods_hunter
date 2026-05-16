@@ -102,7 +102,10 @@ export class SurveillanceHunterService extends HunterBase {
       const image = document.querySelector('meta[property="og:image"]')?.getAttribute("content") || "";
 
       let status = isSold ? "sold_out" : "on_sale";
-      if (!price && !title) {
+      // 没有标题
+      // 未售出但是获取不到价格
+      // 视为异常状态
+      if (( !price && !isSold ) || !title) {
         status = "invalid";
       }
 
