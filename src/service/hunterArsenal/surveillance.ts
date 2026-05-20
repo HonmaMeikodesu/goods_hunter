@@ -15,9 +15,11 @@ import CONST from "../../const";
 import HunterBase from "./base";
 import {
   SurveillanceHunter,
+  UserInfo,
 } from "../../types";
 import { SurveillanceRecord } from "../../model/surveillanceRecord";
 import { isEmpty } from "lodash";
+import errorCode from "../../errorCode";
 import isBetweenDayTime from "../../utils/isBetweenDayTime";
 import { GoodsSurveillanceConditionBase } from "../../api/site/types";
 import { render } from "ejs";
@@ -129,9 +131,25 @@ export class SurveillanceHunterService extends HunterBase {
   }
 
   async hire(ctx: Context, hunterInfo: SurveillanceHunter) {
+    const { type, goodId } = hunterInfo?.searchCondition || {};
+    if (type && goodId) {
+      // Normalize searchCondition to ensure consistent JSON stringification in DB
+      hunterInfo.searchCondition = { type, goodId };
+      const searchConditionSchema = JSON.stringify(hunterInfo.searchCondition);
+      const existing = await this.hunterModel.findOne({
+        where: {
+          user: { email: (ctx.user as UserInfo).email },
+          searchConditionSchema,
+        },
+      });
+      if (existing) {
+        throw new Error(errorCode.goodsService.duplicateTask);
+      }
+    }
+
     let snapshot: string = "";
-    if (hunterInfo?.searchCondition?.type && hunterInfo?.searchCondition?.goodId) {
-      const data = await this.fetchItemSnapshot(hunterInfo.searchCondition.type, hunterInfo.searchCondition.goodId);
+    if (type && goodId) {
+      const data = await this.fetchItemSnapshot(type, goodId);
       snapshot = JSON.stringify(data);
     }
     const hunterId = await super.hire(

@@ -55,7 +55,8 @@ export default {
   },
   goodsService: {
     taskNotFound: type.service + service.goods + "02",
-    taskPermissionDenied: type.service + service.goods + "03"
+    taskPermissionDenied: type.service + service.goods + "03",
+    duplicateTask: type.service + service.goods + "04",
   },
   cipherService: {
     messageCorrupted: type.service + service.cipher + "01",
