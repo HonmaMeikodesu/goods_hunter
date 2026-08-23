@@ -1,30 +1,15 @@
-# my-midway-project
+# Goods Hunter — Go experiment
 
-## QuickStart
+This branch is a Go rewrite of Goods Hunter. It preserves account/login flows, scheduled marketplace watchers, notification de-duplication, freezing windows, item surveillance, and encrypted proxy-config delivery without requiring Node, Midway, MySQL, or Redis at runtime.
 
-<!-- add docs here for user -->
-
-see [midway docs][midway] for more detail.
-
-### Development
+Requirements: Go 1.25+. Then run:
 
 ```bash
-$ npm i
-$ npm run dev
-$ open http://localhost:7001/
+make test
+make build
+GH_MAIL_MODE=log /tmp/goods-hunter
 ```
 
-### Deploy
+The low-disk build targets keep Go caches under `/tmp`; `make clean-cache` removes them. Runtime state is stored atomically in `var/goods-hunter.json` and is intended for a single process. Existing MySQL/Redis data is not imported automatically.
 
-```bash
-$ npm start
-$ npm stop
-```
-
-### npm scripts
-
-- Use `npm run lint` to check code style.
-- Use `npm test` to run unit test.
-
-
-[midway]: https://midwayjs.org
+See [README.zh-CN.md](README.zh-CN.md) for configuration, routes, migration notes, and operational details.

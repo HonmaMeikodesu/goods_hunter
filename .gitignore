@@ -17,3 +17,10 @@ nohup.out
 resources/*
 .cline
 .clinerules
+
+# Go rewrite runtime/build outputs
+/var/
+/goods-hunter
+*.test
+*.prof
+coverage.out
