@@ -156,6 +156,7 @@ type GoodsSalesStatus = "STATUS_ON_SALE" | "STATUS_TRADING" | "STATUS_SOLD_OUT";
 
 interface GoodsBreif extends GoodsBreifExtension {
   id: string,
+  url?: string,
   sellerId: string,
   buyerId: string,
   status: GoodsSalesStatus,
@@ -183,4 +184,3 @@ export type MercariGoodsSearchCondition = GoodsSearchConditionBase & {
   shippingPayerId?: number[],
   pageSize: number;
 }
-

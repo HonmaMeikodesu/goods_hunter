@@ -100,7 +100,7 @@
     <% data.forEach(function(data){ %>
       <div class="grid-unit">
         <div class="grid-unit-item">
-          <a class="img-container" href="https://jp.mercari.com/item/<%= data.id %>">
+          <a class="img-container" href="<%= data.url || ('https://jp.mercari.com/item/' + data.id) %>">
             <img
               src="<%= data.thumbnails[0] %>"
               alt="" class="image" onerror="this.src = this.parentElement.href" />
@@ -129,4 +129,3 @@
 </body>
 
 </html>
-

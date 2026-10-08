@@ -28,12 +28,15 @@ export class MercariApi extends ApiBase {
     try {
       const resp = await this.alicloudApi.fetchHtmlViaServerless(
         targetUrl,
-        "merItemThumbnail",
+        'data-testid="thumbnail-link"',
         [],
-        undefined,
+        30,
         3,
         MERCARI_FETCH_SCRIPT
       );
+      if (!resp.success || !resp.content) {
+        throw new Error("Mercari page fetch failed");
+      }
       html = resp.content;
     } catch (e) {
       this.logger.error("Failed to fetch mercari from Serverless FC", e);
@@ -47,28 +50,35 @@ export class MercariApi extends ApiBase {
     const items: any[] = [];
     
     // Find item grid and goods
-    const grid = document.querySelector('div[id="item-grid"]');
-    if (grid) {
-      const cells = grid.querySelectorAll('li[data-testid="item-cell"]');
+    const seen = new Set<string>();
+    try {
+      const cells = document.querySelectorAll('li[data-testid="item-cell"]');
       cells.forEach((cell: Element) => {
         const linkElem = cell.querySelector('a[data-testid="thumbnail-link"]');
         const imgElem = cell.querySelector('img');
-        const priceElem = cell.querySelector('[class*="number"]'); // price number
+        const priceElem = cell.querySelector('[data-testid="item-tile-price"], [class*="number"]');
         
         // Find sold out sticker
         const soldElem = cell.querySelector('div[role="img"][data-testid="thumbnail-sticker"][aria-label="売り切れ"]');
-        const isSold = !!soldElem;
+        const isSold = !!soldElem || cell.querySelector('[data-testid="item-tile-sticker"]')?.textContent?.trim() === "SOLD";
 
         if (linkElem) {
           const href = linkElem.getAttribute("href") || "";
-          const match = href.match(/item\/(m\d+)/);
-          const id = match ? match[1] : href.split('/').pop();
+          const match = href.match(/^\/(?:item|shops\/product)\/([a-zA-Z0-9]+)(?:[?#]|$)/);
+          const id = match?.[1];
           
-          if (id) {
+          if (id && !seen.has(id)) {
+            const name = cell.querySelector('[data-testid="thumbnail-item-name"]')?.textContent?.trim() || imgElem?.getAttribute("alt") || "";
+            const price = priceElem?.textContent?.trim().replace(/^現在\s*/, "").replace(/[¥￥,\s]/g, "");
+            if (!name || !price || !/^\d+$/.test(price)) {
+              throw new Error(`Mercari item markup is incomplete: ${id}`);
+            }
+            seen.add(id);
             items.push({
               id,
-              name: imgElem ? (imgElem.getAttribute("alt") || "") : "", // Get title from image alt
-              price: priceElem ? priceElem.textContent?.trim() : "0",
+              url: `https://jp.mercari.com${href}`,
+              name,
+              price,
               status: isSold ? "STATUS_SOLD_OUT" : "STATUS_ON_SALE",
               thumbnails: imgElem ? [imgElem.getAttribute("src")] : [],
               updated: "0" // Mock update field temporarily for type safety; not used anymore
@@ -76,9 +86,13 @@ export class MercariApi extends ApiBase {
           }
         }
       });
+      if (!items.length) {
+        throw new Error("Mercari page has no recognizable items; empty or unfinished markup");
+      }
+      return { items } as any;
+    } finally {
+      dom.window.close();
     }
-
-    return { items } as any;
   }
 
   async fetchGoodDetail(searchOptions: { id: string }) {
@@ -86,5 +100,3 @@ export class MercariApi extends ApiBase {
       return {} as any;
   }
 }
-
-
