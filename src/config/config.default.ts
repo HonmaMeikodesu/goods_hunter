@@ -18,6 +18,7 @@ alicloudConfig?: {
 accessKeyId: string;
 accessKeySecret: string;
 url: string;
+yahooFleamarketUrl?: string;
 };
 }
 
@@ -76,17 +77,19 @@ tz: "Asia/Shanghai",
 
 	config.serverInfo = JSON.parse(readFileSync(path.resolve(__dirname, "../private/server.json")).toString());
 
-	try {
-		config.yahooAuctionCookie = readFileSync(path.resolve(__dirname, "../private/yahoo.json")).toString().replace(/[\n\r]/g, '');
-	} catch (e) {
-		config.yahooAuctionCookie = "";
-	}
+	config.yahooSession = {
+		file: process.env.YAHOO_SESSION_FILE || "",
+		legacyFile: process.env.YAHOO_COOKIE_FILE || path.resolve(__dirname, "../private/yahoo.json"),
+		maxAgeSeconds: Number(process.env.YAHOO_SESSION_MAX_AGE_SECONDS || 21600),
+		authenticatedSelector: process.env.YAHOO_AUTH_SELECTOR || undefined,
+	};
 
 	try {
 		config.alicloudConfig = JSON.parse(readFileSync(path.resolve(__dirname, "../private/alicloud.json")).toString());
 	} catch (e) {
 		config.alicloudConfig = { accessKeyId: "", accessKeySecret: "", url: "" };
 	}
+	config.alicloudConfig.yahooFleamarketUrl = process.env.YAHOO_FLEAMARKET_FC_URL || config.alicloudConfig.yahooFleamarketUrl || "";
 
 
 	config.egg = {
@@ -109,5 +112,4 @@ type: "mysql",
 
 	return config;
 };
-
 

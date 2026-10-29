@@ -12,8 +12,11 @@ run/
 .tsbuildinfo
 .tsbuildinfo.*
 src/private/
-nohup.out
+nohup.out*
 .vscode
 resources/*
 .cline
 .clinerules
+.yahoo-session/
+tools/yahoo-session/.venv/
+__pycache__/

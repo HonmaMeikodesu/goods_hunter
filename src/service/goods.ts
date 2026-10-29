@@ -13,6 +13,7 @@ import { GoodsHunterModelBase } from "../model/types";
 import { SurugayaHunter } from "../model/surugaya";
 import { SurveillanceRecord } from "../model/surveillanceRecord";
 import { MandarakeHunter } from "../model/mandarakeHunter";
+import { YahooFleamarketHunter } from "../model/yahooFleamarketHunter";
 
 @Provide()
 export class GoodsService {
@@ -30,6 +31,9 @@ export class GoodsService {
   @InjectEntityModel(YahooHunter)
   yahooHunterModel: Repository<YahooHunter>;
 
+  @InjectEntityModel(YahooFleamarketHunter)
+  yahooFleamarketHunterModel: Repository<YahooFleamarketHunter>;
+
   @InjectEntityModel(SurugayaHunter)
   surugayaHunterModel: Repository<SurugayaHunter>;
 
@@ -43,13 +47,15 @@ export class GoodsService {
   @Inject()
   ctx: Context;
 
-  async deleteTask(id: string, type: GoodsHunter["type"]) {
+  private async assertTaskOwner(id: string, type: GoodsHunter["type"]) {
     const user = this.ctx.user as UserInfo;
     const targetModel: Repository<GoodsHunterModelBase> =
       type === "Mercari"
         ? this.mercariHunterModel
         : type === "Yahoo"
         ? this.yahooHunterModel
+        : type === "YahooFleamarket"
+        ? this.yahooFleamarketHunterModel
         : type === "Surugaya"
         ? this.surugayaHunterModel
         : type === "Mandarake"
@@ -66,10 +72,19 @@ export class GoodsService {
       if (hunterOwnerEmail !== user.email) {
         throw new Error(errorCode.goodsService.taskPermissionDenied)
       }
-      await this.hunterRouteService.dismissHunter(id, type);
     } else {
       throw new Error(errorCode.goodsService.taskNotFound);
     }
+  }
+
+  async deleteTask(id: string, type: GoodsHunter["type"]) {
+    await this.assertTaskOwner(id, type);
+    await this.hunterRouteService.dismissHunter(id, type);
+  }
+
+  async updateTask(id: string, info: Pick<GoodsHunter, "type" | "searchCondition" | "schedule" | "freezingRange">) {
+    await this.assertTaskOwner(id, info.type);
+    await this.hunterRouteService.transferHunter(id, info);
   }
 
   async listUserTasks(

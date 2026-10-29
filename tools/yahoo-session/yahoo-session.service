@@ -1,0 +1,11 @@
+[Unit]
+Description=Refresh goods hunter Yahoo session
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/project/goods_hunter
+EnvironmentFile=%h/.config/goods-hunter/yahoo-session.env
+ExecStart=%h/project/goods_hunter/tools/yahoo-session/.venv/bin/python tools/yahoo-session/session_manager.py refresh
+UMask=0077
+TimeoutStartSec=150

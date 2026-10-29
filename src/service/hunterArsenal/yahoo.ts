@@ -35,16 +35,20 @@ export class YahooHunterService extends HunterBase {
   @Config("emailConfig")
   mailInfo: CustomConfig["emailConfig"];
 
-  @TaskLocal("0 */50 * * *")
+  private lastCookieAlertAt = 0;
+
+  @TaskLocal("0 * * * *")
   private async cookieHeartBeatCheck() {
     const yahooCookieValid = await this.yahooApi.checkCookieHeartBeat();
-    if (!yahooCookieValid?.result) {
-      this.emailService.sendEmail({
+    if (!yahooCookieValid?.result && Date.now() - this.lastCookieAlertAt >= 6 * 60 * 60 * 1000) {
+      await this.emailService.sendEmail({
         to: this.mailInfo.contactSystemOwner,
         subject: "Your yahoo cookie seems to expire or invalid",
-        text: `Consider a refresh won't we? current provided yahoo cookie:\n${yahooCookieValid.cookie}`
+        text: `Yahoo session check failed (${yahooCookieValid?.reason || "UNKNOWN"}). Check the session manager status; if login is required, use the remote login command. No credentials are included in this alert.`
       });
+      this.lastCookieAlertAt = Date.now();
     }
+    if (yahooCookieValid?.result) this.lastCookieAlertAt = 0;
     this.logger.info("cookie heart beat check finished")
   }
 
@@ -195,4 +199,3 @@ export class YahooHunterService extends HunterBase {
       }
   }
 }
-

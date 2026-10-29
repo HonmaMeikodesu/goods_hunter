@@ -1,0 +1,3 @@
+const app='/home/wangming/project/goods_hunter';
+const {createConnection}=require(app+'/node_modules/typeorm');
+(async()=>{const cfg=require(app+'/dist/config/config.default').default({name:'goods-hunter'});const db=await createConnection({...cfg.orm,name:'yahoo-session-readonly-check',logging:false,synchronize:false,entities:[app+'/dist/model/*.js']});try{const {YahooHunter}=require(app+'/dist/model/yahooHunter');const rows=await db.getRepository(YahooHunter).find({select:['searchConditionSchema']});console.log(JSON.stringify({taskCount:rows.length,categories:[...new Set(rows.map(r=>JSON.parse(r.searchConditionSchema).category).filter(Boolean))]}));}finally{await db.close();}})().catch(()=>{console.log('Category inspection failed');process.exitCode=1});

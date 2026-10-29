@@ -1,7 +1,15 @@
 import { Provide, Config, Logger, Scope, ScopeEnum } from "@midwayjs/decorator";
 import util from "@alicloud/openapi-util";
 import axios from "axios";
+import { Agent as HttpAgent } from "http";
+import { Agent as HttpsAgent } from "https";
 import { ILogger } from "@midwayjs/logger";
+import { YahooFleamarketPageRequest, YahooFleamarketPageResponse } from "../site/yahooFleamarket/types";
+
+// A function's HTTP server can close its connection after a response. Avoid
+// reusing that socket for the next page (Node 22 enables keep-alive by default).
+const fcHttpAgent = new HttpAgent({ keepAlive: false });
+const fcHttpsAgent = new HttpsAgent({ keepAlive: false });
 
 export interface FetchHtmlViaServerlessResponse {
   success: boolean;
@@ -24,6 +32,7 @@ export class AliCloudApi {
     accessKeyId: string;
     accessKeySecret: string;
     url: string;
+    yahooFleamarketUrl?: string;
   };
 
   @Logger()
@@ -42,7 +51,6 @@ export class AliCloudApi {
       throw new Error("AliCloud config is missing!");
     }
 
-    const method = 'POST';
     const body: any = {
       target_url: targetUrl,
     };
@@ -62,6 +70,19 @@ export class AliCloudApi {
       body.evaluate_script = evaluateScript;
     }
 
+    return this.invokeFunction<FetchHtmlViaServerlessResponse>(url, body);
+  }
+
+  async fetchYahooFleamarketPage(request: YahooFleamarketPageRequest): Promise<YahooFleamarketPageResponse> {
+    const url = this.alicloudConfig?.yahooFleamarketUrl;
+    if (!url) throw new Error("YAHOO_FLEAMARKET_FC_URL or alicloudConfig.yahooFleamarketUrl is required");
+    return this.invokeFunction<YahooFleamarketPageResponse>(url, request);
+  }
+
+  private async invokeFunction<T>(url: string, body: unknown): Promise<T> {
+    const { accessKeyId, accessKeySecret } = this.alicloudConfig || {};
+    if (!accessKeyId || !accessKeySecret || !url) throw new Error("AliCloud config is missing!");
+    const method = "POST";
     const date = new Date().toISOString();
     const headers: Record<string, string> = {
       'x-acs-date': date,
@@ -84,23 +105,26 @@ export class AliCloudApi {
     };
 
     const auth = util.getAuthorization(
-      authRequest, 
-      'ACS3-HMAC-SHA256', 
-      '', 
-      accessKeyId, 
+      authRequest,
+      'ACS3-HMAC-SHA256',
+      '',
+      accessKeyId,
       accessKeySecret
     );
     headers['authorization'] = auth;
 
     try {
-      this.logger.info(`Requesting Serverless FC target_url: ${targetUrl}`);
+      this.logger.info(`Requesting Serverless FC: ${new URL(url).origin}`);
       const resp = await axios.post(url, body, {
         headers: headers,
+        httpAgent: fcHttpAgent,
+        httpsAgent: fcHttpsAgent,
+        proxy: false,
         timeout: 120000, // 120s timeout for browser rendering
       });
-      return resp.data as FetchHtmlViaServerlessResponse;
+      return resp.data as T;
     } catch (e) {
-      this.logger.error(`Error requesting Serverless FC for ${targetUrl}: ${e}`);
+      this.logger.error(`Serverless FC request failed: ${e.message}`);
       throw e;
     }
   }

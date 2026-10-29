@@ -1,6 +1,7 @@
 import { CronJob } from "cron";
 import { GoodsSearchCondition, GoodsSurveillanceConditionBase } from "./api/site/types";
 import CONST from "./const";
+import { YahooFleamarketSearchCondition } from "./api/site/yahooFleamarket/types";
 
 export interface UserInfo {
   email: string;
@@ -26,6 +27,10 @@ export interface MercariHunter extends GoodsHunter {
 
 export interface YahooHunter extends GoodsHunter {
   searchCondition: GoodsSearchCondition;
+}
+
+export interface YahooFleamarketHunter extends GoodsHunter {
+  searchCondition: YahooFleamarketSearchCondition;
 }
 
 export interface SurugayaHunter extends GoodsHunter {

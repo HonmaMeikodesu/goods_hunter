@@ -1,0 +1,11 @@
+[Unit]
+Description=Maintain goods hunter Yahoo session daily
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=1d
+RandomizedDelaySec=2min
+Unit=yahoo-session.service
+
+[Install]
+WantedBy=timers.target
