@@ -1,0 +1,14 @@
+[Unit]
+Description=Local proxy for goods hunter Yahoo session
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/.local/share/goods-hunter/yahoo-proxy
+ExecStart=%h/.local/share/goods-hunter/yahoo-proxy/mihomo -d %h/.local/share/goods-hunter/yahoo-proxy -f %h/.local/share/goods-hunter/yahoo-proxy/config.yaml
+Restart=on-failure
+RestartSec=10
+UMask=0077
+MemoryMax=192M
+StandardOutput=null
+StandardError=null

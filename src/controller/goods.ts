@@ -17,6 +17,8 @@ import CONST from "../const";
 import moment from "moment";
 import { isValidCron } from "cron-validator";
 import { GoodsSearchCondition, GoodsSurveillanceConditionBase } from "../api/site/types";
+import { normalizeYahooFleamarketCondition } from "../api/site/yahooFleamarket/conditions";
+import { YahooFleamarketSearchCondition } from "../api/site/yahooFleamarket/types";
 
 @Provide()
 @Controller("/goods", { middleware: ["loginStateCheck"] })
@@ -44,6 +46,10 @@ export class GoodsController {
     searchCondition: GoodsHunter["searchCondition"],
   ) {
     if (!CONST.HUNTERTYPE.includes(type) || ( !( searchCondition as GoodsSearchCondition )?.keyword && ( !(searchCondition as GoodsSurveillanceConditionBase)?.goodId || !(searchCondition as GoodsSurveillanceConditionBase)?.type ) ) || !isValidCron(schedule)) throw new Error(errorCode.common.invalidRequestBody);
+    if (type === "YahooFleamarket") {
+      try { searchCondition = normalizeYahooFleamarketCondition(searchCondition as YahooFleamarketSearchCondition); }
+      catch { throw new Error(errorCode.common.invalidRequestBody); }
+    }
     if (freezeStart || freezeEnd) {
       freezeStart = freezeStart || "";
       freezeEnd = freezeEnd || "";
@@ -137,7 +143,12 @@ export class GoodsController {
     if (!id || !CONST.HUNTERTYPE.includes(type) || !searchCondition?.keyword || !isValidCron(schedule) || ((freezeStart || freezeEnd) && [freezeStart, freezeEnd].some((item) => !/\d\d:\d\d/.test(item))))  {
       throw new Error(errorCode.common.invalidRequestBody);
     }
-    await this.hunterRouteService.transferHunter(id, {
+    if (type === "YahooFleamarket") {
+      try { searchCondition = normalizeYahooFleamarketCondition(searchCondition as YahooFleamarketSearchCondition); }
+      catch { throw new Error(errorCode.common.invalidRequestBody); }
+    }
+    await this.goodsService.updateTask(id, {
+      type,
       searchCondition,
       schedule,
       freezingRange: {

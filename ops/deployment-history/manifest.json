@@ -1,0 +1,182 @@
+[
+  {
+    "origin": "server/yahoo-fleamarket-20261023-db40678834d7/register.cjs",
+    "path": "ops/deployment-history/server/yahoo-fleamarket-20261023-db40678834d7/register.cjs",
+    "sha256": "4cb5f85b5ccdd8614add98cfaae43ddcced16c19fb4d7a5dc214747d4a6f0e24"
+  },
+  {
+    "origin": "server/yahoo-fleamarket-20261023-db40678834d7/reload.py",
+    "path": "ops/deployment-history/server/yahoo-fleamarket-20261023-db40678834d7/reload.py",
+    "sha256": "9ff7072011a00d1827c421c8084d3d08aed9e4ce72dff6072446a17c05b36967"
+  },
+  {
+    "origin": "server/yahoo-fleamarket-20261023-db40678834d7/rollout.py",
+    "path": "ops/deployment-history/server/yahoo-fleamarket-20261023-db40678834d7/rollout.py",
+    "sha256": "4e8640ed99bf96ffd3dab2d9bd8279c571d761d4665220e27910af388fb83ad4"
+  },
+  {
+    "origin": "server/yahoo-fleamarket-20261023-db40678834d7/schema-check.cjs",
+    "path": "ops/deployment-history/server/yahoo-fleamarket-20261023-db40678834d7/schema-check.cjs",
+    "sha256": "2f09ca94a67f1a90b8480e10c03b1f81aa181e30089f5384dd9999cd8c17252c"
+  },
+  {
+    "origin": "server/yahoo-fleamarket-20261023-db40678834d7/stage.py",
+    "path": "ops/deployment-history/server/yahoo-fleamarket-20261023-db40678834d7/stage.py",
+    "sha256": "68b97fcbc831d7232800e6a1f83c653001fa9505a814f7ac577757b7f9f67634"
+  },
+  {
+    "origin": "server/yahoo-session-20261029-01/activate.py",
+    "path": "ops/deployment-history/server/yahoo-session-20261029-01/activate.py",
+    "sha256": "f583cde1e58d410930395b025281f02d36c96395fa4852bc1c432063b91785f4"
+  },
+  {
+    "origin": "server/yahoo-session-20261029-01/candidate.py",
+    "path": "ops/deployment-history/server/yahoo-session-20261029-01/candidate.py",
+    "sha256": "4e0cff39f6d0a5e6261f6ab7960aac74aa6dab2c83af09e4bccb888d9ff5e71d"
+  },
+  {
+    "origin": "server/yahoo-session-20261029-01/categories-check.cjs",
+    "path": "ops/deployment-history/server/yahoo-session-20261029-01/categories-check.cjs",
+    "sha256": "73e957b7914528bcec0af35065f08477e14e6b93712eda5880bd022576f812b5"
+  },
+  {
+    "origin": "server/yahoo-session-20261029-01/check-candidate.cjs",
+    "path": "ops/deployment-history/server/yahoo-session-20261029-01/check-candidate.cjs",
+    "sha256": "9b40cc1430a9a35d79732394c32ba0d9624e127c6b67a778a34331a1077195ce"
+  },
+  {
+    "origin": "server/yahoo-session-20261029-01/daily/yahoo-daily-rollout.py",
+    "path": "ops/deployment-history/server/yahoo-session-20261029-01/daily/yahoo-daily-rollout.py",
+    "sha256": "8f0c1776ac38a0fdff3cbd02e1b047cc736b36385d975201006b62240ba34615"
+  },
+  {
+    "origin": "server/yahoo-session-20261029-01/enable-http1.py",
+    "path": "ops/deployment-history/server/yahoo-session-20261029-01/enable-http1.py",
+    "sha256": "52634dd5fb999a2155231bb435d38c9e361aa7bdc8c2cc343d544d68dedcdeb2"
+  },
+  {
+    "origin": "server/yahoo-session-20261029-01/finish.py",
+    "path": "ops/deployment-history/server/yahoo-session-20261029-01/finish.py",
+    "sha256": "20cf42074bf49ee0462bd6e38aedefb36e196e8c31dcd826084a4cc8cea08f49"
+  },
+  {
+    "origin": "server/yahoo-session-20261029-01/login-x11.sh",
+    "path": "ops/deployment-history/server/yahoo-session-20261029-01/login-x11.sh",
+    "sha256": "3fab2c9a6fbbe8a0602b4d11c6dad566c0f73bfeda6b2a45c147879d3ec72ba9"
+  },
+  {
+    "origin": "server/yahoo-session-20261029-01/prepare.py",
+    "path": "ops/deployment-history/server/yahoo-session-20261029-01/prepare.py",
+    "sha256": "9d5d962fe47f78e91bcc6a525da94358f27386be6ffd1ca9873b6620c5e58639"
+  },
+  {
+    "origin": "server/yahoo-session-20261029-01/search-check.cjs",
+    "path": "ops/deployment-history/server/yahoo-session-20261029-01/search-check.cjs",
+    "sha256": "f4be1493f17c7e482d6060248fa76e347633af7efc60d04ba5d88cb09b73911b"
+  },
+  {
+    "origin": "server/yahoo-session-20261029-01/setup-proxy.py",
+    "path": "ops/deployment-history/server/yahoo-session-20261029-01/setup-proxy.py",
+    "sha256": "70ccd77cb8146dc782962563f158c1b4bf4c0a2ad3c7d0062abd8773ad311a3b"
+  },
+  {
+    "origin": "/tmp/goods-hunter-yahoo-deploy/create.cjs",
+    "path": "ops/deployment-history/local/fleamarket-preparation/create.cjs",
+    "sha256": "3aabdb28cbff3830f023826631088d9c45b369a9a9230ecbe37a28f9654ea473"
+  },
+  {
+    "origin": "/tmp/goods-hunter-yahoo-deploy/inspect.cjs",
+    "path": "ops/deployment-history/local/fleamarket-preparation/inspect.cjs",
+    "sha256": "5101ce9074ba5eba9db4df7edcd5eabf6042671a892c3e176a06ba53ee1e9cdc"
+  },
+  {
+    "origin": "/tmp/goods-hunter-yahoo-deploy/rollout.py",
+    "path": "ops/deployment-history/server/yahoo-fleamarket-20261023-db40678834d7/rollout.py",
+    "sha256": "4e8640ed99bf96ffd3dab2d9bd8279c571d761d4665220e27910af388fb83ad4"
+  },
+  {
+    "origin": "/tmp/goods-hunter-yahoo-deploy/schema-check.cjs",
+    "path": "ops/deployment-history/server/yahoo-fleamarket-20261023-db40678834d7/schema-check.cjs",
+    "sha256": "2f09ca94a67f1a90b8480e10c03b1f81aa181e30089f5384dd9999cd8c17252c"
+  },
+  {
+    "origin": "/tmp/goods-hunter-yahoo-deploy/stage.py",
+    "path": "ops/deployment-history/server/yahoo-fleamarket-20261023-db40678834d7/stage.py",
+    "sha256": "68b97fcbc831d7232800e6a1f83c653001fa9505a814f7ac577757b7f9f67634"
+  },
+  {
+    "origin": "/tmp/goods-hunter-yahoo-session-deploy/activate.py",
+    "path": "ops/deployment-history/server/yahoo-session-20261029-01/activate.py",
+    "sha256": "f583cde1e58d410930395b025281f02d36c96395fa4852bc1c432063b91785f4"
+  },
+  {
+    "origin": "/tmp/goods-hunter-yahoo-session-deploy/candidate.py",
+    "path": "ops/deployment-history/server/yahoo-session-20261029-01/candidate.py",
+    "sha256": "4e0cff39f6d0a5e6261f6ab7960aac74aa6dab2c83af09e4bccb888d9ff5e71d"
+  },
+  {
+    "origin": "/tmp/goods-hunter-yahoo-session-deploy/check-candidate.cjs",
+    "path": "ops/deployment-history/local/session-preparation/check-candidate.cjs",
+    "sha256": "931ec1b61e6a1852ffdd957ec998ebb19c7866b25fba4a5a574d517a961bec18"
+  },
+  {
+    "origin": "/tmp/goods-hunter-yahoo-session-deploy/login-x11.sh",
+    "path": "ops/deployment-history/local/session-preparation/login-x11.sh",
+    "sha256": "7d66b9318a9005e6a2632cdb40b869c2817636508efee96f41d6e033e7234d9e"
+  },
+  {
+    "origin": "/tmp/goods-hunter-yahoo-session-deploy/prepare.py",
+    "path": "ops/deployment-history/local/session-preparation/prepare.py",
+    "sha256": "6751eb6c373a760140ba163a4f6606166dd38ea07975f2168d717c3736d06ef2"
+  },
+  {
+    "origin": "/tmp/goods-hunter-yahoo-session-deploy/probe-browser.py",
+    "path": "ops/deployment-history/local/session-preparation/probe-browser.py",
+    "sha256": "f6b1a397b9ab9df90797ccacca409a78f8f5b97e68088b048b025e3ad63cadd5"
+  },
+  {
+    "origin": "/tmp/goods-hunter-yahoo-session-deploy/probe-login.py",
+    "path": "ops/deployment-history/local/session-preparation/probe-login.py",
+    "sha256": "559668298f8185692aa37eca640105717988c904f17eb20ee432de45b9a917f0"
+  },
+  {
+    "origin": "/tmp/goods-hunter-yahoo-session-deploy/setup-proxy.py",
+    "path": "ops/deployment-history/server/yahoo-session-20261029-01/setup-proxy.py",
+    "sha256": "70ccd77cb8146dc782962563f158c1b4bf4c0a2ad3c7d0062abd8773ad311a3b"
+  },
+  {
+    "origin": "/tmp/goods-hunter-yahoo-task-registration/register.cjs",
+    "path": "ops/deployment-history/server/yahoo-fleamarket-20261023-db40678834d7/register.cjs",
+    "sha256": "4cb5f85b5ccdd8614add98cfaae43ddcced16c19fb4d7a5dc214747d4a6f0e24"
+  },
+  {
+    "origin": "/tmp/goods-hunter-yahoo-task-registration/reload.py",
+    "path": "ops/deployment-history/server/yahoo-fleamarket-20261023-db40678834d7/reload.py",
+    "sha256": "9ff7072011a00d1827c421c8084d3d08aed9e4ce72dff6072446a17c05b36967"
+  },
+  {
+    "origin": "/tmp/yahoo-categories-check.cjs",
+    "path": "ops/deployment-history/server/yahoo-session-20261029-01/categories-check.cjs",
+    "sha256": "73e957b7914528bcec0af35065f08477e14e6b93712eda5880bd022576f812b5"
+  },
+  {
+    "origin": "/tmp/yahoo-daily-rollout.py",
+    "path": "ops/deployment-history/server/yahoo-session-20261029-01/daily/yahoo-daily-rollout.py",
+    "sha256": "8f0c1776ac38a0fdff3cbd02e1b047cc736b36385d975201006b62240ba34615"
+  },
+  {
+    "origin": "/tmp/yahoo-enable-http1.py",
+    "path": "ops/deployment-history/server/yahoo-session-20261029-01/enable-http1.py",
+    "sha256": "52634dd5fb999a2155231bb435d38c9e361aa7bdc8c2cc343d544d68dedcdeb2"
+  },
+  {
+    "origin": "/tmp/yahoo-finish-deploy.py",
+    "path": "ops/deployment-history/server/yahoo-session-20261029-01/finish.py",
+    "sha256": "20cf42074bf49ee0462bd6e38aedefb36e196e8c31dcd826084a4cc8cea08f49"
+  },
+  {
+    "origin": "/tmp/yahoo-search-check.cjs",
+    "path": "ops/deployment-history/local/session-followups/yahoo-search-check.cjs",
+    "sha256": "8832393639231dad4819dc2900eefc5e253f833441310e9a4a9a539556239bd3"
+  }
+]

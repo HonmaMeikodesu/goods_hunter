@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><title>Yahoo!フリマ 商品提醒</title></head>
+<body style="font-family:sans-serif;color:#222">
+  <h2>Yahoo!フリマ 新发现商品</h2>
+  <p>以下为本次发现时的商品信息，价格和销售状态以商品页面为准。</p>
+  <% data.forEach(function(good) { %>
+    <div style="margin:20px 0;padding:16px;border:1px solid #ddd;border-radius:8px">
+      <a href="<%= good.itemUrl %>">
+        <% if (good.thumbnailImageUrl) { %>
+          <img src="<%= good.thumbnailImageUrl %>" alt="" width="180" style="max-width:100%;height:auto">
+        <% } %>
+        <p><%= good.name %></p>
+      </a>
+      <strong>¥<%= Number(good.price).toLocaleString('ja-JP') %></strong>
+    </div>
+  <% }); %>
+</body>
+</html>

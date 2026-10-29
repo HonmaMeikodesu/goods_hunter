@@ -10,6 +10,8 @@ import Mail from "nodemailer/lib/mailer";
 import moment from "moment";
 import { v4 } from "uuid";
 import { random, uniq } from "lodash";
+import { AliCloudApi } from "../api/alicloud";
+import { YahooFleamarketApi } from "../api/site/yahooFleamarket";
 @Mock()
 export class ApiMock implements ISimulation {
     @App()
@@ -30,12 +32,24 @@ export class ApiMock implements ISimulation {
     @Inject()
     mandarakeApi: MandarakeApi;
 
+    @Inject()
+    yahooFleamarketApi: YahooFleamarketApi;
+
     async setup(): Promise<void> {
+
+        this.mockService.mockClassProperty(YahooFleamarketApi, "fetchGoodsList", async () => [{
+            id: "z-yahoo-fleamarket-demo",
+            name: "Yahoo!フリマ 谷子示例",
+            price: 1200,
+            status: "OPEN",
+            thumbnailImageUrl: "",
+            itemUrl: "https://paypayfleamarket.yahoo.co.jp/item/z-yahoo-fleamarket-demo",
+        }]);
 
         const originMercariFetchGoodsList = this.mercariApi.fetchGoodsList;
         const originMercariFetchGoodDetail = this.mercariApi.fetchGoodDetail;
 
-        this.mercariApi.alicloudApi = {
+        this.mercariApi.alicloudApi = Object.assign(new AliCloudApi(), {
             alicloudConfig: {
                 accessKeyId: "",
                 accessKeySecret: "",
@@ -70,7 +84,7 @@ export class ApiMock implements ISimulation {
                     retry_count: 1
                 } as any;
             }
-        }
+        });
 
 
         this.mercariApi.fetchGoodDetail = async function (...args: any[]) {
@@ -116,7 +130,7 @@ export class ApiMock implements ISimulation {
 
         const originMandarakeFetchGoodsList = this.mandarakeApi.fetchGoodsList;
 
-        this.mandarakeApi.alicloudApi = {
+        this.mandarakeApi.alicloudApi = Object.assign(new AliCloudApi(), {
             alicloudConfig: {
                 accessKeyId: "",
                 accessKeySecret: "",
@@ -141,7 +155,7 @@ export class ApiMock implements ISimulation {
                 }
                 return { success: false } as any;
             }
-        };
+        });
 
         this.mandarakeApi.fetchGoodsList = async function (...args: any) {
             const res: ReturnType<typeof originMandarakeFetchGoodsList> = originMandarakeFetchGoodsList.call(this, ...args);

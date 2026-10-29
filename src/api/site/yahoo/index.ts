@@ -5,6 +5,7 @@ import { AliCloudApi } from "../../alicloud/index";
 import { GoodsBreif, GoodsListResponse, YahooAuctionGoodsSearchCondition } from "./types";
 import { JSDOM } from "jsdom";
 import { cloneDeep } from "lodash";
+import { readYahooCookies, YahooSessionConfig, YahooSessionError, yahooPageNeedsLogin, isYahooMyPage, DEFAULT_YAHOO_AUTH_SELECTOR } from "./session";
 
 const PAGE_SIZE = 50;
 
@@ -61,19 +62,14 @@ export class YahooAuctionApi extends ApiBase {
     @Config("yahooAuctionCookie")
     cookie: string;
 
+    @Config("yahooSession")
+    sessionConfig: YahooSessionConfig;
+
     @Inject()
     alicloudApi: AliCloudApi;
 
     getParsedCookies() {
-        return this.cookie ? this.cookie.split(";").map(c => {
-            const [name, ...valueParts] = c.trim().split("=");
-            return {
-                name: name,
-                value: valueParts.join("="),
-                domain: "auctions.yahoo.co.jp",
-                path: "/"
-            };
-        }).filter(c => c.name) : undefined;
+        return readYahooCookies(this.sessionConfig, this.cookie);
     }
 
     async fetchGoodsList(options: YahooAuctionGoodsSearchCondition): Promise<GoodsListResponse> {
@@ -153,6 +149,7 @@ export class YahooAuctionApi extends ApiBase {
             this.logger.info(`requesting to ${yahooAuctionSearchUrl}..., currentPage: ${idx}`);
 
             const response = await this.alicloudApi.fetchHtmlViaServerless(yahooAuctionSearchUrl.toString(), "/jp/auction/", parsedCookies, 30, maxRetry);
+            if (yahooPageNeedsLogin(response.url)) throw new YahooSessionError("FC_NEEDS_LOGIN");
             if (!response.success || !response.content) throw new Error('Yahoo page fetch failed');
             const domStr = response.content;
 
@@ -224,23 +221,25 @@ export class YahooAuctionApi extends ApiBase {
 
     }
 
-    async checkCookieHeartBeat(): Promise<{ result: boolean; cookie: string }> {
-        const userPageUrl = "https://auctions.yahoo.co.jp/user/jp/show/mystatus";
-
-        const parsedCookies = this.getParsedCookies();
-
-        const { content: domStr } = await this.alicloudApi.fetchHtmlViaServerless(userPageUrl, "#acMdStatus", parsedCookies, undefined, 3);
-
-        const dom = new JSDOM(domStr);
-
-        return {
-            cookie: this.cookie,
-            result: !!dom.window.document.querySelector("#acMdStatus")
-        };
+    async checkCookieHeartBeat(): Promise<{ result: boolean; reason?: string }> {
+        try {
+            const parsedCookies = this.getParsedCookies();
+            if (!parsedCookies?.length) return { result: false, reason: "COOKIES_MISSING" };
+            // FC assertions are literal text, not CSS selectors. Check the DOM here.
+            const response = await this.alicloudApi.fetchHtmlViaServerless("https://auctions.yahoo.co.jp/my", undefined, parsedCookies, undefined, 1);
+            if (yahooPageNeedsLogin(response.url)) return { result: false, reason: "FC_NEEDS_LOGIN" };
+            if (!response.success || !response.content || !isYahooMyPage(response.url)) return { result: false, reason: "FC_CHECK_FAILED" };
+            const dom = new JSDOM(response.content);
+            try {
+                const result = !!dom.window.document.querySelector(this.sessionConfig?.authenticatedSelector || DEFAULT_YAHOO_AUTH_SELECTOR);
+                return { result, reason: result ? undefined : "FC_AUTH_UNVERIFIED" };
+            } finally { dom.window.close(); }
+        } catch (error) {
+            return { result: false, reason: error instanceof YahooSessionError ? error.code : "FC_CHECK_FAILED" };
+        }
     }
 
     async fetchGoodDetail(searchOptions: any): Promise<any> {
         return Promise.resolve();
     }
 }
-

@@ -2,6 +2,7 @@ import { MercariGoodsSearchCondition } from "./mercari/types";
 import { YahooAuctionGoodsSearchCondition } from "./yahoo/types";
 import { SurugayaGoodsSearchCondition } from "./surugaya/types";
 import { MandarakeGoodsSearchCondition } from "./mandarake/types";
+import { YahooFleamarketSearchCondition } from "./yahooFleamarket/types";
 
 export type GoodsSearchConditionBase = {
   keyword: string;
@@ -16,7 +17,8 @@ export type GoodsSearchCondition =
   | MercariGoodsSearchCondition
   | YahooAuctionGoodsSearchCondition
   | SurugayaGoodsSearchCondition
-  | MandarakeGoodsSearchCondition;
+  | MandarakeGoodsSearchCondition
+  | YahooFleamarketSearchCondition;
 
 
 export type GoodsBreifExtension = {}
