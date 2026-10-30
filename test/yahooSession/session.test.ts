@@ -98,18 +98,87 @@ it("stops a hunt before changing seen records when the managed session is unavai
   expect(service.yahooAuctionRecordModel.find).not.toHaveBeenCalled();
 });
 
-it("throttles sanitized alerts and resets the throttle after recovery", async () => {
+function alertStore() {
+  let expiresAt = 0;
+  return { set: jest.fn(async () => {
+    if (expiresAt > Date.now()) return null;
+    expiresAt = Date.now() + 86400000;
+    return "OK";
+  }) };
+}
+
+function alertService(store = alertStore(), reason = "FC_CHECK_FAILED") {
   const service = new YahooHunterService();
-  service.yahooApi = { checkCookieHeartBeat: jest.fn().mockResolvedValue({ result: false, reason: "NEEDS_LOGIN" }) } as any;
+  service.yahooApi = { checkCookieHeartBeat: jest.fn().mockResolvedValue({ result: false, reason }) } as any;
   service.emailService = { sendEmail: jest.fn().mockResolvedValue(undefined) } as any;
+  service.redisClient = store as any;
   service.mailInfo = { contactSystemOwner: "test@example.invalid" } as any;
-  service.logger = { info: jest.fn() } as any;
+  service.logger = { info: jest.fn(), warn: jest.fn(), error: jest.fn() } as any;
+  return service;
+}
+
+it("keeps the alert cooldown when the FC check briefly recovers", async () => {
+  const service = alertService();
   await service["cookieHeartBeatCheck"]();
-  await service["cookieHeartBeatCheck"]();
-  expect(service.emailService.sendEmail).toHaveBeenCalledTimes(1);
-  expect((service.emailService.sendEmail as jest.Mock).mock.calls[0][0].text).toContain("NEEDS_LOGIN");
   (service.yahooApi.checkCookieHeartBeat as jest.Mock).mockResolvedValueOnce({ result: true });
   await service["cookieHeartBeatCheck"]();
   await service["cookieHeartBeatCheck"]();
-  expect(service.emailService.sendEmail).toHaveBeenCalledTimes(2);
+  expect(service.emailService.sendEmail).toHaveBeenCalledTimes(1);
+});
+
+it("shares an atomic daily cooldown across concurrent workers and restarts", async () => {
+  const store = alertStore();
+  const first = alertService(store), second = alertService(store);
+  await Promise.all([first["cookieHeartBeatCheck"](), second["cookieHeartBeatCheck"]()]);
+  const restarted = alertService(store);
+  await restarted["cookieHeartBeatCheck"]();
+  expect(first.emailService.sendEmail).toHaveBeenCalledTimes(1);
+  expect(second.emailService.sendEmail).not.toHaveBeenCalled();
+  expect(restarted.emailService.sendEmail).not.toHaveBeenCalled();
+  expect(store.set).toHaveBeenCalledWith("goods-hunter:yahoo:session-alert:v1", "1", "EX", 86400, "NX");
+});
+
+it("allows a reminder after 24 hours without requiring an intervening recovery", async () => {
+  const clock = jest.spyOn(Date, "now").mockReturnValue(now);
+  try {
+    const service = alertService();
+    await service["cookieHeartBeatCheck"]();
+    clock.mockReturnValue(now + 86399999);
+    await service["cookieHeartBeatCheck"]();
+    expect(service.emailService.sendEmail).toHaveBeenCalledTimes(1);
+    clock.mockReturnValue(now + 86400000);
+    await service["cookieHeartBeatCheck"]();
+    expect(service.emailService.sendEmail).toHaveBeenCalledTimes(2);
+  } finally { clock.mockRestore(); }
+});
+
+it.each([
+  ["FC_CHECK_FAILED", "Yahoo session check unavailable"],
+  ["FC_AUTH_UNVERIFIED", "Yahoo session check unavailable"],
+  ["NEEDS_LOGIN", "Yahoo session needs login"],
+  ["FC_NEEDS_LOGIN", "Yahoo session needs login"],
+  ["synthetic-secret", "Yahoo session check unavailable"],
+])("reports %s without mislabelling network errors or exposing unknown details", async (reason, subject) => {
+  const service = alertService(undefined, reason);
+  await service["cookieHeartBeatCheck"]();
+  const mail = (service.emailService.sendEmail as jest.Mock).mock.calls[0][0];
+  expect(mail.subject).toBe(subject);
+  expect(mail.text).toContain(reason === "synthetic-secret" ? "UNKNOWN" : reason);
+  expect(JSON.stringify(mail)).not.toContain("synthetic-secret");
+});
+
+it("does not send unthrottled mail when Redis is unavailable", async () => {
+  const service = alertService();
+  (service.redisClient.set as jest.Mock).mockRejectedValue(new Error("synthetic-secret"));
+  await service["cookieHeartBeatCheck"]();
+  expect(service.emailService.sendEmail).not.toHaveBeenCalled();
+  expect(JSON.stringify((service.logger.error as jest.Mock).mock.calls)).not.toContain("synthetic-secret");
+});
+
+it("retains the cooldown after an ambiguous SMTP failure", async () => {
+  const service = alertService();
+  (service.emailService.sendEmail as jest.Mock).mockRejectedValue(new Error("synthetic-secret"));
+  await service["cookieHeartBeatCheck"]();
+  await service["cookieHeartBeatCheck"]();
+  expect(service.emailService.sendEmail).toHaveBeenCalledTimes(1);
 });

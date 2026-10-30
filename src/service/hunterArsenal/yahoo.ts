@@ -35,21 +35,38 @@ export class YahooHunterService extends HunterBase {
   @Config("emailConfig")
   mailInfo: CustomConfig["emailConfig"];
 
-  private lastCookieAlertAt = 0;
-
   @TaskLocal("0 * * * *")
   private async cookieHeartBeatCheck() {
     const yahooCookieValid = await this.yahooApi.checkCookieHeartBeat();
-    if (!yahooCookieValid?.result && Date.now() - this.lastCookieAlertAt >= 6 * 60 * 60 * 1000) {
+    // Only emit known codes: upstream errors can contain URLs or credentials.
+    const knownReasons = ["NEEDS_LOGIN", "FC_NEEDS_LOGIN", "FC_CHECK_FAILED", "FC_AUTH_UNVERIFIED",
+      "STATE_UNREADABLE", "STATE_INVALID", "STATE_STALE", "COOKIES_MISSING", "COOKIES_EXPIRED",
+      "COOKIE_INVALID", "COOKIE_DOMAIN_INVALID", "LEGACY_UNREADABLE"];
+    const reason = knownReasons.includes(yahooCookieValid?.reason) ? yahooCookieValid.reason : "UNKNOWN";
+    this.logger.info(`Yahoo session check: ${yahooCookieValid?.result ? "OK" : reason}`);
+    if (yahooCookieValid?.result) return;
+
+    // Shared, atomic cooldown survives restarts and intermittent recovery. Claim
+    // before SMTP: an ambiguous send failure must not cause duplicate messages.
+    try {
+      const claimed = await this.redisClient.set("goods-hunter:yahoo:session-alert:v1", "1", "EX", 86400, "NX");
+      if (claimed !== "OK") return;
+    } catch {
+      this.logger.error("Yahoo session alert suppressed: cooldown store unavailable");
+      return;
+    }
+    const needsLogin = reason === "NEEDS_LOGIN" || reason === "FC_NEEDS_LOGIN";
+    try {
       await this.emailService.sendEmail({
         to: this.mailInfo.contactSystemOwner,
-        subject: "Your yahoo cookie seems to expire or invalid",
-        text: `Yahoo session check failed (${yahooCookieValid?.reason || "UNKNOWN"}). Check the session manager status; if login is required, use the remote login command. No credentials are included in this alert.`
+        subject: needsLogin ? "Yahoo session needs login" : "Yahoo session check unavailable",
+        text: needsLogin
+          ? `Yahoo session check reported a login requirement (${reason}). Check the session manager status and use the remote login command if needed. Reminders are limited to once per 24 hours.`
+          : `Yahoo session could not be verified (${reason}). This does not establish that the cookie expired. Check FC connectivity and the session manager status before attempting login. Reminders are limited to once per 24 hours.`
       });
-      this.lastCookieAlertAt = Date.now();
+    } catch {
+      this.logger.error("Yahoo session alert delivery failed; daily cooldown retained");
     }
-    if (yahooCookieValid?.result) this.lastCookieAlertAt = 0;
-    this.logger.info("cookie heart beat check finished")
   }
 
   @TaskLocal("*/2 * * * *")
