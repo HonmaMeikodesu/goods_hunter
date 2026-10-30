@@ -45,24 +45,24 @@ export class YahooHunterService extends HunterBase {
     const reason = knownReasons.includes(yahooCookieValid?.reason) ? yahooCookieValid.reason : "UNKNOWN";
     this.logger.info(`Yahoo session check: ${yahooCookieValid?.result ? "OK" : reason}`);
     if (yahooCookieValid?.result) return;
+    // Connectivity, unreadable state and stale snapshots do not prove expiry.
+    // Only a login requirement or expired cookies warrants an email.
+    if (!["NEEDS_LOGIN", "FC_NEEDS_LOGIN", "COOKIES_EXPIRED"].includes(reason)) return;
 
     // Shared, atomic cooldown survives restarts and intermittent recovery. Claim
     // before SMTP: an ambiguous send failure must not cause duplicate messages.
     try {
-      const claimed = await this.redisClient.set("goods-hunter:yahoo:session-alert:v1", "1", "EX", 86400, "NX");
+      const claimed = await this.redisClient.set("goods-hunter:yahoo:login-alert:v1", "1", "EX", 86400, "NX");
       if (claimed !== "OK") return;
     } catch {
       this.logger.error("Yahoo session alert suppressed: cooldown store unavailable");
       return;
     }
-    const needsLogin = reason === "NEEDS_LOGIN" || reason === "FC_NEEDS_LOGIN";
     try {
       await this.emailService.sendEmail({
         to: this.mailInfo.contactSystemOwner,
-        subject: needsLogin ? "Yahoo session needs login" : "Yahoo session check unavailable",
-        text: needsLogin
-          ? `Yahoo session check reported a login requirement (${reason}). Check the session manager status and use the remote login command if needed. Reminders are limited to once per 24 hours.`
-          : `Yahoo session could not be verified (${reason}). This does not establish that the cookie expired. Check FC connectivity and the session manager status before attempting login. Reminders are limited to once per 24 hours.`
+        subject: "Yahoo session needs login",
+        text: `Yahoo session requires login or its cookies have expired (${reason}). Check the session manager status and use the remote login command if needed. Reminders are limited to once per 24 hours.`
       });
     } catch {
       this.logger.error("Yahoo session alert delivery failed; daily cooldown retained");

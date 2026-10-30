@@ -107,7 +107,7 @@ function alertStore() {
   }) };
 }
 
-function alertService(store = alertStore(), reason = "FC_CHECK_FAILED") {
+function alertService(store = alertStore(), reason = "NEEDS_LOGIN") {
   const service = new YahooHunterService();
   service.yahooApi = { checkCookieHeartBeat: jest.fn().mockResolvedValue({ result: false, reason }) } as any;
   service.emailService = { sendEmail: jest.fn().mockResolvedValue(undefined) } as any;
@@ -135,7 +135,7 @@ it("shares an atomic daily cooldown across concurrent workers and restarts", asy
   expect(first.emailService.sendEmail).toHaveBeenCalledTimes(1);
   expect(second.emailService.sendEmail).not.toHaveBeenCalled();
   expect(restarted.emailService.sendEmail).not.toHaveBeenCalled();
-  expect(store.set).toHaveBeenCalledWith("goods-hunter:yahoo:session-alert:v1", "1", "EX", 86400, "NX");
+  expect(store.set).toHaveBeenCalledWith("goods-hunter:yahoo:login-alert:v1", "1", "EX", 86400, "NX");
 });
 
 it("allows a reminder after 24 hours without requiring an intervening recovery", async () => {
@@ -152,19 +152,25 @@ it("allows a reminder after 24 hours without requiring an intervening recovery",
   } finally { clock.mockRestore(); }
 });
 
-it.each([
-  ["FC_CHECK_FAILED", "Yahoo session check unavailable"],
-  ["FC_AUTH_UNVERIFIED", "Yahoo session check unavailable"],
-  ["NEEDS_LOGIN", "Yahoo session needs login"],
-  ["FC_NEEDS_LOGIN", "Yahoo session needs login"],
-  ["synthetic-secret", "Yahoo session check unavailable"],
-])("reports %s without mislabelling network errors or exposing unknown details", async (reason, subject) => {
+it.each(["NEEDS_LOGIN", "FC_NEEDS_LOGIN", "COOKIES_EXPIRED"])("sends login reminders for %s", async reason => {
   const service = alertService(undefined, reason);
   await service["cookieHeartBeatCheck"]();
   const mail = (service.emailService.sendEmail as jest.Mock).mock.calls[0][0];
-  expect(mail.subject).toBe(subject);
-  expect(mail.text).toContain(reason === "synthetic-secret" ? "UNKNOWN" : reason);
-  expect(JSON.stringify(mail)).not.toContain("synthetic-secret");
+  expect(mail.subject).toBe("Yahoo session needs login");
+  expect(mail.text).toContain(reason);
+});
+
+it.each(["FC_CHECK_FAILED", "FC_AUTH_UNVERIFIED", "STATE_UNREADABLE", "STATE_INVALID",
+  "STATE_STALE", "COOKIES_MISSING", "COOKIE_INVALID", "COOKIE_DOMAIN_INVALID",
+  "LEGACY_UNREADABLE", "synthetic-secret"])("only logs %s without sending or consuming the login cooldown", async reason => {
+  const service = alertService(undefined, reason);
+  await service["cookieHeartBeatCheck"]();
+  expect(service.emailService.sendEmail).not.toHaveBeenCalled();
+  expect(service.redisClient.set).not.toHaveBeenCalled();
+  expect(JSON.stringify((service.logger.info as jest.Mock).mock.calls)).not.toContain("synthetic-secret");
+  (service.yahooApi.checkCookieHeartBeat as jest.Mock).mockResolvedValueOnce({ result: false, reason: "NEEDS_LOGIN" });
+  await service["cookieHeartBeatCheck"]();
+  expect(service.emailService.sendEmail).toHaveBeenCalledTimes(1);
 });
 
 it("does not send unthrottled mail when Redis is unavailable", async () => {
