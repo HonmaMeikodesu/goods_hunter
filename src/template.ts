@@ -21,6 +21,11 @@ export const yahooFleamarketGoodsList = fs.readFileSync(
   { encoding: "utf-8" }
 );
 
+export const xianyuGoodsList = fs.readFileSync(
+  path.join(__dirname, "../view/xianyu/goodsList.ejs"),
+  { encoding: "utf-8" }
+);
+
 export const surugayaGoodsList = fs.readFileSync(
   path.join(__dirname, "../view/surugaya/goodsList.ejs"),
   { encoding: "utf-8" }

@@ -19,6 +19,7 @@ accessKeyId: string;
 accessKeySecret: string;
 url: string;
 yahooFleamarketUrl?: string;
+xianyuUrl?: string;
 };
 }
 
@@ -90,6 +91,7 @@ tz: "Asia/Shanghai",
 		config.alicloudConfig = { accessKeyId: "", accessKeySecret: "", url: "" };
 	}
 	config.alicloudConfig.yahooFleamarketUrl = process.env.YAHOO_FLEAMARKET_FC_URL || config.alicloudConfig.yahooFleamarketUrl || "";
+	config.alicloudConfig.xianyuUrl = process.env.XIANYU_FC_URL || config.alicloudConfig.xianyuUrl || "";
 
 
 	config.egg = {

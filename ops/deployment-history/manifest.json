@@ -178,5 +178,180 @@
     "origin": "/tmp/yahoo-search-check.cjs",
     "path": "ops/deployment-history/local/session-followups/yahoo-search-check.cjs",
     "sha256": "8832393639231dad4819dc2900eefc5e253f833441310e9a4a9a539556239bd3"
+  },
+  {
+    "origin": "server/xianyu-20261103-b8e74a427dde/prepare.py",
+    "path": "ops/deployment-history/server/xianyu-20261103-b8e74a427dde/prepare.py",
+    "sha256": "64cc926e2d515d1800410f49fc703560d5d740edb3ae8d932d9cc141e76dc1b8"
+  },
+  {
+    "origin": "server/xianyu-20261103-b8e74a427dde/register.cjs",
+    "path": "ops/deployment-history/server/xianyu-20261103-b8e74a427dde/register.cjs",
+    "sha256": "a6a05055a94dc12bcc351976be00bd89bdf3ccbf6588c549fc0c15bd93bb81be"
+  },
+  {
+    "origin": "server/xianyu-20261103-b8e74a427dde/rollout.py",
+    "path": "ops/deployment-history/server/xianyu-20261103-b8e74a427dde/rollout.py",
+    "sha256": "73a8d4d6968165c537c997915310a58efc3365697376a4e894e4a0f5307006d1"
+  },
+  {
+    "origin": "server/xianyu-20261103-b8e74a427dde/schema.cjs",
+    "path": "ops/deployment-history/server/xianyu-20261103-b8e74a427dde/schema.cjs",
+    "sha256": "17ffd6fa160b554a4772c8640bf8a2a4d61b617f36e9b9fce8a1de3de37e1433"
+  },
+  {
+    "origin": "server/xianyu-20261103-b8e74a427dde/verify.cjs",
+    "path": "ops/deployment-history/server/xianyu-20261103-b8e74a427dde/verify.cjs",
+    "sha256": "552047cab1d019600a5f67d4ec22421e3ec000ac0e7fe2aff06bd6d29502eeee"
+  },
+  {
+    "origin": "server/xianyu-20261103-images-705bdcf29fa2/prepare.py",
+    "path": "ops/deployment-history/server/xianyu-20261103-images-705bdcf29fa2/prepare.py",
+    "sha256": "3644b02a21be03abf84dd89636c9f94dcba78ea5731499910637805e0411c6d1"
+  },
+  {
+    "origin": "server/xianyu-20261103-images-705bdcf29fa2/repair-images.cjs",
+    "path": "ops/deployment-history/server/xianyu-20261103-images-705bdcf29fa2/repair-images.cjs",
+    "sha256": "b48a0e1ba7a6a7d8a5b71d32a3eb0881a9f990635835b9db873f8a3fc89864ab"
+  },
+  {
+    "origin": "server/xianyu-20261103-images-705bdcf29fa2/rollout.py",
+    "path": "ops/deployment-history/server/xianyu-20261103-images-705bdcf29fa2/rollout.py",
+    "sha256": "2189d4c624f8a61be51eaeca1a734c2bc6e1ca4a5d13f486b859fbf62ba71772"
+  },
+  {
+    "origin": "server/xianyu-20261103-images-705bdcf29fa2/task-settings.cjs",
+    "path": "ops/deployment-history/server/xianyu-20261103-images-705bdcf29fa2/task-settings.cjs",
+    "sha256": "f00baef53bfece3a83ef456057bf36ccdf28636764dc02a1eae4502086f3fc46"
+  },
+  {
+    "origin": "server/xianyu-20261103-images-705bdcf29fa2/verify-runtime.py",
+    "path": "ops/deployment-history/server/xianyu-20261103-images-705bdcf29fa2/verify-runtime.py",
+    "sha256": "1ca22d8f9a67afbb73c83aa4dc9d16c0ce0bffa4933921cfa8522af5adc91d53"
+  },
+  {
+    "origin": "/home/admin/Documents/Codex/2026-11-02/new-chat-2/work/deploy/cloud.cjs",
+    "path": "ops/deployment-history/local/xianyu-initial-deployment/cloud.cjs",
+    "sha256": "8a76b39bd78e276e5f1b593db2eb9d70f9008904229e6c6de9dc6f5c9d9cbd12"
+  },
+  {
+    "origin": "/home/admin/Documents/Codex/2026-11-02/new-chat-2/work/deploy/create-cloud.cjs",
+    "path": "ops/deployment-history/local/xianyu-initial-deployment/create-cloud.cjs",
+    "sha256": "7c266cf8c4c65e8d3efcdcb0dfba29d6d5e037b50af0bc90496b716bc02ef327"
+  },
+  {
+    "origin": "/home/admin/Documents/Codex/2026-11-02/new-chat-2/work/deploy/check-cloud.cjs",
+    "path": "ops/deployment-history/local/xianyu-initial-deployment/check-cloud.cjs",
+    "sha256": "01f75c55a6a8526478cbef30c839ab4010e42c16b7c12c2873e4f87227863fd0"
+  },
+  {
+    "origin": "/home/admin/Documents/Codex/2026-11-02/new-chat-2/work/deploy/final_runtime.py",
+    "path": "ops/deployment-history/local/xianyu-initial-deployment/final_runtime.py",
+    "sha256": "1510b18ec39d59ae42f7f03deff0ef9cbe3e9bd381c55958f1026e1a702b1b98"
+  },
+  {
+    "origin": "/home/admin/Documents/Codex/2026-11-02/new-chat-2/work/deploy/prepare.py",
+    "path": "ops/deployment-history/server/xianyu-20261103-b8e74a427dde/prepare.py",
+    "sha256": "64cc926e2d515d1800410f49fc703560d5d740edb3ae8d932d9cc141e76dc1b8"
+  },
+  {
+    "origin": "/home/admin/Documents/Codex/2026-11-02/new-chat-2/work/deploy/register.cjs",
+    "path": "ops/deployment-history/server/xianyu-20261103-b8e74a427dde/register.cjs",
+    "sha256": "a6a05055a94dc12bcc351976be00bd89bdf3ccbf6588c549fc0c15bd93bb81be"
+  },
+  {
+    "origin": "/home/admin/Documents/Codex/2026-11-02/new-chat-2/work/deploy/rollout.py",
+    "path": "ops/deployment-history/server/xianyu-20261103-b8e74a427dde/rollout.py",
+    "sha256": "73a8d4d6968165c537c997915310a58efc3365697376a4e894e4a0f5307006d1"
+  },
+  {
+    "origin": "/home/admin/Documents/Codex/2026-11-02/new-chat-2/work/deploy/schema.cjs",
+    "path": "ops/deployment-history/server/xianyu-20261103-b8e74a427dde/schema.cjs",
+    "sha256": "17ffd6fa160b554a4772c8640bf8a2a4d61b617f36e9b9fce8a1de3de37e1433"
+  },
+  {
+    "origin": "/home/admin/Documents/Codex/2026-11-02/new-chat-2/work/deploy/verify.cjs",
+    "path": "ops/deployment-history/server/xianyu-20261103-b8e74a427dde/verify.cjs",
+    "sha256": "552047cab1d019600a5f67d4ec22421e3ec000ac0e7fe2aff06bd6d29502eeee"
+  },
+  {
+    "origin": "/home/admin/Documents/Codex/2026-11-02/new-chat-2/work/xianyu-followup/probe.py",
+    "path": "ops/deployment-history/local/xianyu-notification-fix/probe.py",
+    "sha256": "a44795fe3df997114d05160710c53235340ce3f03c0386b8f3e231e92d81c5d1"
+  },
+  {
+    "origin": "/home/admin/Documents/Codex/2026-11-02/new-chat-2/work/xianyu-followup/render_preview.py",
+    "path": "ops/deployment-history/local/xianyu-notification-fix/render_preview.py",
+    "sha256": "977003b9a7f7ac28fe1173b68cc81cd39a77c6d40893521a85ee24e6cfdfea9e"
+  },
+  {
+    "origin": "/home/admin/Documents/Codex/2026-11-02/new-chat-2/work/xianyu-followup/update-cloud.cjs",
+    "path": "ops/deployment-history/local/xianyu-notification-fix/update-cloud.cjs",
+    "sha256": "e9339559996720f34459952d4b2c76462479cc07f2ef5339a08b0cbe287adf70"
+  },
+  {
+    "origin": "/home/admin/Documents/Codex/2026-11-02/new-chat-2/work/xianyu-followup/check-cloud.cjs",
+    "path": "ops/deployment-history/local/xianyu-notification-fix/check-cloud.cjs",
+    "sha256": "5369bcf0c723e70ec7f306e3b9447f41f98228ebee34dd84e08482381cb5fc4b"
+  },
+  {
+    "origin": "/home/admin/Documents/Codex/2026-11-02/new-chat-2/work/xianyu-followup/prepare.py",
+    "path": "ops/deployment-history/server/xianyu-20261103-images-705bdcf29fa2/prepare.py",
+    "sha256": "3644b02a21be03abf84dd89636c9f94dcba78ea5731499910637805e0411c6d1"
+  },
+  {
+    "origin": "/home/admin/Documents/Codex/2026-11-02/new-chat-2/work/xianyu-followup/rollout.py",
+    "path": "ops/deployment-history/server/xianyu-20261103-images-705bdcf29fa2/rollout.py",
+    "sha256": "2189d4c624f8a61be51eaeca1a734c2bc6e1ca4a5d13f486b859fbf62ba71772"
+  },
+  {
+    "origin": "/home/admin/Documents/Codex/2026-11-02/new-chat-2/work/xianyu-followup/task-settings.cjs",
+    "path": "ops/deployment-history/server/xianyu-20261103-images-705bdcf29fa2/task-settings.cjs",
+    "sha256": "f00baef53bfece3a83ef456057bf36ccdf28636764dc02a1eae4502086f3fc46"
+  },
+  {
+    "origin": "/home/admin/Documents/Codex/2026-11-02/new-chat-2/work/xianyu-followup/repair-images.cjs",
+    "path": "ops/deployment-history/server/xianyu-20261103-images-705bdcf29fa2/repair-images.cjs",
+    "sha256": "b48a0e1ba7a6a7d8a5b71d32a3eb0881a9f990635835b9db873f8a3fc89864ab"
+  },
+  {
+    "origin": "/home/admin/Documents/Codex/2026-11-02/new-chat-2/work/xianyu-followup/verify-runtime.py",
+    "path": "ops/deployment-history/server/xianyu-20261103-images-705bdcf29fa2/verify-runtime.py",
+    "sha256": "1ca22d8f9a67afbb73c83aa4dc9d16c0ce0bffa4933921cfa8522af5adc91d53"
+  },
+  {
+    "origin": "/home/admin/Documents/Codex/2026-11-02/new-chat-2/work/xianyu-smoke/xianyu_matrix.py",
+    "path": "ops/deployment-history/local/xianyu-browser-verification/xianyu_matrix.py",
+    "sha256": "64f464add1a444ffe62063514b75de6917ffbf6f7fe5edc99430cc3fa510a7c2"
+  },
+  {
+    "origin": "/home/admin/Documents/Codex/2026-11-02/new-chat-2/work/xianyu-smoke/xianyu_smoke.py",
+    "path": "ops/deployment-history/local/xianyu-browser-verification/xianyu_smoke.py",
+    "sha256": "ecc06a6b2cdc97fb5de36559035c6a31d5dfcd2e37a52dc81a2af3c2b81b310d"
+  },
+  {
+    "origin": "/home/admin/Documents/Codex/2026-11-02/new-chat-2/work/xianyu-smoke/run_native_matrix.py",
+    "path": "ops/deployment-history/local/xianyu-browser-verification/run_native_matrix.py",
+    "sha256": "b681f2b6940f40333432f68e989571cd8610bab87e11b5562f26d0e12c4150cc"
+  },
+  {
+    "origin": "/home/admin/Documents/Codex/2026-11-02/new-chat-2/work/implementation/run_fc_acceptance.py",
+    "path": "ops/deployment-history/local/xianyu-local-acceptance/run_fc_acceptance.py",
+    "sha256": "acfdc16912a31dc847e7d42fd3648e464a616247495463348c6e7df8c3c3ea66"
+  },
+  {
+    "origin": "/home/admin/Documents/Codex/2026-11-02/new-chat-2/work/implementation/accept_fc.cjs",
+    "path": "ops/deployment-history/local/xianyu-local-acceptance/accept_fc.cjs",
+    "sha256": "48987ccd84dd1c451e325f3315f0ce9e5bcbf617d7ce85b7a7b3038174aa301d"
+  },
+  {
+    "origin": "/home/admin/Documents/Codex/2026-11-02/new-chat-2/work/xianyu-overnight/inspect-logs.cjs",
+    "path": "ops/deployment-history/local/xianyu-overnight-audit/inspect-logs.cjs",
+    "sha256": "46ac332b6c1bfb27eb1afbe28aff307f0ac5e964365d4b768b419c0bd79cd02d"
+  },
+  {
+    "origin": "/home/admin/Documents/Codex/2026-11-02/new-chat-2/work/xianyu-overnight/read-app-events.py",
+    "path": "ops/deployment-history/local/xianyu-overnight-audit/read-app-events.py",
+    "sha256": "ad1799285501744e867e626e9dffc03484aa100fdeeeda19408004abc5e94d0c"
   }
 ]

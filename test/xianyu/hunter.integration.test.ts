@@ -1,0 +1,218 @@
+import { createConnection, Connection, getMetadataArgsStorage, Repository } from "typeorm";
+import { v4 as uuid } from "uuid";
+import { User } from "../../src/model/user";
+import { XianyuHunter } from "../../src/model/xianyuHunter";
+import { XianyuGoodsRecord } from "../../src/model/xianyuGoodsRecord";
+import { XianyuHunterService } from "../../src/service/hunterArsenal/xianyu";
+import { normalizeXianyuCondition } from "../../src/api/site/xianyu/conditions";
+import { GoodsService } from "../../src/service/goods";
+import { HunterRouteService } from "../../src/service/hunterRouteService";
+
+const dbDescribe = process.env.XIANYU_TEST_MYSQL_PORT ? describe : describe.skip;
+const good = (id: string) => ({ id, name: `<谷子> ${id}`, priceFen: 1234, publishedAt: null, thumbnailImageUrl: "", itemUrl: `https://www.goofish.com/item?id=${id}` });
+
+dbDescribe("闲鱼 hunter with MySQL", () => {
+  let connection: Connection;
+  let hunters: Repository<XianyuHunter>;
+  let records: Repository<XianyuGoodsRecord>;
+  let user: User;
+  let service: XianyuHunterService;
+  let fetch: jest.Mock;
+  let send: jest.Mock;
+  let id: string;
+  const database = `xianyu_test_${process.pid}`;
+  const options = {
+    type: "mysql" as const, host: "127.0.0.1", port: Number(process.env.XIANYU_TEST_MYSQL_PORT),
+    username: "root", password: "xianyu-local-test-only", charset: "utf8mb4",
+  };
+  beforeAll(async () => {
+    const admin = await createConnection({ ...options, name: "xianyu-test-admin" });
+    await admin.query(`CREATE DATABASE \`${database}\` CHARACTER SET utf8mb4`);
+    await admin.close();
+    connection = await createConnection({ ...options, name: "xianyu-test", database,
+      entities: getMetadataArgsStorage().tables.map(table => table.target as Function), synchronize: true,
+    });
+    hunters = connection.getRepository(XianyuHunter);
+    records = connection.getRepository(XianyuGoodsRecord);
+    user = await connection.getRepository(User).save({ email: "xianyu-test@example.invalid", password: "test-only" });
+  });
+  afterAll(async () => {
+    if (connection?.isConnected) { await connection.query(`DROP DATABASE \`${database}\``); await connection.close(); }
+  });
+  beforeEach(async () => {
+    await hunters.createQueryBuilder().delete().execute();
+    id = uuid();
+    await hunters.save({ hunterInstanceId: id, user, schedule: "*/10 * * * *", searchConditionSchema: JSON.stringify(normalizeXianyuCondition({ keyword: "谷子" })) });
+    service = new XianyuHunterService();
+    service.hunterModel = hunters;
+    service.goodsRecordModel = records;
+    fetch = jest.fn().mockResolvedValue([good("h1")]);
+    send = jest.fn().mockResolvedValue(undefined);
+    service.xianyuApi = { fetchGoodsList: fetch } as any;
+    service.emailService = { sendEmail: send } as any;
+    service.logger = { info: jest.fn(), error: jest.fn() } as any;
+    (service as any).cronList[id] = { id, schedule: "*/10 * * * *", jobInstance: { stop: jest.fn(), setTime: jest.fn(), start: jest.fn() } };
+  });
+
+  it("seeds a baseline, sends only unseen IDs, and persists deduplication across service restarts", async () => {
+    await service.goHunt(id);
+    expect(send).not.toHaveBeenCalled();
+    expect((await hunters.findOne(id)).initialized).toBe(true);
+    expect(await records.count()).toBe(1);
+    fetch.mockResolvedValue([good("h1"), good("o2")]);
+    await service.goHunt(id);
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(send.mock.calls[0][0].html).toContain("/item?id=o2");
+    expect(send.mock.calls[0][0].html).not.toContain("/item?id=h1");
+    expect(send.mock.calls[0][0].html).toContain("&lt;谷子&gt;");
+    expect(send.mock.calls[0][0].html).toContain("人民币 ¥12.34");
+    // A fresh service instance must reuse persisted IDs, not process memory.
+    const restarted = Object.assign(new XianyuHunterService(), {
+      hunterModel: hunters, goodsRecordModel: records, xianyuApi: service.xianyuApi,
+      emailService: service.emailService, logger: service.logger,
+    });
+    await restarted.goHunt(id);
+    expect(send).toHaveBeenCalledTimes(1);
+  });
+
+  it("can notify existing results and retries a failed email from pending records", async () => {
+    await hunters.update(id, { searchConditionSchema: JSON.stringify(normalizeXianyuCondition({ keyword: "谷子", notifyExisting: true })) });
+    send.mockRejectedValueOnce(new Error("SMTP unavailable"));
+    await service.goHunt(id);
+    expect(await records.count({ notificationPending: true })).toBe(1);
+    await service.goHunt(id);
+    expect(send).toHaveBeenCalledTimes(2);
+    expect(await records.count({ notificationPending: true })).toBe(0);
+    expect((await records.findOne({ id: "h1" })).notifiedAt).toBeInstanceOf(Date);
+  });
+
+  it("repairs missing images without notifying seen goods again", async () => {
+    await service.goHunt(id);
+    const image = "https://img.alicdn.com/product.jpg";
+    fetch.mockResolvedValue([{ ...good("h1"), thumbnailImageUrl: image }]);
+    await service.goHunt(id);
+    expect((await records.findOne({ id: "h1" })).thumbnailImageUrl).toBe(image);
+    expect(await records.count()).toBe(1);
+    expect(send).not.toHaveBeenCalled();
+    await records.update({ id: "h1" }, { notificationPending: true });
+    await service.goHunt(id);
+    expect(send.mock.calls[0][0].html).toContain(`src="${image}"`);
+    expect((await records.findOne({ id: "h1" })).notificationPending).toBe(false);
+  });
+
+  it("skips collection during the configured nightly freeze", async () => {
+    const moment = require("moment");
+    const now = jest.spyOn(moment, "now").mockReturnValue(new Date("2026-11-03T00:30:00").getTime());
+    try {
+      await hunters.update(id, { freezingStart: "00:00", freezingEnd: "08:30" });
+      await service.goHunt(id);
+      expect(fetch).not.toHaveBeenCalled();
+      now.mockReturnValue(new Date("2026-11-03T09:13:00").getTime());
+      await service.goHunt(id);
+      expect(fetch).toHaveBeenCalledTimes(1);
+    } finally { now.mockRestore(); }
+  });
+
+  it("keeps failed FC scans out of the baseline", async () => {
+    fetch.mockRejectedValueOnce(new Error("FC timeout"));
+    await service.goHunt(id);
+    expect((await hunters.findOne(id)).initialized).toBe(false);
+    expect(await records.count()).toBe(0);
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it("serializes overlapping cron invocations", async () => {
+    let finish: (value: any) => void;
+    fetch.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    const first = service.goHunt(id);
+    while (!finish) await new Promise(resolve => setImmediate(resolve));
+    await service.goHunt(id);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    finish([good("h1")]);
+    await first;
+  });
+
+  it("serializes different tasks before calling FC", async () => {
+    const secondId = uuid();
+    await hunters.save({ hunterInstanceId: secondId, user, schedule: "*/10 * * * *", searchConditionSchema: JSON.stringify(normalizeXianyuCondition({ keyword: "手办" })) });
+    let finish: (value: any) => void;
+    fetch.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    const first = service.goHunt(id);
+    while (!finish) await new Promise(resolve => setImmediate(resolve));
+    const second = service.goHunt(secondId);
+    await new Promise(resolve => setImmediate(resolve));
+    expect(fetch).toHaveBeenCalledTimes(1);
+    finish([good("h1")]);
+    await Promise.all([first, second]);
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("resets the baseline for a changed filter, but preserves it for a schedule change", async () => {
+    await service.goHunt(id);
+    await service.transfer(id, { schedule: "*/20 * * * *", searchCondition: { keyword: "谷子" } });
+    expect((await hunters.findOne(id)).initialized).toBe(true);
+    expect(await records.count()).toBe(1);
+    await service.transfer(id, { schedule: "*/20 * * * *", searchCondition: { keyword: "谷子", maxPrice: 2000 } });
+    expect((await hunters.findOne(id)).initialized).toBe(false);
+    expect(await records.count()).toBe(0);
+  });
+
+  it("discards fetched results if the task changes during the request", async () => {
+    fetch.mockImplementationOnce(async () => {
+      await hunters.update(id, { searchConditionSchema: JSON.stringify({ keyword: "別の商品" }) });
+      return [good("h1")];
+    });
+    await service.goHunt(id);
+    expect(await records.count()).toBe(0);
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it("uses the dedicated task model for ownership checks and cascades deletion", async () => {
+    await service.goHunt(id);
+    const goods = new GoodsService();
+    goods.xianyuHunterModel = hunters;
+    goods.ctx = { user: { email: "other@example.invalid" } } as any;
+    goods.hunterRouteService = { dismissHunter: jest.fn(), transferHunter: jest.fn() } as any;
+    await expect(goods.deleteTask(id, "Xianyu")).rejects.toThrow();
+    await expect(goods.updateTask(id, { type: "Xianyu", schedule: "*/10 * * * *", searchCondition: { keyword: "谷子" } })).rejects.toThrow();
+    expect(goods.hunterRouteService.dismissHunter).not.toHaveBeenCalled();
+    goods.ctx = { user: { email: user.email } } as any;
+    await goods.deleteTask(id, "Xianyu");
+    expect(goods.hunterRouteService.dismissHunter).toHaveBeenCalledWith(id, "Xianyu");
+    await service.dismiss(id);
+    expect(await records.count()).toBe(0);
+  });
+
+  it("creates, lists, updates, and deletes a task through the integrated services", async () => {
+    service.databaseTransactionWrapper = async funcs => {
+      const runner = connection.createQueryRunner();
+      await runner.connect();
+      await runner.startTransaction();
+      try {
+        await funcs.pending(runner);
+        await runner.commitTransaction();
+        if (funcs.resolved) await funcs.resolved(runner);
+      } catch (error) {
+        await runner.rollbackTransaction();
+        throw error;
+      } finally { await runner.release(); }
+    };
+    jest.spyOn(service, "spawnCronJob").mockImplementation(async (taskId, schedule) => {
+      (service as any).cronList[taskId] = { id: taskId, schedule, jobInstance: { stop: jest.fn(), setTime: jest.fn(), start: jest.fn() } };
+    });
+    const route = new HunterRouteService();
+    route.xianyuHunter = service;
+    const ctx = { user: { email: user.email } } as any;
+    const taskId = await service.hire(ctx, { type: "Xianyu", user: { email: user.email }, schedule: "*/10 * * * *", searchCondition: { keyword: "新しい谷子" } });
+    expect((await hunters.findOne(taskId as string, { relations: ["user"] })).user.email).toBe(user.email);
+    expect((await service.getCronList(user.email)).find(task => task.hunterInstanceId === taskId).type).toBe("Xianyu");
+    const goods = new GoodsService();
+    goods.xianyuHunterModel = hunters;
+    goods.ctx = ctx;
+    goods.hunterRouteService = route;
+    await goods.updateTask(taskId as string, { type: "Xianyu", schedule: "*/20 * * * *", searchCondition: { keyword: "更新した谷子" } });
+    expect(JSON.parse((await hunters.findOne(taskId as string)).searchConditionSchema).keyword).toBe("更新した谷子");
+    await goods.deleteTask(taskId as string, "Xianyu");
+    expect(await hunters.findOne(taskId as string)).toBeUndefined();
+  });
+});

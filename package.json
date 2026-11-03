@@ -63,6 +63,8 @@
     "dev": "cross-env ets && cross-env proxyInbound='http://127.0.0.1:7890' cross-env NODE_ENV=local mwtsc --watch --run @midwayjs/mock/app.js",
     "test": "cross-env NODE_ENV=unittest NODE_OPTIONS='--require=ts-node/register' jest --runInBand",
     "test:yahoo-fleamarket": "cross-env NODE_ENV=unittest jest --runInBand test/yahooFleamarket",
+    "test:xianyu": "cross-env NODE_ENV=unittest jest --runInBand test/xianyu",
+    "test:xianyu:integration": "bash scripts/test-xianyu.sh",
     "test:yahoo-fleamarket:integration": "bash scripts/test-yahoo-fleamarket.sh",
     "dev_mock": "cross-env ets && export enableMock=1 && cross-env proxyInbound='http://localhost:10809' cross-env NODE_ENV=local mwtsc --watch --run @midwayjs/mock/app.js",
     "test_mock": "cross-env NODE_ENV=unittest NODE_OPTIONS='--require=ts-node/register' enableMock=1 jest --runInBand",

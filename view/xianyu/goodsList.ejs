@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>闲鱼 商品提醒</title></head>
+<body style="font-family:sans-serif;color:#222">
+  <h2>闲鱼 新发现商品</h2>
+  <p>以下为本次发现时的商品信息，价格和销售状态以商品页面为准。</p>
+  <% data.forEach(function(good) { %>
+    <div style="max-width:600px;margin:20px 0;padding:16px;border:1px solid #ddd;border-radius:8px">
+      <a href="<%= good.itemUrl %>">
+        <% if (good.thumbnailImageUrl) { %>
+          <img src="<%= good.thumbnailImageUrl %>" alt="" width="180" style="max-width:100%;height:auto">
+        <% } %>
+        <p title="<%= good.name %>" style="font-size:14px;line-height:1.5em;max-height:3em;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;text-overflow:ellipsis;overflow-wrap:anywhere"><%= good.name %></p>
+      </a>
+      <strong>人民币 ¥<%= (Number(good.priceFen) / 100).toFixed(2) %></strong>
+    </div>
+  <% }); %>
+</body>
+</html>
