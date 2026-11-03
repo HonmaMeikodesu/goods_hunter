@@ -35,7 +35,7 @@ describe("Yahoo!フリマ task API and routing", () => {
   it("dispatches the new platform independently of Yahoo auctions", async () => {
     const route = new HunterRouteService();
     const makeHunter = () => ({ hire: jest.fn(), transfer: jest.fn(), dismiss: jest.fn(), getCronList: jest.fn().mockResolvedValue([]) });
-    for (const key of ["mercariHunter", "yahooHunter", "surugayaHunter", "mandarakeHunter", "surveillanceHunter", "yahooFleamarketHunter"]) {
+    for (const key of ["mercariHunter", "yahooHunter", "surugayaHunter", "mandarakeHunter", "surveillanceHunter", "yahooFleamarketHunter", "xianyuHunter"]) {
       route[key] = makeHunter();
     }
     const info = { type: "YahooFleamarket" as const, user: { email: "owner@example.invalid" }, searchCondition: { keyword: "谷子" }, schedule: "*/10 * * * *" };

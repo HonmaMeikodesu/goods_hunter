@@ -1,0 +1,11 @@
+const fs=require('fs'),sdk=require('/tmp/goods-hunter-yahoo-deploy/node_modules/@alicloud/fc20230330');const {$OpenApiUtil}=require('/tmp/goods-hunter-yahoo-deploy/node_modules/@alicloud/openapi-core');
+const root=__dirname,plan=JSON.parse(fs.readFileSync(root+'/plan.json'));const creds=JSON.parse(fs.readFileSync('/home/admin/project/goods_hunter/src/private/alicloud.json'));
+const client=new sdk.default(new $OpenApiUtil.Config({accessKeyId:creds.accessKeyId,accessKeySecret:creds.accessKeySecret,regionId:plan.region,readTimeout:60000,connectTimeout:15000}));
+(async()=>{let f=(await client.getFunction(plan.functionName,new sdk.GetFunctionRequest())).body;
+if(f.customContainerConfig.image!==plan.image){if(!f.customContainerConfig.image.endsWith(':xianyu-20261103-b8e74a427dde'))throw Error('Unexpected current image; refusing overwrite');fs.writeFileSync(root+'/cloud-before.json',JSON.stringify(f.toMap()),{mode:0o600});const c={...f.customContainerConfig.toMap(),image:plan.image};delete c.resolvedImageUri;delete c.accelerationInfo;await client.updateFunction(plan.functionName,new sdk.UpdateFunctionRequest({body:new sdk.UpdateFunctionInput({customContainerConfig:new sdk.CustomContainerConfig(c)})}));}
+for(let i=0;i<12;i++){f=(await client.getFunction(plan.functionName,new sdk.GetFunctionRequest())).body;if(f.state==='Active'&&f.customContainerConfig.image===plan.image)break;await new Promise(r=>setTimeout(r,2500));}
+if(f.state!=='Active'||f.customContainerConfig.image!==plan.image)throw Error('Function update not Active');
+if(f.environmentVariables.PROXY_ENABLED!=='false')throw Error('Unexpected proxy mode');
+const triggers=(await client.listTriggers(plan.functionName,new sdk.ListTriggersRequest())).body.triggers;if(!triggers.some(t=>JSON.parse(t.triggerConfig).authType==='function'))throw Error('Missing function authentication');
+const publicResult={checkedAt:new Date().toISOString(),state:f.state,image:f.customContainerConfig.image,digest:f.customContainerConfig.resolvedImageUri,proxyEnabled:false,authentication:'function'};
+fs.writeFileSync(root+'/cloud-after.json',JSON.stringify(publicResult,null,2));console.log(JSON.stringify(publicResult));})().catch(e=>{console.error(JSON.stringify({code:e.code,message:e.message?.slice(0,160)}));process.exitCode=1});

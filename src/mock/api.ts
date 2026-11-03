@@ -12,6 +12,7 @@ import { v4 } from "uuid";
 import { random, uniq } from "lodash";
 import { AliCloudApi } from "../api/alicloud";
 import { YahooFleamarketApi } from "../api/site/yahooFleamarket";
+import { XianyuApi } from "../api/site/xianyu";
 @Mock()
 export class ApiMock implements ISimulation {
     @App()
@@ -37,6 +38,10 @@ export class ApiMock implements ISimulation {
 
     async setup(): Promise<void> {
 
+        this.mockService.mockClassProperty(XianyuApi, "fetchGoodsList", async () => [{
+            id: "123456789", name: "本间芽衣子 手办（演示）", priceFen: 1250,
+            thumbnailImageUrl: "", itemUrl: "https://www.goofish.com/item?id=123456789", publishedAt: null,
+        }]);
         this.mockService.mockClassProperty(YahooFleamarketApi, "fetchGoodsList", async () => [{
             id: "z-yahoo-fleamarket-demo",
             name: "Yahoo!フリマ 谷子示例",

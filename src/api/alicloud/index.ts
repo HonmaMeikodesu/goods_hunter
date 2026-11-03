@@ -5,6 +5,7 @@ import { Agent as HttpAgent } from "http";
 import { Agent as HttpsAgent } from "https";
 import { ILogger } from "@midwayjs/logger";
 import { YahooFleamarketPageRequest, YahooFleamarketPageResponse } from "../site/yahooFleamarket/types";
+import { XianyuSearchRequest, XianyuSearchResponse } from "../site/xianyu/types";
 
 // A function's HTTP server can close its connection after a response. Avoid
 // reusing that socket for the next page (Node 22 enables keep-alive by default).
@@ -33,6 +34,7 @@ export class AliCloudApi {
     accessKeySecret: string;
     url: string;
     yahooFleamarketUrl?: string;
+    xianyuUrl?: string;
   };
 
   @Logger()
@@ -77,6 +79,12 @@ export class AliCloudApi {
     const url = this.alicloudConfig?.yahooFleamarketUrl;
     if (!url) throw new Error("YAHOO_FLEAMARKET_FC_URL or alicloudConfig.yahooFleamarketUrl is required");
     return this.invokeFunction<YahooFleamarketPageResponse>(url, request);
+  }
+
+  async fetchXianyuSearch(request: XianyuSearchRequest): Promise<XianyuSearchResponse> {
+    const url = this.alicloudConfig?.xianyuUrl;
+    if (!url) throw new Error("XIANYU_FC_URL or alicloudConfig.xianyuUrl is required");
+    return this.invokeFunction<XianyuSearchResponse>(url, request);
   }
 
   private async invokeFunction<T>(url: string, body: unknown): Promise<T> {

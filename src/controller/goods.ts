@@ -19,6 +19,8 @@ import { isValidCron } from "cron-validator";
 import { GoodsSearchCondition, GoodsSurveillanceConditionBase } from "../api/site/types";
 import { normalizeYahooFleamarketCondition } from "../api/site/yahooFleamarket/conditions";
 import { YahooFleamarketSearchCondition } from "../api/site/yahooFleamarket/types";
+import { XianyuSearchCondition } from "../api/site/xianyu/types";
+import { normalizeXianyuCondition } from "../api/site/xianyu/conditions";
 
 @Provide()
 @Controller("/goods", { middleware: ["loginStateCheck"] })
@@ -48,6 +50,10 @@ export class GoodsController {
     if (!CONST.HUNTERTYPE.includes(type) || ( !( searchCondition as GoodsSearchCondition )?.keyword && ( !(searchCondition as GoodsSurveillanceConditionBase)?.goodId || !(searchCondition as GoodsSurveillanceConditionBase)?.type ) ) || !isValidCron(schedule)) throw new Error(errorCode.common.invalidRequestBody);
     if (type === "YahooFleamarket") {
       try { searchCondition = normalizeYahooFleamarketCondition(searchCondition as YahooFleamarketSearchCondition); }
+      catch { throw new Error(errorCode.common.invalidRequestBody); }
+    }
+    if (type === "Xianyu") {
+      try { searchCondition = normalizeXianyuCondition(searchCondition as XianyuSearchCondition); }
       catch { throw new Error(errorCode.common.invalidRequestBody); }
     }
     if (freezeStart || freezeEnd) {
@@ -145,6 +151,10 @@ export class GoodsController {
     }
     if (type === "YahooFleamarket") {
       try { searchCondition = normalizeYahooFleamarketCondition(searchCondition as YahooFleamarketSearchCondition); }
+      catch { throw new Error(errorCode.common.invalidRequestBody); }
+    }
+    if (type === "Xianyu") {
+      try { searchCondition = normalizeXianyuCondition(searchCondition as XianyuSearchCondition); }
       catch { throw new Error(errorCode.common.invalidRequestBody); }
     }
     await this.goodsService.updateTask(id, {

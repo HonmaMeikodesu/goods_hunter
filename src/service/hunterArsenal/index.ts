@@ -4,3 +4,4 @@ export { SurugayaHunterService as SurugayaHunter } from "./surugaya";
 export { MandarakeHunterService as MandarakeHunter } from "./mandarake";
 export { SurveillanceHunterService as SurveillanceHunter } from "./surveillance";
 export { YahooFleamarketHunterService as YahooFleamarketHunter } from "./yahooFleamarket";
+export { XianyuHunterService as XianyuHunter } from "./xianyu";

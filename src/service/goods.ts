@@ -14,6 +14,7 @@ import { SurugayaHunter } from "../model/surugaya";
 import { SurveillanceRecord } from "../model/surveillanceRecord";
 import { MandarakeHunter } from "../model/mandarakeHunter";
 import { YahooFleamarketHunter } from "../model/yahooFleamarketHunter";
+import { XianyuHunter } from "../model/xianyuHunter";
 
 @Provide()
 export class GoodsService {
@@ -33,6 +34,9 @@ export class GoodsService {
 
   @InjectEntityModel(YahooFleamarketHunter)
   yahooFleamarketHunterModel: Repository<YahooFleamarketHunter>;
+
+  @InjectEntityModel(XianyuHunter)
+  xianyuHunterModel: Repository<XianyuHunter>;
 
   @InjectEntityModel(SurugayaHunter)
   surugayaHunterModel: Repository<SurugayaHunter>;
@@ -56,6 +60,8 @@ export class GoodsService {
         ? this.yahooHunterModel
         : type === "YahooFleamarket"
         ? this.yahooFleamarketHunterModel
+        : type === "Xianyu"
+        ? this.xianyuHunterModel
         : type === "Surugaya"
         ? this.surugayaHunterModel
         : type === "Mandarake"
