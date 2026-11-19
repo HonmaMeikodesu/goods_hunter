@@ -55,8 +55,9 @@ export class YahooFleamarketHunterService extends HunterBase {
       const hunter = await this.hunterModel.findOne({ where: { hunterInstanceId: cronId }, relations: ["user"] });
       if (!hunter) return;
       if (hunter.freezingStart && hunter.freezingEnd && isBetweenDayTime(hunter.freezingStart, hunter.freezingEnd)) return;
-      const condition = normalizeYahooFleamarketCondition(JSON.parse(hunter.searchConditionSchema));
-      const goods = await this.yahooFleamarketApi.fetchGoodsList(condition);
+      const { condition, goods } = await this.scanSearch(
+        hunter.searchConditionSchema, condition => this.yahooFleamarketApi.fetchGoodsList(condition), normalizeYahooFleamarketCondition
+      );
       // Persist a whole successful scan atomically. A concurrent condition
       // update or task deletion must not seed the baseline with stale results.
       const accepted = await this.hunterModel.manager.transaction(async manager => {

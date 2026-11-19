@@ -3,6 +3,16 @@ import { ILogger } from "@midwayjs/logger";
 import { ApiBase } from "../base";
 import { AliCloudApi } from "../../alicloud/index";
 import { GoodsListResponse, MandarakeGoodsSearchCondition } from "./types";
+import { parseSearchPage, SearchPageRules } from "../searchPage";
+import { SearchScanError } from "../searchScan";
+
+const searchPage: SearchPageRules = {
+  queryKeys: ["keyword", "page"],
+  queryDefaults: { page: "1" },
+  itemSelector: ".entry .thumlarge .block",
+  emptySelector: ".list_nav__count, .entry p, .entry h2, .entry .notice",
+  emptyTexts: ["検索結果0", "検索結果0件", "該当する商品がありません", "該当する商品はありません", "該当する商品が見つかりませんでした"],
+};
 
 export const MANDARAKE_FETCH_COOKIES = [
   {
@@ -53,70 +63,34 @@ export class MandarakeApi extends ApiBase {
     const { keyword, page = 1 } = searchOptions;
     const targetUrl = `https://order.mandarake.co.jp/order/listPage/list?page=${page}&layout=0&keyword=${encodeURIComponent(keyword)}&deviceId=1`;
 
-    let html: string;
-    try {
-      const resp = await this.alicloudApi.fetchHtmlViaServerless(
-        targetUrl,
-        "entry", // page_loaded_assertion
-        MANDARAKE_FETCH_COOKIES,
-        undefined,
-        3
-      );
-      html = resp.content;
-    } catch (e) {
-      this.logger.error("Failed to fetch mandarake from Serverless FC", e);
-      throw e;
-    }
-
-    const { JSDOM } = require("jsdom");
-    const dom = new JSDOM(html);
-    const document = dom.window.document;
-
-    const items: any[] = [];
-
-    const goodsBlocks = document.querySelectorAll(".entry .thumlarge .block");
-    goodsBlocks.forEach((block: Element) => {
-      // Filter out sold out items
-      const soldOutElem = block.querySelector(".soldout");
-      if (soldOutElem) {
-        return;
-      }
-
-      const thumbElem = block.querySelector(".thum img");
-      const titleElem = block.querySelector(".title a");
-      const priceElem = block.querySelector(".price p");
-
-      if (titleElem) {
-        const title = titleElem.textContent?.trim() || "";
-        // Priority: data-itemidx on block > id on title anchor > itemCode in href
-        let id = block.getAttribute("data-itemidx") || titleElem.getAttribute("id") || "";
-
+    const resp = await this.alicloudApi.fetchHtmlViaServerless(
+      targetUrl, "entry", MANDARAKE_FETCH_COOKIES, undefined, 3, undefined, searchPage
+    );
+    return parseSearchPage(resp, targetUrl, searchPage, (_document, _state, blocks) => {
+      const items: GoodsListResponse["items"] = [];
+      for (const block of blocks) {
+        const title = block.querySelector(".title a");
+        const name = title?.textContent?.trim();
+        let id = block.getAttribute("data-itemidx") || title?.getAttribute("id");
         if (!id || id === "#adult_confirm") {
-          const href = titleElem.getAttribute("href") || "";
-          const idMatch = href.match(/itemCode=(\d+)/);
-          if (idMatch) {
-            id = idMatch[1];
-          }
+          id = title?.getAttribute("href")?.match(/itemCode=(\d+)/)?.[1];
         }
-
-        // Final check to avoid using #adult_confirm or empty string as ID
-        if (!id || id.startsWith("#")) {
-          return;
+        if (!id || id.startsWith("#") || !name) {
+          throw new SearchScanError("INVALID_ITEMS", "Mandarake product markup is incomplete");
         }
-
-        const thumb = thumbElem ? (thumbElem.getAttribute("data-src") || thumbElem.getAttribute("src") || "") : "";
-        const price = priceElem ? priceElem.textContent?.trim().split('\n')[0].trim() : "0";
-
+        // A readable list of sold listings still proves a successful search.
+        if (block.querySelector(".soldout")) continue;
+        const thumbnail = block.querySelector(".thum img");
+        const thumb = thumbnail?.getAttribute("data-src") || thumbnail?.getAttribute("src");
         items.push({
           id,
-          name: title,
-          price: price,
+          name,
+          price: block.querySelector(".price p")?.textContent?.trim().split("\n")[0].trim() || "0",
           thumbnails: thumb ? [thumb] : [],
         });
       }
+      return { items };
     });
-
-    return { items } as any;
   }
 
   async fetchGoodDetail(searchOptions: { id: string }) {

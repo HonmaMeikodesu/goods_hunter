@@ -6,16 +6,23 @@ import { GoodsBreif, GoodsListResponse, YahooAuctionGoodsSearchCondition } from 
 import { JSDOM } from "jsdom";
 import { cloneDeep } from "lodash";
 import { readYahooCookies, YahooSessionConfig, YahooSessionError, yahooPageNeedsLogin, isYahooMyPage, DEFAULT_YAHOO_AUTH_SELECTOR } from "./session";
+import { parseSearchPage, SearchPageRules } from "../searchPage";
+import { SearchScanError } from "../searchScan";
 
 const PAGE_SIZE = 50;
+const legacyCard = ".Result__body .Products__items .Product";
+const searchPage: SearchPageRules = {
+    queryKeys: ["p", "auccat", "b", "n", "s1", "o1"],
+    queryDefaults: { b: "1", n: String(PAGE_SIZE) },
+    itemSelector: `a[href*="/auction/"][data-cl-params*="_cl_vmodule:aal"] [data-grid-item-title], ${legacyCard}`,
+    emptySelector: ".Result__body .Products .Notice, .Result__body p, main p, main h2, [role=main] p",
+    emptyTexts: ["条件に一致する商品は見つかりませんでした", "一致する商品はありません。キーワードの一部を利用した結果を表示しています"],
+};
 
 // opensearch uses generated CSS classes. Read semantic markup and the auction
 // link's metadata instead; visible prices include tax, unlike tracking prices.
-function parseOpenSearch(document: Document): GoodsBreif[] | undefined {
-    const titles = [...document.querySelectorAll('[data-grid-item-title]')];
-    if (!titles.length) return undefined;
+function parseOpenSearch(titles: Element[]): GoodsBreif[] {
     const goods: GoodsBreif[] = [];
-    let searchCards = 0;
     for (const title of titles) {
         const link = title.closest('a');
         const card = title.closest('li');
@@ -25,11 +32,13 @@ function parseOpenSearch(document: Document): GoodsBreif[] | undefined {
             if (colon > 0) metadata[part.slice(0, colon)] = part.slice(colon + 1);
         });
         if (metadata._cl_vmodule !== 'aal') continue; // Exclude shopping ads/recommendations.
-        searchCards++;
-        const url = new URL(link.getAttribute('href'), 'https://auctions.yahoo.co.jp');
+        let url: URL;
+        try { url = new URL(link.getAttribute('href'), 'https://auctions.yahoo.co.jp'); }
+        catch { throw new SearchScanError("INVALID_ITEMS", "Yahoo auction card URL is invalid"); }
         const id = /^(?:\/jp)?\/auction\/([a-zA-Z0-9]+)$/.exec(url.pathname)?.[1];
-        if (!['auctions.yahoo.co.jp', 'page.auctions.yahoo.co.jp'].includes(url.hostname) || !id) continue;
-        if (!card) throw new Error('Yahoo auction card markup is missing');
+        if (!['auctions.yahoo.co.jp', 'page.auctions.yahoo.co.jp'].includes(url.hostname) || !id || !card) {
+            throw new SearchScanError("INVALID_ITEMS", "Yahoo auction card markup is invalid");
+        }
         const readPrice = (label: string) => {
             const row = [...link.querySelectorAll('p')].find(p => p.firstElementChild?.textContent?.trim() === label);
             const amount = row?.textContent?.trim().slice(label.length).match(/^\s*([\d,]+)\s*円/);
@@ -43,14 +52,35 @@ function parseOpenSearch(document: Document): GoodsBreif[] | undefined {
         const bidText = card.querySelector('[aria-label="入札件数"]')?.closest('p')?.textContent?.trim();
         const currentBidCount = bidText ? Number(bidText.replace(/,/g, '')) : 0;
         if (!name || !thumbImgUrl || !Number.isFinite(currentPrice) || !Number.isFinite(endTime) || endTime <= 0 || !Number.isFinite(currentBidCount)) {
-            throw new Error(`Yahoo auction markup is incomplete: ${id}`);
+            throw new SearchScanError("INVALID_ITEMS", "Yahoo auction markup is incomplete");
         }
         goods.push({ id, name, thumbImgUrl, currentPrice, buyNowPrice, currentBidCount, endTime,
             isFreeShipping: metadata.fs === '1',
             isBrandNew: [...card.querySelectorAll('span')].some(span => span.textContent?.trim() === '未使用'),
         });
     }
-    return searchCards ? goods : undefined;
+    return goods;
+}
+
+function parseLegacyCard(card: Element): GoodsBreif {
+    const detail = card.querySelector<HTMLElement>(".Product__detail .Product__bonus")?.dataset;
+    const title = card.querySelector<HTMLAnchorElement>(".Product__detail .Product__titleLink")?.dataset;
+    const id = title?.auctionId;
+    const name = title?.auctionTitle;
+    const currentPrice = parseInt(title?.auctionPrice, 10);
+    const endTime = parseInt(detail?.auctionEndtime, 10) * 1000;
+    const currentBidCount = parseInt(card.querySelector(".Product__bidWrap .Product__bid")?.textContent, 10);
+    if (!id || !/^[a-zA-Z0-9]+$/.test(id) || !name?.trim() ||
+        !Number.isFinite(currentPrice) || !Number.isFinite(endTime) || endTime <= 0 || !Number.isFinite(currentBidCount)) {
+        throw new SearchScanError("INVALID_ITEMS", "Yahoo auction markup is incomplete");
+    }
+    return {
+        id, name, currentPrice, endTime, currentBidCount,
+        thumbImgUrl: title.auctionImg,
+        buyNowPrice: parseInt(detail?.auctionBuynowprice, 10) || undefined,
+        isFreeShipping: title.auctionIsfreeshipping === "1",
+        isBrandNew: !!card.querySelector(".Product__icons .Product__icon--unused"),
+    };
 }
 
 @Provide()
@@ -73,8 +103,6 @@ export class YahooAuctionApi extends ApiBase {
     }
 
     async fetchGoodsList(options: YahooAuctionGoodsSearchCondition): Promise<GoodsListResponse> {
-
-        const goodsList: GoodsBreif[] = [];
 
         const { keyword, category, epoch } = options;
 
@@ -144,80 +172,24 @@ export class YahooAuctionApi extends ApiBase {
 
         const parsedCookies = this.getParsedCookies();
 
-        await Promise.all(yahooAuctionSearchUrls.map(async (yahooAuctionSearchUrl, idx) => {
-
-            this.logger.info(`requesting to ${yahooAuctionSearchUrl}..., currentPage: ${idx}`);
-
-            const response = await this.alicloudApi.fetchHtmlViaServerless(yahooAuctionSearchUrl.toString(), "/jp/auction/", parsedCookies, 30, maxRetry);
-            if (yahooPageNeedsLogin(response.url)) throw new YahooSessionError("FC_NEEDS_LOGIN");
-            if (!response.success || !response.content) throw new Error('Yahoo page fetch failed');
-            const domStr = response.content;
-
-            const dom = new JSDOM(domStr);
-
-            try {
-                const isResultEmpty = (dom.window.document.querySelector(".Result__body .Products .Notice") as HTMLDivElement)?.textContent?.includes("一致する商品はありません。キーワードの一部を利用した結果を表示しています");
-                if (isResultEmpty) return;
-                if ([...dom.window.document.querySelectorAll('p')].some(p => p.textContent?.replace(/\s+/g, '') === '条件に一致する商品は見つかりませんでした')) return;
-                const openSearchGoods = parseOpenSearch(dom.window.document);
-                if (openSearchGoods !== undefined) {
-                    goodsList.push(...openSearchGoods);
-                    return;
-                }
-
-                const goodListElements: HTMLLIElement[] = isResultEmpty ? [] : [ ...dom.window.document.querySelectorAll(".Result__body .Products__items .Product") ] as HTMLLIElement[];
-                if (!goodListElements.length) throw new Error('Yahoo page has no recognizable items; empty or unfinished markup');
-
-                goodListElements.forEach((good) => {
-
-                    // TODO don't use data here
-                    const { auctionBuynowprice, auctionEndtime } = (good.querySelector(".Product__detail .Product__bonus") as HTMLDivElement)?.dataset as {
-                        auctionBuynowprice: string;
-                        auctionCaneasypayment: string;
-                        auctionCategoryidpath: string;
-                        auctionEndtime: string;
-                        auctionId: string;
-                        auctionIsshoppingitem: string;
-                        auctionPrice: string;
-                        auctionSellerid: string;
-                        auctionStartprice: string
-                    };
-
-                    const { auctionImg, auctionIsfreeshipping, auctionTitle, auctionId, auctionPrice } = (good.querySelector(".Product__detail .Product__titleLink") as HTMLAnchorElement)?.dataset as {
-                        auctionCategory: string;
-                        auctionId: string;
-                        auctionImg: string;
-                        auctionIsflea: string;
-                        auctionIsfreeshipping: string;
-                        auctionPrice: string;
-                        auctionTitle: string;
-                        clParams: string;
-                        cl_cl_index: string;
-                    };
-
-                    const currentBidCount = good.querySelector(".Product__detail .Product__otherInfo .Product__bidWrap .Product__bid")?.textContent;
-
-                    const isBrandNew = good.querySelector(".Product__detail .Product__icons .Product__icon--unused");
-
-                    goodsList.push({
-                        id: auctionId,
-                        name: auctionTitle,
-                        thumbImgUrl: auctionImg,
-                        currentPrice: parseInt(auctionPrice),
-                        buyNowPrice: parseInt(auctionBuynowprice) || undefined,
-                        currentBidCount: parseInt(currentBidCount),
-                        endTime: parseInt(auctionEndtime) * 1000,
-                        isFreeShipping: auctionIsfreeshipping === "1",
-                        isBrandNew: !!isBrandNew
-                    });
-                })
-            } finally {
-                dom.window.close();
-            }
+        const pages = await Promise.all(yahooAuctionSearchUrls.map(async yahooAuctionSearchUrl => {
+            const targetUrl = yahooAuctionSearchUrl.toString();
+            const response = await this.alicloudApi.fetchHtmlViaServerless(
+                targetUrl, "/jp/auction/", parsedCookies, 30, maxRetry, undefined, searchPage
+            );
+            if (yahooPageNeedsLogin(response?.url)) throw new YahooSessionError("FC_NEEDS_LOGIN");
+            return parseSearchPage(response, targetUrl, searchPage, (_document, state, cards) => {
+                if (state === "empty") return [];
+                const openSearchGoods = parseOpenSearch(cards.filter(card => card.hasAttribute("data-grid-item-title")));
+                if (openSearchGoods.length) return openSearchGoods;
+                const legacyGoods = cards.filter(card => card.matches(legacyCard)).map(parseLegacyCard);
+                if (!legacyGoods.length) throw new SearchScanError("INVALID_ITEMS");
+                return legacyGoods;
+            });
         }));
 
-
-        return [...new Map(goodsList.map(good => [good.id, good])).values()];
+        const goods = ([] as GoodsBreif[]).concat(...pages);
+        return [...new Map(goods.map(good => [good.id, good])).values()];
 
     }
 

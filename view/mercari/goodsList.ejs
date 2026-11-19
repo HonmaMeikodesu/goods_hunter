@@ -105,7 +105,7 @@
               src="<%= data.thumbnails[0] %>"
               alt="" class="image" onerror="this.src = this.parentElement.href" />
             <div class="price">
-              <%= data.price %>
+              <%= data.price || "价格暂缺" %>
             </div>
             <% if(data.status !=="STATUS_ON_SALE" ) { %>
               <div class="sold">

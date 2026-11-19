@@ -1,3 +1,5 @@
+import { SearchScanMonitor } from "../../src/service/searchScanMonitor";
+import { SearchScanRecord } from "../../src/model/searchScanRecord";
 import { createConnection, Connection, getMetadataArgsStorage, Repository } from "typeorm";
 import { v4 as uuid } from "uuid";
 import { User } from "../../src/model/user";
@@ -51,6 +53,9 @@ dbDescribe("Yahoo!フリマ hunter with MySQL", () => {
     service.yahooFleamarketApi = { fetchGoodsList: fetch } as any;
     service.emailService = { sendEmail: send } as any;
     service.logger = { info: jest.fn(), error: jest.fn() } as any;
+    service.searchScanMonitor = Object.assign(new SearchScanMonitor(), {
+      records: connection.getRepository(SearchScanRecord), logger: service.logger,
+    });
     (service as any).cronList[id] = { id, schedule: "*/10 * * * *", jobInstance: { stop: jest.fn(), setTime: jest.fn(), start: jest.fn() } };
   });
 
@@ -68,7 +73,7 @@ dbDescribe("Yahoo!フリマ hunter with MySQL", () => {
     // A fresh service instance must reuse persisted IDs, not process memory.
     const restarted = Object.assign(new YahooFleamarketHunterService(), {
       hunterModel: hunters, goodsRecordModel: records, yahooFleamarketApi: service.yahooFleamarketApi,
-      emailService: service.emailService, logger: service.logger,
+      emailService: service.emailService, logger: service.logger, searchScanMonitor: service.searchScanMonitor,
     });
     await restarted.goHunt(id);
     expect(send).toHaveBeenCalledTimes(1);

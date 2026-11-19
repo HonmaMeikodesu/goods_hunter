@@ -62,8 +62,9 @@ export class XianyuHunterService extends HunterBase {
       const hunter = await this.hunterModel.findOne({ where: { hunterInstanceId: cronId }, relations: ["user"] });
       if (!hunter) return;
       if (hunter.freezingStart && hunter.freezingEnd && isBetweenDayTime(hunter.freezingStart, hunter.freezingEnd)) return;
-      const condition = normalizeXianyuCondition(JSON.parse(hunter.searchConditionSchema));
-      const goods = await this.xianyuApi.fetchGoodsList(condition);
+      const { condition, goods } = await this.scanSearch(
+        hunter.searchConditionSchema, condition => this.xianyuApi.fetchGoodsList(condition), normalizeXianyuCondition
+      );
       // Persist a whole successful scan atomically. A concurrent condition
       // update or task deletion must not seed the baseline with stale results.
       const accepted = await this.hunterModel.manager.transaction(async manager => {

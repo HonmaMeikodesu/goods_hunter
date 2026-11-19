@@ -8,7 +8,6 @@ import { YahooHunter as YahooHunterType } from "../../types";
 import { isEmpty } from "lodash";
 import isBetweenDayTime from "../../utils/isBetweenDayTime";
 import { YahooAuctionGoodsSearchCondition, GoodsListResponse as YahooGoodsListResponse } from "../../api/site/yahoo/types";
-import CONST from "../../const";
 import HunterBase from "./base";
 import { yahooGoodsList } from "../../template";
 import { render } from "ejs";
@@ -21,7 +20,7 @@ import { YahooAuctionRecord } from "../../model/yahooAuctionRecord";
 @Scope(ScopeEnum.Singleton)
 export class YahooHunterService extends HunterBase {
 
-  hunterType: typeof CONST.HUNTERTYPE[number] = "Yahoo";
+  hunterType = "Yahoo" as const;
 
   @Inject()
   yahooApi: YahooAuctionApi;
@@ -102,27 +101,14 @@ export class YahooHunterService extends HunterBase {
       this.logger.info(`task ${cronId} sleeping, exiting...`);
       return;
     }
-    let searchCondition: YahooAuctionGoodsSearchCondition;
-    try {
-      searchCondition = JSON.parse(searchConditionSchema);
-      if (!searchCondition.keyword) {
-        throw new Error("no keyword found!");
-      }
-    } catch (e) {
-      this.logger.error(
-        `Invalid Yahoo Hunter search condition when executiong cronjob{${cronId}}, ${e}`
-      );
-      return;
-    }
-    let goodsList: YahooGoodsListResponse = [];
-    try {
-      goodsList = await this.yahooApi.fetchGoodsList(searchCondition);
-    } catch (e) {
-      this.logger.error(
-        `Fail to fetch good list when executing cronjob{${cronId}}, ${e}`
-      );
-      return;
-    }
+    const scan = await this.scanSearch(searchConditionSchema, (condition: YahooAuctionGoodsSearchCondition) =>
+      this.yahooApi.fetchGoodsList(condition)
+    ).catch(error => {
+      this.logger.error(`Fail to fetch good list when executing cronjob{${cronId}}, ${error}`);
+      return undefined;
+    });
+    if (!scan) return;
+    const { condition: searchCondition, goods: goodsList } = scan;
     if (isEmpty(goodsList)) {
       this.logger.info(
         `task ${cronId} gets an empty goodsList, exiting...`

@@ -3,8 +3,17 @@ import { ILogger } from "@midwayjs/logger";
 import { ApiBase } from "../base";
 import { AliCloudApi } from "../../alicloud/index";
 import { GoodsBreif, GoodsListResponse, SurugayaGoodsSearchCondition } from "./types";
-import { JSDOM } from "jsdom";
 import { cloneDeep } from "lodash";
+import { parseSearchPage, SearchPageRules } from "../searchPage";
+import { SearchScanError } from "../searchScan";
+
+const searchPage: SearchPageRules = {
+    queryKeys: ["search_word", "category", "page", "adult_s", "is_marketplace", "rankBy"],
+    queryDefaults: { page: "1", adult_s: "2" },
+    itemSelector: "#search_result .item_box .item",
+    emptySelector: "#search_header .hit, #search_result > p, #search_result > h2, #search_result > .notice",
+    emptyTexts: ["該当件数:0件", "該当件数:0件中", "該当する商品がありません", "該当する商品はありません", "該当する商品が見つかりませんでした"],
+};
 
 export const SURUGAYA_FETCH_COOKIES = [
     {
@@ -32,8 +41,6 @@ export class SurugayaApi extends ApiBase {
     alicloudApi: AliCloudApi;
 
     async fetchGoodsList(options: SurugayaGoodsSearchCondition): Promise<GoodsListResponse> {
-
-        const goodsList: GoodsBreif[] = [];
 
         const { keyword, category, epoch, adultMode, adultOnly } = options;
 
@@ -80,42 +87,36 @@ export class SurugayaApi extends ApiBase {
 
         const maxRetry = (epoch || 1) * 2;
 
-        await Promise.all(surugayaSearchUrls.map(async (surugayaSearchUrl, idx) => {
-
-            this.logger.info(`requesting to ${surugayaSearchUrl}..., currentPage: ${idx}`);
-
-            let domStr: string;
-
+        const pages = await Promise.all(surugayaSearchUrls.map(async surugayaSearchUrl => {
+            const targetUrl = surugayaSearchUrl.toString();
             const resp = await this.alicloudApi.fetchHtmlViaServerless(
-                surugayaSearchUrl.toString(),
+                targetUrl,
                 "search_result",
                 SURUGAYA_FETCH_COOKIES,
                 undefined,
-                maxRetry
+                maxRetry,
+                undefined,
+                searchPage
             );
-            domStr = resp.content;
-
-            const dom = new JSDOM(domStr);
-
-            const goodListElements: NodeListOf<HTMLLIElement> = dom.window.document.querySelectorAll("#search_result .item_box .item");
-
-            goodListElements.forEach((good) => {
-                const thumbImgUrl = ( good.querySelector(".thum img") as HTMLImageElement )?.src;
-                const detailUrl = ( good.querySelector(".item_detail .title > a") as HTMLAnchorElement )?.href;
-                const title = good.querySelector(".item_detail .product-name")?.textContent;
-                const price = good.querySelector(".item_price .price_teika strong")?.textContent;
-                const marketPlacePrice = good.querySelector(".item_price .mgnB5.mgnT5 strong")?.textContent;
-                goodsList.push({
-                    id: detailUrl,
-                    name: title,
-                    thumbImgUrl,
-                    price,
-                    marketPlacePrice
-                });
-            })
+            return parseSearchPage(resp, targetUrl, searchPage, (_document, _state, cards): GoodsBreif[] =>
+                cards.map(good => {
+                    const detailUrl = good.querySelector(".item_detail .title > a")?.getAttribute("href");
+                    const name = good.querySelector(".item_detail .product-name")?.textContent;
+                    if (!detailUrl || !name?.trim() ||
+                        !/^(?:https:\/\/www\.suruga-ya\.jp)?\/product\/detail\/[a-zA-Z0-9]+(?:[/?#]|$)/.test(detailUrl)) {
+                        throw new SearchScanError("INVALID_ITEMS", "Surugaya product markup is incomplete");
+                    }
+                    return {
+                        id: detailUrl,
+                        name,
+                        thumbImgUrl: (good.querySelector(".thum img") as HTMLImageElement)?.src,
+                        price: good.querySelector(".item_price .price_teika strong")?.textContent,
+                        marketPlacePrice: good.querySelector(".item_price .mgnB5.mgnT5 strong")?.textContent,
+                    };
+                }));
         }));
 
-        return goodsList;
+        return ([] as GoodsBreif[]).concat(...pages);
 
     }
 

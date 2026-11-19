@@ -6,6 +6,8 @@ import { Agent as HttpsAgent } from "https";
 import { ILogger } from "@midwayjs/logger";
 import { YahooFleamarketPageRequest, YahooFleamarketPageResponse } from "../site/yahooFleamarket/types";
 import { XianyuSearchRequest, XianyuSearchResponse } from "../site/xianyu/types";
+import type { SearchPageRules, SearchResultState } from "../site/searchPage";
+import { SearchScanError } from "../site/searchScan";
 
 // A function's HTTP server can close its connection after a response. Avoid
 // reusing that socket for the next page (Node 22 enables keep-alive by default).
@@ -23,6 +25,8 @@ export interface FetchHtmlViaServerlessResponse {
   cloudflare_detected: boolean;
   retry_count: number;
   error?: string;
+  code?: string;
+  resultState?: SearchResultState;
 }
 
 @Provide()
@@ -46,11 +50,12 @@ export class AliCloudApi {
     cookies?: Array<{ name: string; value: string; domain: string; path: string }>,
     maxAssertionWaitSeconds?: number,
     maxRetries?: number,
-    evaluateScript?: string
+    evaluateScript?: string,
+    search?: SearchPageRules
   ): Promise<FetchHtmlViaServerlessResponse> {
     const { accessKeyId, accessKeySecret, url } = this.alicloudConfig;
     if (!accessKeyId || !accessKeySecret || !url) {
-      throw new Error("AliCloud config is missing!");
+      throw new SearchScanError("FC_CONFIGURATION", "AliCloud config is missing!");
     }
 
     const body: any = {
@@ -71,25 +76,26 @@ export class AliCloudApi {
     if (evaluateScript) {
       body.evaluate_script = evaluateScript;
     }
+    if (search) body.search = search;
 
     return this.invokeFunction<FetchHtmlViaServerlessResponse>(url, body);
   }
 
   async fetchYahooFleamarketPage(request: YahooFleamarketPageRequest): Promise<YahooFleamarketPageResponse> {
     const url = this.alicloudConfig?.yahooFleamarketUrl;
-    if (!url) throw new Error("YAHOO_FLEAMARKET_FC_URL or alicloudConfig.yahooFleamarketUrl is required");
+    if (!url) throw new SearchScanError("FC_CONFIGURATION", "YAHOO_FLEAMARKET_FC_URL or alicloudConfig.yahooFleamarketUrl is required");
     return this.invokeFunction<YahooFleamarketPageResponse>(url, request);
   }
 
   async fetchXianyuSearch(request: XianyuSearchRequest): Promise<XianyuSearchResponse> {
     const url = this.alicloudConfig?.xianyuUrl;
-    if (!url) throw new Error("XIANYU_FC_URL or alicloudConfig.xianyuUrl is required");
+    if (!url) throw new SearchScanError("FC_CONFIGURATION", "XIANYU_FC_URL or alicloudConfig.xianyuUrl is required");
     return this.invokeFunction<XianyuSearchResponse>(url, request);
   }
 
   private async invokeFunction<T>(url: string, body: unknown): Promise<T> {
     const { accessKeyId, accessKeySecret } = this.alicloudConfig || {};
-    if (!accessKeyId || !accessKeySecret || !url) throw new Error("AliCloud config is missing!");
+    if (!accessKeyId || !accessKeySecret || !url) throw new SearchScanError("FC_CONFIGURATION", "AliCloud config is missing!");
     const method = "POST";
     const date = new Date().toISOString();
     const headers: Record<string, string> = {

@@ -4,6 +4,7 @@ import { join } from "path";
 import { readYahooCookies, YahooSessionError } from "../../src/api/site/yahoo/session";
 import { YahooAuctionApi } from "../../src/api/site/yahoo";
 import { YahooHunterService } from "../../src/service/hunterArsenal/yahoo";
+import { SearchScanMonitor } from "../../src/service/searchScanMonitor";
 
 const now = Date.now();
 const cookie = { name: "test-session", value: "synthetic-secret", domain: ".yahoo.co.jp", path: "/", expires: -1, httpOnly: true, secure: true, sameSite: "Lax" };
@@ -94,8 +95,11 @@ it("stops a hunt before changing seen records when the managed session is unavai
   service.yahooApi = { fetchGoodsList: jest.fn().mockRejectedValue(new YahooSessionError("NEEDS_LOGIN")) } as any;
   service.yahooAuctionRecordModel = { find: jest.fn() } as any;
   service.logger = { error: jest.fn() } as any;
+  const insert = jest.fn();
+  service.searchScanMonitor = Object.assign(new SearchScanMonitor(), { records: { insert }, logger: service.logger });
   await service.goHunt("test-job");
   expect(service.yahooAuctionRecordModel.find).not.toHaveBeenCalled();
+  expect(insert).toHaveBeenCalledWith(expect.objectContaining({ site: "Yahoo", outcome: "LOGIN_REQUIRED" }));
 });
 
 function alertStore() {

@@ -11,7 +11,6 @@ import { InjectEntityModel } from "@midwayjs/orm";
 import { Context } from "egg";
 import { first, isEmpty, toNumber } from "lodash";
 import isBetweenDayTime from "../../utils/isBetweenDayTime";
-import CONST from "../../const";
 import HunterBase from "./base";
 import { mercariGoodsList } from "../../template";
 import { render } from "ejs";
@@ -23,13 +22,13 @@ import { MercariHunter as MercariHuntetType } from "../../types";
 import { MercariGoodsRecord } from "../../model/mercariGoodsRecord";
 import {
   MercariGoodsSearchCondition,
-  GoodsListResponse as MercariGoodsListResponse,
+
 } from "../../api/site/mercari/types";
 
 @Provide()
 @Scope(ScopeEnum.Singleton)
 export class MercariHunterService extends HunterBase {
-  hunterType: (typeof CONST.HUNTERTYPE)[number] = "Mercari";
+  hunterType = "Mercari" as const;
 
   @Inject()
   mercariApi: MercariApi;
@@ -72,27 +71,14 @@ export class MercariHunterService extends HunterBase {
       this.logger.info(`task ${cronId} sleeping, exiting...`);
       return;
     }
-    let searchCondition: MercariGoodsSearchCondition;
-    try {
-      searchCondition = JSON.parse(searchConditionSchema);
-      if (!searchCondition.keyword) {
-        throw new Error("no keyword found!");
-      }
-    } catch (e) {
-      this.logger.error(
-        `Invalid Mercari Hunter search condition when executiong cronjob{${cronId}}, ${e}`
-      );
-      return;
-    }
-    let resp: MercariGoodsListResponse = null;
-    try {
-      resp = await this.mercariApi.fetchGoodsList(searchCondition);
-    } catch (e) {
-      this.logger.error(
-        `Fail to fetch good list when executing cronjob{${cronId}}, ${e}`
-      );
-      return;
-    }
+    const scan = await this.scanSearch(searchConditionSchema, (condition: MercariGoodsSearchCondition) =>
+      this.mercariApi.fetchGoodsList(condition)
+    ).catch(error => {
+      this.logger.error(`Fail to fetch good list when executing cronjob{${cronId}}, ${error}`);
+      return undefined;
+    });
+    if (!scan) return;
+    const { condition: searchCondition, goods: resp } = scan;
     const goodsList = resp.items;
     if (isEmpty(goodsList)) {
       this.logger.info(`task ${cronId} gets an empty goodsList, exiting...`);

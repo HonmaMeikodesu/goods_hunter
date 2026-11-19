@@ -10,7 +10,7 @@ const good = (id: string, overrides = {}) => ({
 });
 const response = (items: any[] = [good("123")], overrides = {}) => ({
   success: true, source: "xianyu", keyword: "本间芽衣子", page: 1, pageSize: 30, sort: "newest", currency: "CNY",
-  resultState: items.length ? "items" : "empty", hasMore: true, items, fetchedAt: new Date().toISOString(), ...overrides,
+  resultState: items.length ? "items" : "empty", hasMore: items.length > 0, items, fetchedAt: new Date().toISOString(), ...overrides,
 });
 function apiWith(data: any) {
   const api = new XianyuApi();
@@ -40,6 +40,8 @@ describe("Xianyu conditions and FC results", () => {
 
   it("accepts explicit valid empty snapshots but rejects business failures, stale/default results and bad currency", async () => {
     await expect(apiWith(response([])).fetchGoodsList({ keyword: "本间芽衣子" })).resolves.toEqual([]);
+    await expect(apiWith(response([], { hasMore: true })).fetchGoodsList({ keyword: "本间芽衣子" }))
+      .rejects.toMatchObject({ code: "INVALID_RESPONSE" });
     for (const patch of [{ success: false, code: "CHALLENGE_REQUIRED" }, { keyword: "手机" }, { page: 2 }, { sort: "default" }, { currency: "JPY" }, { resultState: "empty" }]) {
       await expect(apiWith(response(undefined, patch)).fetchGoodsList({ keyword: "本间芽衣子" })).rejects.toThrow("invalid search response");
     }

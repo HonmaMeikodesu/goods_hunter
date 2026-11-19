@@ -4,7 +4,6 @@ import { InjectEntityModel } from "@midwayjs/orm";
 import { Context } from "egg";
 import { isEmpty } from "lodash";
 import isBetweenDayTime from "../../utils/isBetweenDayTime";
-import CONST from "../../const";
 import HunterBase from "./base";
 import { mandarakeGoodsList } from "../../template";
 import { render } from "ejs";
@@ -16,13 +15,13 @@ import { MandarakeHunter as MandarakeHunterType } from "../../types";
 import { MandarakeGoodsRecord } from "../../model/mandarakeGoodsRecord";
 import {
   MandarakeGoodsSearchCondition,
-  GoodsListResponse as MandarakeGoodsListResponse,
+
 } from "../../api/site/mandarake/types";
 
 @Provide()
 @Scope(ScopeEnum.Singleton)
 export class MandarakeHunterService extends HunterBase {
-  hunterType: (typeof CONST.HUNTERTYPE)[number] = "Mandarake";
+  hunterType = "Mandarake" as const;
 
   @Inject()
   mandarakeApi: MandarakeApi;
@@ -65,27 +64,14 @@ export class MandarakeHunterService extends HunterBase {
       this.logger.info(`task ${cronId} sleeping, exiting...`);
       return;
     }
-    let searchCondition: MandarakeGoodsSearchCondition;
-    try {
-      searchCondition = JSON.parse(searchConditionSchema);
-      if (!searchCondition.keyword) {
-        throw new Error("no keyword found!");
-      }
-    } catch (e) {
-      this.logger.error(
-        `Invalid Mandarake Hunter search condition when executiong cronjob{${cronId}}, ${e}`
-      );
-      return;
-    }
-    let resp: MandarakeGoodsListResponse = null;
-    try {
-      resp = await this.mandarakeApi.fetchGoodsList(searchCondition);
-    } catch (e) {
-      this.logger.error(
-        `Fail to fetch good list when executing cronjob{${cronId}}, ${e}`
-      );
-      return;
-    }
+    const scan = await this.scanSearch(searchConditionSchema, (condition: MandarakeGoodsSearchCondition) =>
+      this.mandarakeApi.fetchGoodsList(condition)
+    ).catch(error => {
+      this.logger.error(`Fail to fetch good list when executing cronjob{${cronId}}, ${error}`);
+      return undefined;
+    });
+    if (!scan) return;
+    const { condition: searchCondition, goods: resp } = scan;
     const goodsList = resp.items;
     if (isEmpty(goodsList)) {
       this.logger.info(`task ${cronId} gets an empty goodsList, exiting...`);

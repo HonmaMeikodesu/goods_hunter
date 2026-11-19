@@ -3,6 +3,7 @@ import { AliCloudApi } from "../../alicloud";
 import { ApiBase } from "../base";
 import { normalizeYahooFleamarketCondition } from "./conditions";
 import { YahooFleamarketGoods, YahooFleamarketSearchCondition } from "./types";
+import { SearchScanError } from "../searchScan";
 
 @Provide()
 @Scope(ScopeEnum.Request, { allowDowngrade: true })
@@ -19,13 +20,13 @@ export class YahooFleamarketApi extends ApiBase {
         || result.keyword !== condition.keyword || result.page !== page || result.offset !== (page - 1) * 100
         || !Array.isArray(result.items) || result.items.length > 100
         || !Number.isSafeInteger(result.totalResultsAvailable) || result.totalResultsAvailable < 0) {
-        throw new Error("Yahoo!フリマ FC returned an invalid search response");
+        throw new SearchScanError("INVALID_RESPONSE", "Yahoo!フリマ FC returned an invalid search response");
       }
       for (const good of result.items) {
         if (!good || typeof good.id !== "string" || !good.id || good.id.length > 200
           || typeof good.name !== "string" || !good.name.trim() || !Number.isSafeInteger(good.price) || good.price < 0
           || typeof good.status !== "string") {
-          throw new Error("Yahoo!フリマ FC returned invalid merchandise");
+          throw new SearchScanError("INVALID_ITEMS", "Yahoo!フリマ FC returned invalid merchandise");
         }
         if (good.status !== "OPEN"
           || (condition.minPrice !== undefined && good.price < condition.minPrice)

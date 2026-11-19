@@ -3,6 +3,7 @@ import { AliCloudApi } from "../../alicloud";
 import { ApiBase } from "../base";
 import { normalizeXianyuCondition, yuanToFen } from "./conditions";
 import { XianyuGoods, XianyuSearchCondition } from "./types";
+import { SearchScanError } from "../searchScan";
 
 @Provide()
 @Scope(ScopeEnum.Request, { allowDowngrade: true })
@@ -16,8 +17,9 @@ export class XianyuApi extends ApiBase {
     if (!result || result.success !== true || result.source !== "xianyu" || result.keyword !== condition.keyword
       || result.page !== 1 || result.pageSize !== 30 || result.sort !== "newest" || result.currency !== "CNY"
       || typeof result.hasMore !== "boolean" || !Array.isArray(result.items) || result.items.length > 30
-      || result.resultState !== (result.items.length ? "items" : "empty")) {
-      throw new Error("闲鱼 FC returned an invalid search response");
+      || result.resultState !== (result.items.length ? "items" : "empty")
+      || (result.resultState === "empty" && result.hasMore)) {
+      throw new SearchScanError("INVALID_RESPONSE", "闲鱼 FC returned an invalid search response");
     }
     const goods = new Map<string, XianyuGoods>();
     const minFen = condition.minPrice === undefined ? undefined : yuanToFen(condition.minPrice);
@@ -26,7 +28,7 @@ export class XianyuApi extends ApiBase {
       if (!good || typeof good.id !== "string" || !/^[0-9]{1,30}$/.test(good.id)
         || typeof good.name !== "string" || !good.name.trim() || !Number.isSafeInteger(good.priceFen) || good.priceFen < 0
         || (good.publishedAt !== null && (typeof good.publishedAt !== "string" || !Number.isFinite(Date.parse(good.publishedAt))))) {
-        throw new Error("闲鱼 FC returned invalid merchandise");
+        throw new SearchScanError("INVALID_ITEMS", "闲鱼 FC returned invalid merchandise");
       }
       const title = good.name.toLowerCase();
       if ((minFen !== undefined && good.priceFen < minFen) || (maxFen !== undefined && good.priceFen > maxFen)

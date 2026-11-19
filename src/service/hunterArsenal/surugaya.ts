@@ -5,7 +5,6 @@ import { Context } from "egg";
 import { SurugayaHunter as SurugayaHunterType } from "../../types";
 import { isEmpty } from "lodash";
 import isBetweenDayTime from "../../utils/isBetweenDayTime";
-import CONST from "../../const";
 import HunterBase from "./base";
 import { render } from "ejs";
 import Mail from "nodemailer/lib/mailer";
@@ -21,7 +20,7 @@ import { SurugayaGoodsRecord } from "../../model/surugayaGoodsRecord";
 @Scope(ScopeEnum.Singleton)
 export class SurugayaHunterService extends HunterBase {
 
-    hunterType: typeof CONST.HUNTERTYPE[number] = "Surugaya";
+    hunterType = "Surugaya" as const;
 
     @Inject()
     suruguyaApi: SurugayaApi;
@@ -67,27 +66,14 @@ export class SurugayaHunterService extends HunterBase {
             this.logger.info(`task ${cronId} sleeping, exiting...`);
             return;
         }
-        let searchCondition: SurugayaGoodsSearchCondition;
-        try {
-            searchCondition = JSON.parse(searchConditionSchema);
-            if (!searchCondition.keyword) {
-                throw new Error("no keyword found!");
-            }
-        } catch (e) {
-            this.logger.error(
-                `Invalid Surugaya Hunter search condition when executiong cronjob{${cronId}}, ${e}`
-            );
-            return;
-        }
-        let goodsList: SurugayaGoodsListResponse = [];
-        try {
-            goodsList = await this.suruguyaApi.fetchGoodsList(searchCondition);
-        } catch (e) {
-            this.logger.error(
-                `Fail to fetch good list when executing cronjob{${cronId}}, ${e}`
-            );
-            return;
-        }
+        const scan = await this.scanSearch(searchConditionSchema, (condition: SurugayaGoodsSearchCondition) =>
+          this.suruguyaApi.fetchGoodsList(condition)
+        ).catch(error => {
+          this.logger.error(`Fail to fetch good list when executing cronjob{${cronId}}, ${error}`);
+          return undefined;
+        });
+        if (!scan) return;
+        const { condition: searchCondition, goods: goodsList } = scan;
         if (isEmpty(goodsList)) {
             this.logger.info(
                 `task ${cronId} gets an empty goodsList, exiting...`

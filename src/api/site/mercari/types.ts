@@ -1,7 +1,7 @@
 import { GoodsBreifExtension, GoodsSearchConditionBase } from "../types";
 
 export interface GoodsListResponse {
-  meta: any;
+  meta?: any;
   items: Array<GoodsBreif>;
 }
 
@@ -157,21 +157,21 @@ type GoodsSalesStatus = "STATUS_ON_SALE" | "STATUS_TRADING" | "STATUS_SOLD_OUT";
 interface GoodsBreif extends GoodsBreifExtension {
   id: string,
   url?: string,
-  sellerId: string,
-  buyerId: string,
+  sellerId?: string,
+  buyerId?: string,
   status: GoodsSalesStatus,
   name: string,
-  price: string,
-  created: string,
+  price: string | null,
+  created?: string,
   updated: string,
   thumbnails: Array<string>,
-  itemType: string,
-  itemConditionId: string,
-  shippingPayerId: string,
-  shopName: string,
-  itemSize: null,
-  shippingMethodId: string,
-  categoryId: string
+  itemType?: string,
+  itemConditionId?: string,
+  shippingPayerId?: string,
+  shopName?: string,
+  itemSize?: null,
+  shippingMethodId?: string,
+  categoryId?: string
 }
 
 export type MercariGoodsSearchCondition = GoodsSearchConditionBase & {

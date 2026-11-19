@@ -1,3 +1,5 @@
+import { SearchScanMonitor } from "../../src/service/searchScanMonitor";
+import { SearchScanRecord } from "../../src/model/searchScanRecord";
 import { createConnection, Connection, getMetadataArgsStorage, Repository } from "typeorm";
 import { v4 as uuid } from "uuid";
 import { User } from "../../src/model/user";
@@ -24,6 +26,7 @@ dbDescribe("闲鱼 hunter with MySQL", () => {
   const options = {
     type: "mysql" as const, host: "127.0.0.1", port: Number(process.env.XIANYU_TEST_MYSQL_PORT),
     username: "root", password: "xianyu-local-test-only", charset: "utf8mb4",
+    timezone: "+08:00",
   };
   beforeAll(async () => {
     const admin = await createConnection({ ...options, name: "xianyu-test-admin" });
@@ -51,7 +54,27 @@ dbDescribe("闲鱼 hunter with MySQL", () => {
     service.xianyuApi = { fetchGoodsList: fetch } as any;
     service.emailService = { sendEmail: send } as any;
     service.logger = { info: jest.fn(), error: jest.fn() } as any;
+    service.searchScanMonitor = Object.assign(new SearchScanMonitor(), {
+      records: connection.getRepository(SearchScanRecord), logger: service.logger,
+    });
     (service as any).cronList[id] = { id, schedule: "*/10 * * * *", jobInstance: { stop: jest.fn(), setTime: jest.fn(), start: jest.fn() } };
+  });
+
+  it("queries the MySQL scan counts within the Beijing report window", async () => {
+    const monitor = service.searchScanMonitor;
+    monitor.redisClient = { set: jest.fn().mockResolvedValue("OK") } as any;
+    monitor.emailService = service.emailService;
+    monitor.mailInfo = { contactSystemOwner: "ops@example.invalid" } as any;
+    await monitor.records.insert([
+      { site: "Xianyu", outcome: "CHALLENGE_REQUIRED", completedAt: new Date("2035-07-21T23:59:59.999+08:00") },
+      { site: "Xianyu", outcome: "VALID", completedAt: new Date("2035-07-22T00:00:00+08:00") },
+      { site: "Xianyu", outcome: "CHALLENGE_REQUIRED", completedAt: new Date("2035-07-22T21:59:59.999+08:00") },
+      { site: "Xianyu", outcome: "VALID", completedAt: new Date("2035-07-22T22:00:00+08:00") },
+    ]);
+    await monitor.reportToday(new Date("2035-07-22T22:00:03+08:00"));
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(send.mock.calls[0][0].text).toContain("闲鱼｜共 2 次 · 有效 1 次 (50.0%) · 异常 1 次 (50.0%)");
+    expect(send.mock.calls[0][0].text).toContain("站点要求安全验证 1 次 (100.0%)");
   });
 
   it("seeds a baseline, sends only unseen IDs, and persists deduplication across service restarts", async () => {
@@ -69,7 +92,7 @@ dbDescribe("闲鱼 hunter with MySQL", () => {
     // A fresh service instance must reuse persisted IDs, not process memory.
     const restarted = Object.assign(new XianyuHunterService(), {
       hunterModel: hunters, goodsRecordModel: records, xianyuApi: service.xianyuApi,
-      emailService: service.emailService, logger: service.logger,
+      emailService: service.emailService, logger: service.logger, searchScanMonitor: service.searchScanMonitor,
     });
     await restarted.goHunt(id);
     expect(send).toHaveBeenCalledTimes(1);

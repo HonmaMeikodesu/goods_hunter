@@ -15,6 +15,9 @@ import { v4 as uuid } from "uuid";
 import {GoodsHunterModelBase} from "../../model/types";
 import {isEmpty, values} from "lodash";
 import errorCode from "../../errorCode";
+import { SearchScanMonitor } from "../searchScanMonitor";
+import { readSearchCondition } from "../../api/site/searchScan";
+import type { SearchSite } from "../../model/searchScanRecord";
 
 interface CronList {
     [uuid: string]: CronDeail;
@@ -147,6 +150,22 @@ export default abstract class HunterBase {
 
     @Inject()
     emailService: EmailService;
+
+    @Inject()
+    searchScanMonitor: SearchScanMonitor;
+
+    protected scanSearch<Condition, Result>(
+        this: HunterBase & { hunterType: SearchSite },
+        schema: string,
+        fetchGoodsList: (condition: Condition) => Promise<Result>,
+        normalize?: (condition: Condition) => Condition,
+    ) {
+        return this.searchScanMonitor.track(this.hunterType, async () => {
+            const condition = readSearchCondition(schema, normalize);
+            const goods = await fetchGoodsList(condition);
+            return { condition, goods };
+        });
+    }
 
     @Config("serverInfo")
     serverInfo: CustomConfig["serverInfo"];
