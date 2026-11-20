@@ -1,0 +1,9 @@
+[Unit]
+Description=Deploy the latest verified Goods Hunter main revision
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/goods-hunter-deploy
+TimeoutStartSec=10min

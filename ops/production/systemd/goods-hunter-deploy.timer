@@ -1,0 +1,10 @@
+[Unit]
+Description=Check GitHub for a tested Goods Hunter release
+
+[Timer]
+OnBootSec=20s
+OnUnitInactiveSec=90s
+AccuracySec=5s
+
+[Install]
+WantedBy=timers.target
