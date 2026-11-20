@@ -43,7 +43,7 @@ s deploy -t s.xianyu.yaml
 
 设置环境变量 `XIANYU_FC_URL`，或在现有私有阿里云配置中增加 `xianyuUrl`，值为新函数的 HTTP 触发器 URL。复用已有 FC 签名凭据，原来的 `url` 和 `yahooFleamarketUrl` 保持各自用途。
 
-新增实体 `XianyuHunter`、`XianyuGoodsRecord`。当前项目使用 TypeORM `synchronize: true`，应用启动时会创建对应表及外键；关闭同步的环境需先按实体创建表。商品记录以任务 ID 和商品 ID 组成联合主键。
+Go 应用沿用 `xianyu_hunter` 和 `xianyu_goods_record` 表。已有任务及待发邮件随原数据库接入，新数据库用 `goods-hunter -init-db` 建表。商品记录以任务 ID 和商品 ID 组成联合主键。
 
 通过现有任务注册接口 `POST /goods/registerGoodsWatcher` 创建任务，例如：
 
@@ -73,9 +73,8 @@ s deploy -t s.xianyu.yaml
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -v
 
 # 在 goods_hunter 仓库
-npm run test:xianyu
-npm run test:xianyu:integration
-npx tsc --noEmit
+go test ./internal/market ./internal/hunter ./internal/web
+./scripts/test-integration.sh
 ```
 
 集成测试复用本地 `mysql:latest`，禁止自动拉取，在限容量内存盘创建临时数据库，测试结束删除容器；邮件为测试替身。`MYSQL_TEST_IMAGE` 可指定已有的兼容镜像。

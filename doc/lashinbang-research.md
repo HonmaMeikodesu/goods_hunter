@@ -72,7 +72,7 @@
 
 ### 仓库已有线索
 
-仓库存在 [Lashinbang 历史 mock](../src/api/site/lashinbang/mock/goodsList.txt)，但该目录只有样本文件；本次源码检索未找到运行中的 Lashinbang 适配器、任务类型、模型或 Hunter 服务。这是早期调研材料，不能把它当作已支持的平台。该文件最后一次提交为 `418f8d0`，日期 **2024-08-06**。
+仓库存在 [Lashinbang 历史 mock](fixtures/lashinbang-goodsList.txt)，但该目录只有样本文件；本次源码检索未找到运行中的 Lashinbang 适配器、任务类型、模型或 Hunter 服务。这是早期调研材料，不能把它当作已支持的平台。该文件最后一次提交为 `418f8d0`，日期 **2024-08-06**。
 
 本次离线解析得到：外层为 `kotohaco`，`result.items` 有 20 条，`result.info` 记录 29 个命中、2 页、当前第 1 页。请求记录的 host 为 `lashinbang-f-s.snva.jp`，带 `q`/`searchbox`、`sort=Score,Number7`、`limit=20`、`o=0`；关键词为“あの日見た花の名前を僕達はまだ知らない”。商品字段包括 `itemid`、`title`、`url`、`image`、`price`、`number7` 等。`number7` 的样本形似 `20240804`，但没有查证其正式语义，不能定义为入荷时间。
 
@@ -83,7 +83,7 @@
 | 部分 | 工程判断 |
 | --- | --- |
 | FC 执行环境 | 可复用现有 Chrome/Playwright 容器基础设施。未来宜有独立 Lashinbang handler，按实际页面取数；不能直接套用 Yahoo!フリマ 的 `__NEXT_DATA__` 解析器。[现有 FC 专用采集器](../../bypass-cloudflare/yahoo_fleamarket.py#L151) |
-| 主服务链路 | 可复用签名 FC 调用、任务调度、首次基线、MySQL 记录和邮件通知模式。[FC 客户端](../src/api/alicloud/index.ts)、[现有商品任务服务](../src/service/hunterArsenal/yahooFleamarket.ts) |
+| 主服务链路 | 可复用签名 FC 调用、任务调度、首次基线、MySQL 记录和邮件通知模式。[FC 客户端](https://github.com/HonmaMeikodesu/goods_hunter/blob/ab4c43a5dcd2e89f5be8a48f88ed6fab6975e7db/src/api/alicloud/index.ts)、[现有商品任务服务](https://github.com/HonmaMeikodesu/goods_hunter/blob/ab4c43a5dcd2e89f5be8a48f88ed6fab6975e7db/src/service/hunterArsenal/yahooFleamarket.ts) |
 | 商品记录 | 候选字段为实际销售单位 ID/详情链接、标题、日元价格、品相、店铺和库存状态。商品组、销售单位和门店库存需按真实页面关联，不能默认一个 JAN/标题就是一条待售记录。 |
 | 失败处理 | 明确区分有效空结果、403、登录/安全校验、列表脚本未完成和结构变化；只有完整有效的一轮采集才更新基线。失败不能清空库存或产生“重新上架”通知。 |
 | 通知语义 | 首期可沿用“首次发现销售记录”提醒；如需补货/降价，再独立记录库存与价格变化。结果翻页时消失不能直接当成售罄；ID 复用和补货语义仍待验证。 |

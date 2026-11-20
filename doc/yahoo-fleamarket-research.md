@@ -6,9 +6,9 @@
 
 ## 初步结论
 
-**技术上可接入，建议新增独立的 `YahooFleamarket` 平台。** 匿名 HTTP 搜索页已有结构化商品数据；Playwright 又验证了“新着顺＋销售中”的前两页，每页 100 条。现有定时任务、去重、邮件通知机制可复用，仓库的 `Yahoo` 则专用于日拍，不应改成フリマ。[实测搜索页](https://paypayfleamarket.yahoo.co.jp/search/%E3%81%A1%E3%81%84%E3%81%8B%E3%82%8F)、[现有 Yahoo 适配器](../src/api/site/yahoo/index.ts#L35)
+**技术上可接入，建议新增独立的 `YahooFleamarket` 平台。** 匿名 HTTP 搜索页已有结构化商品数据；Playwright 又验证了“新着顺＋销售中”的前两页，每页 100 条。现有定时任务、去重、邮件通知机制可复用，仓库的 `Yahoo` 则专用于日拍，不应改成フリマ。[实测搜索页](https://paypayfleamarket.yahoo.co.jp/search/%E3%81%A1%E3%81%84%E3%81%8B%E3%82%8F)、[现有 Yahoo 适配器](https://github.com/HonmaMeikodesu/goods_hunter/blob/b1ffd01029888b53560d4fa71240ebc8078f087e/src/api/site/yahoo/index.ts#L35)
 
-**工程方案应复用 `AliCloudApi.fetchHtmlViaServerless`，由 FC 打开搜索页并返回 HTML，主服务优先解析其中的 `__NEXT_DATA__`。** 本次直接 HTTP 和本地 Playwright 仅用于查证数据结构及页面行为；实际接入仍以现有 FC 链路为准。浏览器已观察到站内 `/api/v1/search`，但它没有公开 API 的稳定性承诺。本次还观察到新着排序并非按返回的 `openTime` 严格降序，以及局部页面切换失败，因此不能用时间水位或 HTTP 200 单独判定一轮监控成功。[现有 FC 客户端](../src/api/alicloud/index.ts#L32)
+**工程方案应复用 `AliCloudApi.fetchHtmlViaServerless`，由 FC 打开搜索页并返回 HTML，主服务优先解析其中的 `__NEXT_DATA__`。** 本次直接 HTTP 和本地 Playwright 仅用于查证数据结构及页面行为；实际接入仍以现有 FC 链路为准。浏览器已观察到站内 `/api/v1/search`，但它没有公开 API 的稳定性承诺。本次还观察到新着排序并非按返回的 `openTime` 严格降序，以及局部页面切换失败，因此不能用时间水位或 HTTP 200 单独判定一轮监控成功。[现有 FC 客户端](https://github.com/HonmaMeikodesu/goods_hunter/blob/b1ffd01029888b53560d4fa71240ebc8078f087e/src/api/alicloud/index.ts#L32)
 
 目前没有找到官方公开提供的 Yahoo!フリマ 商品搜索 API。Yahoo 开发者 API 目录没有列出该服务；公开的 Shopping 商品搜索 API 明确服务于 Yahoo!ショッピング。这个结论是“未找到公开接口”，不排除受限合作接口存在。[官方 API 目录](https://developer.yahoo.co.jp/sitemap/)、[Shopping API 范围](https://developer.yahoo.co.jp/webapi/shopping/)
 
@@ -212,27 +212,27 @@ Disallow: /search/*?*showFilter=
 
 ## 7. 谷子猎手的具体接入位置
 
-以下基于仓库 `b1ffd01` 的代码阅读，不是已完成的业务变更。当前项目是 Midway／TypeScript，使用 TypeORM、MySQL、Cron 和邮件通知；代码依赖见 [package.json](../package.json)。
+以下基于仓库 `b1ffd01` 的代码阅读，不是已完成的业务变更。当前项目是 Midway／TypeScript，使用 TypeORM、MySQL、Cron 和邮件通知；代码依赖见 [package.json](https://github.com/HonmaMeikodesu/goods_hunter/blob/b1ffd01029888b53560d4fa71240ebc8078f087e/package.json)。
 
 ### 现有能力与建议改动
 
 | 层次 | 当前代码证据 | 新平台建议 |
 | --- | --- | --- |
-| 平台标识与搜索类型 | [CONST.HUNTERTYPE](../src/const.ts#L3)、[搜索条件联合类型](../src/api/site/types.ts#L15)、[Hunter 类型](../src/types.ts#L14) | 新增 `YahooFleamarket` 与独立搜索类型，保留现有 `Yahoo` 日拍含义 |
-| 数据获取 | [YahooAuctionApi](../src/api/site/yahoo/index.ts#L111) 经 FC 获取 `auctions.yahoo.co.jp` HTML，再解析竞拍字段 | 新增 `src/api/site/yahooFleamarket/`；复用相同 FC 客户端，将搜索 URL 构建、HTML 解析和业务标准化隔离 |
-| FC 抓取调用 | [AliCloudApi.fetchHtmlViaServerless](../src/api/alicloud/index.ts#L32) 接收目标 URL、加载断言、Cookie、等待／重试参数和可选脚本，返回 HTML 等状态 | 由 FC 完成各搜索页导航与抓取，主服务校验 `success/content` 并解析 JSON；沿用现有签名鉴权和配置。客户端超时为 120 秒，页数、并发及重试需计入任务总时长 |
-| 定时执行 | [HunterBase](../src/service/hunterArsenal/base.ts#L25) 管理 Cron、休眠时段与任务持久化 | 新增 `YahooFleamarketHunterService extends HunterBase`，复用调度方式，加任务执行互斥及站点级限流 |
-| 搜索去重与通知 | [现有 Yahoo goHunt](../src/service/hunterArsenal/yahoo.ts#L112) 查询已见 ID 后发邮件、存记录 | 使用フリマ ID 去重；不沿用 `auctionId/currentBidCount/buyNowPrice` 的业务模型 |
-| 数据实体 | [YahooHunter](../src/model/yahooHunter.ts#L7)、[YahooAuctionRecord](../src/model/yahooAuctionRecord.ts#L5)、[User 关联](../src/model/user.ts#L39) | 新增平台任务实体与记录实体，增加 User 关联；记录唯一约束按任务＋商品 ID 设计 |
-| 注册、列表、更新、删除 | [GoodsController](../src/controller/goods.ts#L33)、[HunterRouteService](../src/service/hunterRouteService.ts#L69)、[GoodsService.deleteTask](../src/service/goods.ts#L46)、[Hunter 导出](../src/service/hunterArsenal/index.ts) | 逐个补全分发，尤其任务删除时的实体选择，不能只加注册分支 |
-| 通知模板 | [template.ts](../src/template.ts)、[Yahoo 邮件模板](../view/yahoo/goodsList.ejs) | 新模板指向 `https://paypayfleamarket.yahoo.co.jp/item/{id}`；首版不带尚未支持的单品订阅链接 |
-| 本地验证 | [现有 Mock](../src/mock/api.ts)、[Hunter 测试](../test/service/hunter.test.ts) | 增加脱敏 HTML fixture 与真实行为断言；现有相关测试主要是 smoke，不能替代新平台的去重验证 |
+| 平台标识与搜索类型 | [CONST.HUNTERTYPE](https://github.com/HonmaMeikodesu/goods_hunter/blob/b1ffd01029888b53560d4fa71240ebc8078f087e/src/const.ts#L3)、[搜索条件联合类型](https://github.com/HonmaMeikodesu/goods_hunter/blob/b1ffd01029888b53560d4fa71240ebc8078f087e/src/api/site/types.ts#L15)、[Hunter 类型](https://github.com/HonmaMeikodesu/goods_hunter/blob/b1ffd01029888b53560d4fa71240ebc8078f087e/src/types.ts#L14) | 新增 `YahooFleamarket` 与独立搜索类型，保留现有 `Yahoo` 日拍含义 |
+| 数据获取 | [YahooAuctionApi](https://github.com/HonmaMeikodesu/goods_hunter/blob/b1ffd01029888b53560d4fa71240ebc8078f087e/src/api/site/yahoo/index.ts#L111) 经 FC 获取 `auctions.yahoo.co.jp` HTML，再解析竞拍字段 | 新增 `src/api/site/yahooFleamarket/`；复用相同 FC 客户端，将搜索 URL 构建、HTML 解析和业务标准化隔离 |
+| FC 抓取调用 | [AliCloudApi.fetchHtmlViaServerless](https://github.com/HonmaMeikodesu/goods_hunter/blob/b1ffd01029888b53560d4fa71240ebc8078f087e/src/api/alicloud/index.ts#L32) 接收目标 URL、加载断言、Cookie、等待／重试参数和可选脚本，返回 HTML 等状态 | 由 FC 完成各搜索页导航与抓取，主服务校验 `success/content` 并解析 JSON；沿用现有签名鉴权和配置。客户端超时为 120 秒，页数、并发及重试需计入任务总时长 |
+| 定时执行 | [HunterBase](https://github.com/HonmaMeikodesu/goods_hunter/blob/b1ffd01029888b53560d4fa71240ebc8078f087e/src/service/hunterArsenal/base.ts#L25) 管理 Cron、休眠时段与任务持久化 | 新增 `YahooFleamarketHunterService extends HunterBase`，复用调度方式，加任务执行互斥及站点级限流 |
+| 搜索去重与通知 | [现有 Yahoo goHunt](https://github.com/HonmaMeikodesu/goods_hunter/blob/b1ffd01029888b53560d4fa71240ebc8078f087e/src/service/hunterArsenal/yahoo.ts#L112) 查询已见 ID 后发邮件、存记录 | 使用フリマ ID 去重；不沿用 `auctionId/currentBidCount/buyNowPrice` 的业务模型 |
+| 数据实体 | [YahooHunter](https://github.com/HonmaMeikodesu/goods_hunter/blob/b1ffd01029888b53560d4fa71240ebc8078f087e/src/model/yahooHunter.ts#L7)、[YahooAuctionRecord](https://github.com/HonmaMeikodesu/goods_hunter/blob/b1ffd01029888b53560d4fa71240ebc8078f087e/src/model/yahooAuctionRecord.ts#L5)、[User 关联](https://github.com/HonmaMeikodesu/goods_hunter/blob/b1ffd01029888b53560d4fa71240ebc8078f087e/src/model/user.ts#L39) | 新增平台任务实体与记录实体，增加 User 关联；记录唯一约束按任务＋商品 ID 设计 |
+| 注册、列表、更新、删除 | [GoodsController](https://github.com/HonmaMeikodesu/goods_hunter/blob/b1ffd01029888b53560d4fa71240ebc8078f087e/src/controller/goods.ts#L33)、[HunterRouteService](https://github.com/HonmaMeikodesu/goods_hunter/blob/b1ffd01029888b53560d4fa71240ebc8078f087e/src/service/hunterRouteService.ts#L69)、[GoodsService.deleteTask](https://github.com/HonmaMeikodesu/goods_hunter/blob/b1ffd01029888b53560d4fa71240ebc8078f087e/src/service/goods.ts#L46)、[Hunter 导出](https://github.com/HonmaMeikodesu/goods_hunter/blob/b1ffd01029888b53560d4fa71240ebc8078f087e/src/service/hunterArsenal/index.ts) | 逐个补全分发，尤其任务删除时的实体选择，不能只加注册分支 |
+| 通知模板 | [template.ts](https://github.com/HonmaMeikodesu/goods_hunter/blob/b1ffd01029888b53560d4fa71240ebc8078f087e/src/template.ts)、[Yahoo 邮件模板](https://github.com/HonmaMeikodesu/goods_hunter/blob/b1ffd01029888b53560d4fa71240ebc8078f087e/view/yahoo/goodsList.ejs) | 新模板指向 `https://paypayfleamarket.yahoo.co.jp/item/{id}`；首版不带尚未支持的单品订阅链接 |
+| 本地验证 | [现有 Mock](https://github.com/HonmaMeikodesu/goods_hunter/blob/b1ffd01029888b53560d4fa71240ebc8078f087e/src/mock/api.ts)、[Hunter 测试](https://github.com/HonmaMeikodesu/goods_hunter/blob/b1ffd01029888b53560d4fa71240ebc8078f087e/test/service/hunter.test.ts) | 增加脱敏 HTML fixture 与真实行为断言；现有相关测试主要是 smoke，不能替代新平台的去重验证 |
 
-当前 [view/index.ejs](../view/index.ejs) 只有临时登录表单，没有完整任务管理 UI。首版可沿用现有 `/goods/registerGoodsWatcher` 等接口，增加完整任务管理页面应另计范围。
+当前 [view/index.ejs](https://github.com/HonmaMeikodesu/goods_hunter/blob/b1ffd01029888b53560d4fa71240ebc8078f087e/view/index.ejs) 只有临时登录表单，没有完整任务管理 UI。首版可沿用现有 `/goods/registerGoodsWatcher` 等接口，增加完整任务管理页面应另计范围。
 
 ### 沿用 FC 的调用边界
 
-当前 [Mercari](../src/api/site/mercari/index.ts#L29)、[Yahoo 日拍](../src/api/site/yahoo/index.ts#L111)、[Surugaya](../src/api/site/surugaya/index.ts)、[Mandarake](../src/api/site/mandarake/index.ts) 的列表抓取均调用 FC 客户端；Yahoo!フリマ 应遵循同一条链路：
+当前 [Mercari](https://github.com/HonmaMeikodesu/goods_hunter/blob/b1ffd01029888b53560d4fa71240ebc8078f087e/src/api/site/mercari/index.ts#L29)、[Yahoo 日拍](https://github.com/HonmaMeikodesu/goods_hunter/blob/b1ffd01029888b53560d4fa71240ebc8078f087e/src/api/site/yahoo/index.ts#L111)、[Surugaya](https://github.com/HonmaMeikodesu/goods_hunter/blob/b1ffd01029888b53560d4fa71240ebc8078f087e/src/api/site/surugaya/index.ts)、[Mandarake](https://github.com/HonmaMeikodesu/goods_hunter/blob/b1ffd01029888b53560d4fa71240ebc8078f087e/src/api/site/mandarake/index.ts) 的列表抓取均调用 FC 客户端；Yahoo!フリマ 应遵循同一条链路：
 
 ```text
 YahooFleamarketHunter
@@ -294,10 +294,10 @@ type YahooFleamarketSearchCondition = {
 
 这些是与新平台接入直接相关的代码观察；本次只记录，没有修改：
 
-- **任务更新分发缺少 `type`。** [控制器](../src/controller/goods.ts#L140) 调用 `transferHunter` 时没有传入平台类型，[路由服务](../src/service/hunterRouteService.ts#L86) 却根据 `info.type` 判断分支。新增平台若照抄，更新请求会无法路由。实现 CRUD 时应一并补传类型并验证。
-- **更新条件与重置基线需要明确时序。** [HunterBase.transfer](../src/service/hunterArsenal/base.ts#L197) 没有 await 数据库事务；[Yahoo 子类](../src/service/hunterArsenal/yahoo.ts#L172) 又在调用它之后读取所谓旧条件。新平台应在更新前读旧值并等待事务结束，根据完整规范化搜索条件决定是否重建基线，而非只比较关键词。
-- **Cron 的激活状态不等于本轮没有运行。** [spawnCronJob](../src/service/hunterArsenal/base.ts#L113) 没有为 `goHunt` 加执行锁；慢请求可能与下次调度重叠。新平台至少要有同任务互斥；多实例部署再考虑分布式锁。
-- **现有去重不是严格一次投递。** [当前流程](../src/service/hunterArsenal/yahoo.ts#L141) 是先发邮件再插入记录，邮件成功而数据库失败时，下轮可能重发。新增平台宜保存待发送记录及发送状态，再发送并确认；即使这样，SMTP 成功与状态提交之间仍有重试边界。若需要更强投递保证，再单独设计 outbox 与幂等策略。
+- **任务更新分发缺少 `type`。** [控制器](https://github.com/HonmaMeikodesu/goods_hunter/blob/b1ffd01029888b53560d4fa71240ebc8078f087e/src/controller/goods.ts#L140) 调用 `transferHunter` 时没有传入平台类型，[路由服务](https://github.com/HonmaMeikodesu/goods_hunter/blob/b1ffd01029888b53560d4fa71240ebc8078f087e/src/service/hunterRouteService.ts#L86) 却根据 `info.type` 判断分支。新增平台若照抄，更新请求会无法路由。实现 CRUD 时应一并补传类型并验证。
+- **更新条件与重置基线需要明确时序。** [HunterBase.transfer](https://github.com/HonmaMeikodesu/goods_hunter/blob/b1ffd01029888b53560d4fa71240ebc8078f087e/src/service/hunterArsenal/base.ts#L197) 没有 await 数据库事务；[Yahoo 子类](https://github.com/HonmaMeikodesu/goods_hunter/blob/b1ffd01029888b53560d4fa71240ebc8078f087e/src/service/hunterArsenal/yahoo.ts#L172) 又在调用它之后读取所谓旧条件。新平台应在更新前读旧值并等待事务结束，根据完整规范化搜索条件决定是否重建基线，而非只比较关键词。
+- **Cron 的激活状态不等于本轮没有运行。** [spawnCronJob](https://github.com/HonmaMeikodesu/goods_hunter/blob/b1ffd01029888b53560d4fa71240ebc8078f087e/src/service/hunterArsenal/base.ts#L113) 没有为 `goHunt` 加执行锁；慢请求可能与下次调度重叠。新平台至少要有同任务互斥；多实例部署再考虑分布式锁。
+- **现有去重不是严格一次投递。** [当前流程](https://github.com/HonmaMeikodesu/goods_hunter/blob/b1ffd01029888b53560d4fa71240ebc8078f087e/src/service/hunterArsenal/yahoo.ts#L141) 是先发邮件再插入记录，邮件成功而数据库失败时，下轮可能重发。新增平台宜保存待发送记录及发送状态，再发送并确认；即使这样，SMTP 成功与状态提交之间仍有重试边界。若需要更强投递保证，再单独设计 outbox 与幂等策略。
 
 ## 8. 建议的实施顺序与验收
 

@@ -81,10 +81,10 @@ Disallow: /playground
 
 | 现有能力 | 可以复用的部分 | 闲鱼需要补充验证/设计的部分 |
 | --- | --- | --- |
-| [FC 调用客户端](../src/api/alicloud/index.ts) | goods_hunter 调用独立 FC，传递参数并接收结构化结果 | 未来独立闲鱼请求/响应类型，区分成功、需要登录、安全校验、上游失败，不能只看 HTTP 200 |
+| [FC 调用客户端](https://github.com/HonmaMeikodesu/goods_hunter/blob/531777732ff7ee5bbb26c3db2003cc02847c8a1b/src/api/alicloud/index.ts) | goods_hunter 调用独立 FC，传递参数并接收结构化结果 | 未来独立闲鱼请求/响应类型，区分成功、需要登录、安全校验、上游失败，不能只看 HTTP 200 |
 | [通用 FC 浏览器](../../bypass-cloudflare/bypass_cloudflare.py#L723) | 已有 Chrome/Playwright；每次新建隔离 context，可显式注入 Cookie | 每次结束关闭 context，不会自然保留上一请求的 Cookie/localStorage；若需要会话，应另行设计获准的会话保存、恢复与失效处理，尚未证明单靠 Cookie 足够 |
 | [Yahoo!フリマ 专用采集器](../../bypass-cloudflare/yahoo_fleamarket.py#L151) | 独立站点采集器、结构化返回与资源清理的组织方式 | Yahoo 目前解析 `__NEXT_DATA__`；本次没有验证闲鱼存在同等的搜索结果结构，不能直接复用其解析器 |
-| [商品任务服务](../src/service/hunterArsenal/yahooFleamarket.ts) | 定时执行、首次基线、按商品 ID 去重及后续邮件提醒的模式 | 只在有效搜索成功后推进基线；校验/登录失败时保留原基线并暂停或退避，避免误判和通知风暴 |
+| [商品任务服务](https://github.com/HonmaMeikodesu/goods_hunter/blob/531777732ff7ee5bbb26c3db2003cc02847c8a1b/src/service/hunterArsenal/yahooFleamarket.ts) | 定时执行、首次基线、按商品 ID 去重及后续邮件提醒的模式 | 只在有效搜索成功后推进基线；校验/登录失败时保留原基线并暂停或退避，避免误判和通知风暴 |
 
 以上为本地源码事实与工程建议，不代表闲鱼已适配。FC 生产出口、可接受频率、会话有效期、分页、新发布排序和在售过滤均未验证。若会话不可可靠恢复，届时再比较持久浏览器执行节点与 FC 的职责，不应先假定必须做手机 App 自动化或必须放弃现有 FC。
 

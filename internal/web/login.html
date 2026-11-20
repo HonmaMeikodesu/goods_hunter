@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>谷子猎手登录</title>
+</head>
+<body>
+  <form id="login" method="post" action="/login">
+    <label>邮箱 <input name="email" type="email" autocomplete="username" required></label>
+    <label>密码 <input name="password" type="password" autocomplete="current-password" required></label>
+    <button type="submit">登录</button>
+  </form>
+  <p id="result" role="status"></p>
+  <script>
+    const form = document.querySelector('#login');
+    const result = document.querySelector('#result');
+    form.addEventListener('submit', async event => {
+      event.preventDefault();
+      try {
+        const response = await fetch(form.action, {
+          method: 'POST',
+          body: new URLSearchParams(new FormData(form))
+        });
+        const reply = await response.json();
+        result.textContent = reply.code === '200' ? '登录成功' : '登录失败 ' + reply.code;
+      } catch {
+        result.textContent = '登录失败，请重试。';
+      }
+    });
+  </script>
+</body>
+</html>

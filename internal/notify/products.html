@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body style="font-family:system-ui,sans-serif">
+  {{range .}}
+  <div style="max-width:640px;margin:0 auto 14px;padding:12px;border-bottom:1px solid #ddd">
+    <a href="{{.URL}}">
+      {{if .Image}}<img src="{{.Image}}" alt="" width="180" style="max-width:100%;height:auto">{{end}}
+      {{if .TwoLines}}
+      <p title="{{.Name}}" style="font-size:14px;line-height:1.5em;max-height:3em;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;text-overflow:ellipsis;overflow-wrap:anywhere">{{.Name}}</p>
+      {{else}}<p>{{.Name}}</p>{{end}}
+    </a>
+    {{if .Sold}}<p>已售出</p>{{end}}
+    {{if .OldPrice}}<span>{{.OldPrice}} → </span>{{end}}<strong>{{.Price}}</strong>
+    {{if .WatchURL}}<p><a href="{{.WatchURL}}">监控此商品</a></p>{{end}}
+    {{if .StopURL}}<p><a href="{{.StopURL}}">停止监控</a></p>{{end}}
+  </div>
+  {{end}}
+</body>
+</html>

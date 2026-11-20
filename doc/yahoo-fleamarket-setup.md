@@ -5,7 +5,7 @@
 2026-10-23 已完成云端部署和线上接入，实例地址、验证结果及回滚位置见 [上线记录](yahoo-fleamarket-deployment-2026-10-23.md)。
 
 ```text
-定时任务 → YahooFleamarketApi → 签名调用专用 FC
+定时任务 → Go 采集客户端 → 签名调用专用 FC
         → FC 使用 Chrome 打开完整搜索 URL、解析商品列表
         → goods hunter 本地筛选、MySQL 去重与待发送记录、邮件提醒
 ```
@@ -64,7 +64,7 @@ FC 固定使用新着降序；页码允许 1—3，每页按当前上游 100 件
 export YAHOO_FLEAMARKET_FC_URL='https://<新函数域名>/search'
 ```
 
-新增 TypeORM 实体为 `YahooFleamarketHunter` 和 `YahooFleamarketGoodsRecord`。本项目当前配置 `synchronize: true`，启动时会按实体建立新表；使用关闭同步的部署环境时，需要先按实体创建对应表与外键。
+Go 应用沿用 `yahoo_fleamarket_hunter` 和 `yahoo_fleamarket_goods_record` 表。已有任务可随原数据库接入，新数据库用 `goods-hunter -init-db` 建表。
 
 重启 goods hunter 后，调用现有登录态保护的任务接口：
 
@@ -103,14 +103,13 @@ python3 -m unittest discover -s tests -v
 goods hunter 单元与路由测试：
 
 ```bash
-npm run test:yahoo-fleamarket
-npm run build
+go test ./internal/market ./internal/hunter ./internal/web
 ```
 
 使用临时 Docker MySQL 的集成测试（自动清理测试容器和测试数据库）：
 
 ```bash
-npm run test:yahoo-fleamarket:integration
+./scripts/test-integration.sh
 ```
 
 此测试不启动现有应用或生产 Cron，不连接原有数据库，不发送真实邮件。可用 `MYSQL_TEST_IMAGE` 指定本地测试 MySQL 镜像。
@@ -120,7 +119,7 @@ npm run test:yahoo-fleamarket:integration
 新 FC 部署后的签名冒烟测试（只请求一页，不写库、不发邮件）：
 
 ```bash
-node -r ts-node/register scripts/smoke-yahoo-fleamarket.js 'ちいかわ 缶バッジ'
+go run ./cmd/goods-hunter -check-yahoo-fleamarket 'ちいかわ 缶バッジ'
 ```
 
 站点结构、排序语义和访问规则背景见 [调研报告](yahoo-fleamarket-research.md)。FC HTTP 签名依据 [阿里云官方说明](https://help.aliyun.com/zh/functioncompute/configure-signature-authentication-for-http-triggers)，容器端口与入口依据 [FC3 自定义容器文档](https://help.aliyun.com/zh/functioncompute/create-a-custom-container-function-in-a-container-runtime)。

@@ -87,10 +87,10 @@ export YAHOO_SESSION_FILE="$YAHOO_SESSION_DIR/session.json"
 export YAHOO_SESSION_MAX_AGE_SECONDS=172800
 tools/yahoo-session/.venv/bin/python tools/yahoo-session/session_manager.py refresh
 tools/yahoo-session/.venv/bin/python tools/yahoo-session/session_manager.py status
-node tools/yahoo-session/check-fc.cjs
+go run ./cmd/goods-hunter -check-yahoo-session
 ```
 
-`check-fc.cjs` 使用现有 `src/private/alicloud.json` 访问个人页，只输出结果和原因码；需要项目 Node 依赖。`ready` 仅表示服务器浏览器通过检查；FC 检查成功后，还需用一个原本就有访问权限的成人分类任务验证实际采集。这些真实账号验收步骤不能由离线测试替代。
+`-check-yahoo-session` 使用现有 `src/private/alicloud.json` 访问个人页，只输出结果和原因码。会话工具报告 `ready` 表示服务器浏览器通过检查，再用 FC 检查确认采集出口也接受该会话。
 
 将绝对路径的 `YAHOO_SESSION_FILE` 放入 **goods hunter 自身的启动环境** 并重新启动应用一次；此后 Cookie 更新无需重启。可设置 `YAHOO_SESSION_MAX_AGE_SECONDS`（默认 21600），自定义选择器时同时设置 `YAHOO_AUTH_SELECTOR`。每天刷新时，将 `YAHOO_SESSION_MAX_AGE_SECONDS=172800` 一并放入主应用启动环境。只在 shell 中 export 不会更新已经运行的应用进程。
 
@@ -131,7 +131,7 @@ journalctl --user -u yahoo-session.service -n 20
 ## 本地验证
 
 ```bash
-npx jest --runInBand test/yahooSession test/api/searchParsing.test.ts test/yahooFleamarket
+go test ./internal/market ./internal/hunter
 python3 -m unittest discover -s tools/yahoo-session -p 'test_*.py' -v
 YAHOO_TEST_BROWSER=1 xvfb-run -a tools/yahoo-session/.venv/bin/python -m unittest discover -s tools/yahoo-session -p 'test_*.py' -v
 ```
