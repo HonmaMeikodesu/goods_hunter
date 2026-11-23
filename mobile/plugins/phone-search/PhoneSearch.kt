@@ -170,7 +170,7 @@ class PhoneSearchActivity : Activity() {
       override fun onPageFinished(view: WebView, url: String) {
         if (isFinishing || loadFailed || url != view.url) return
         if (!matchesSavedSearch(url)) {
-          message.text = "请在网页内完成验证或登录，再点「回到搜索」。"
+          showPageMismatch(url)
           return
         }
         message.text = "可先完成网页验证或登录。看到搜索结果后，点「提取本页」。"
@@ -197,6 +197,15 @@ class PhoneSearchActivity : Activity() {
     message.text = reason
   }
 
+  private fun showPageMismatch(url: String) {
+    extract.isEnabled = false
+    message.text = if (searchPage(Uri.parse(url))) {
+      "当前搜索条件与任务不一致，请点「回到搜索」。"
+    } else {
+      "请在网页内完成验证或登录，再点「回到搜索」。"
+    }
+  }
+
   private fun matchesSavedSearch(url: String): Boolean {
     if (url.length > 4096) return false
     val current = Uri.parse(url)
@@ -204,8 +213,9 @@ class PhoneSearchActivity : Activity() {
     val expected = Uri.parse(startURL)
     val defaults = mapOf("search_word" to "", "category" to "", "page" to "1", "adult_s" to "2", "is_marketplace" to "", "rankBy" to "")
     return defaults.all { (key, fallback) ->
-      val actual = current.getQueryParameters(key)
-      actual.size <= 1 && (actual.firstOrNull() ?: fallback) == (expected.getQueryParameter(key) ?: fallback)
+      // Use the same decoding on both sides because the plural getter preserves raw '+'.
+      current.getQueryParameters(key).size <= 1 &&
+        (current.getQueryParameter(key) ?: fallback) == (expected.getQueryParameter(key) ?: fallback)
     }
   }
 
@@ -213,8 +223,7 @@ class PhoneSearchActivity : Activity() {
     val url = browser.url ?: return
     if (loadFailed) return
     if (!matchesSavedSearch(url)) {
-      message.text = "请先完成原站操作，再点「回到搜索」。"
-      extract.isEnabled = false
+      showPageMismatch(url)
       return
     }
     extract.isEnabled = false
