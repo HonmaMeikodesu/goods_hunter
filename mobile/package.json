@@ -1,6 +1,6 @@
 {
   "name": "goods-hunter-mobile",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "private": true,
   "main": "index.ts",
   "engines": { "node": ">=22.18.0" },

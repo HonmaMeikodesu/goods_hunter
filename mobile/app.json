@@ -2,7 +2,7 @@
   "expo": {
     "name": "谷子猎手",
     "slug": "goods-hunter",
-    "version": "0.2.2",
+    "version": "0.3.0",
     "icon": "./assets/menma-logo.png",
     "platforms": ["android", "web"],
     "orientation": "portrait",
@@ -10,13 +10,13 @@
     "backgroundColor": "#F5F2EA",
     "android": {
       "package": "com.honmameiko.goodshunter",
-      "versionCode": 4,
+      "versionCode": 5,
       "blockedPermissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.READ_MEDIA_IMAGES",
         "android.permission.READ_MEDIA_VIDEO"
       ]
     },
-    "plugins": ["expo-secure-store", "expo-updates", "./with-local-http.cjs", "./plugins/with-apk-installer.cjs"]
+    "plugins": ["expo-secure-store", "expo-updates", "./with-local-http.cjs", "./plugins/with-apk-installer.cjs", "./plugins/with-phone-search.cjs"]
   }
 }

@@ -30,6 +30,7 @@ export type SearchTask = {
   adultMode?: boolean;
   adultOnly?: boolean;
   includesAdultCategory?: boolean;
+  phoneSearch?: boolean;
 };
 
 export type SiteTasks = { site: Site; adultModeSupported: boolean; tasks: SearchTask[] };
@@ -118,6 +119,8 @@ export async function request<T>(session: Session, route: string, body?: object)
   if (reply.code === '030301') throw new Error('邮箱或密码错误。');
   if (reply.code === '040002') throw new Error('请先开启主动模式。');
   if (reply.code === '040003') throw new Error('连接验证失败，请核对连接码和服务地址。');
+  if (reply.code === '040004') throw new Error('手机搜索结果与当前任务的条件不匹配，请下拉刷新后重试。');
+  if (route === 'phone-search' && ['030502', '030503'].includes(reply.code)) throw new Error('该定时任务已不可用，请下拉刷新。');
   if (!response.ok || reply.code !== '200') throw new Error('操作失败，请稍后重试。');
   return reply.data;
 }

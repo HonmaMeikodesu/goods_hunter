@@ -198,6 +198,7 @@ func TestLegacyAccountAndWatcherRoutes(t *testing.T) {
 	call("GET", mobile+"state", "", "", oldCookies, 401, "010102")
 	call("GET", mobile+"state", "", "", nil, 401, "010102", oldToken)
 	call("GET", mobile+"tasks", "", "", oldCookies, 401, "010102")
+	call("POST", mobile+"phone-search", "application/json", `{}`, oldCookies, 401, "010102")
 	passwordOnly, _ := json.Marshal(credentials{Email: legacyEmail, Password: password})
 	call("POST", mobile+"login", "application/json", string(passwordOnly), nil, 403, "040003")
 	loginBody, _ := json.Marshal(map[string]string{"email": legacyEmail, "password": password, "connectionCode": connectionCode})
@@ -226,7 +227,11 @@ func TestLegacyAccountAndWatcherRoutes(t *testing.T) {
 		{Site: model.Surveillance, Owner: legacyEmail, Condition: `{"type":"mercari","goodId":"m123"}`},
 	} {
 		task.ID, task.Schedule = model.NewID(), "0 0 31 12 *"
-		if err := db.CreateWatcher(t.Context(), task); err != nil {
+		save := db.CreateWatcher
+		if task.Site == model.Surugaya {
+			save = service.Register
+		}
+		if err := save(t.Context(), task); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -250,20 +255,65 @@ func TestLegacyAccountAndWatcherRoutes(t *testing.T) {
 	for _, task := range groups.Data[0].Tasks {
 		want, found := wantYahoo[task.Keyword]
 		link, err := url.Parse(task.SearchURL)
-		if !found || err != nil || task.ID == "" || task.IncludesAdultCategory != want.includesAdult ||
+		if !found || err != nil || task.ID == "" || task.PhoneSearch || task.IncludesAdultCategory != want.includesAdult ||
 			task.AdultOnly != want.adultOnly || task.AdultMode != want.adultOnly || link.Host != "auctions.yahoo.co.jp" ||
 			link.Query().Get("p") != task.Keyword || link.Query().Get("auccat") != want.category {
 			t.Fatalf("unexpected Yahoo search task: %+v", task)
 		}
 		delete(wantYahoo, task.Keyword)
 	}
+	var phoneTask mobileSearchTask
 	for _, task := range groups.Data[1].Tasks {
 		adult := task.Keyword == "限定 版"
 		link, err := url.Parse(task.SearchURL)
-		if err != nil || task.ID == "" || (!adult && task.Keyword != "通常版") || task.AdultMode != adult || task.AdultOnly != adult ||
+		if err != nil || task.ID == "" || !task.PhoneSearch || (!adult && task.Keyword != "通常版") || task.AdultMode != adult || task.AdultOnly != adult ||
 			link.Host != "www.suruga-ya.jp" || link.Query().Get("search_word") != task.Keyword || (link.Query().Get("adult_s") == "3") != adult {
 			t.Fatalf("unexpected search task: %+v", task)
 		}
+		if adult {
+			phoneTask = task
+		}
+	}
+	phoneBody := func(pageURL, href string) string {
+		t.Helper()
+		encoded, err := json.Marshal(struct {
+			TaskID string `json:"taskId"`
+			market.PhoneSearchPage
+		}{TaskID: phoneTask.ID, PhoneSearchPage: market.PhoneSearchPage{PageURL: pageURL, Items: []market.PhoneSearchItem{
+			{Href: href, Name: "测试徽章", Image: "//cdn.suruga-ya.jp/database/sample.jpg", Price: "1,000円"},
+		}}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(encoded)
+	}
+	const productPath = "/product/detail/603012345"
+	phoneImport := phoneBody(phoneTask.SearchURL, productPath)
+	mailBeforePhone := len(mail.messages)
+	otherToken, err := auth.MobileLogin(t.Context(), newEmail, newPassword, connectionCode)
+	if err != nil {
+		t.Fatal(err)
+	}
+	call("POST", mobile+"mode", "application/json", `{"active":true}`, nil, 200, "200", otherToken)
+	call("POST", mobile+"phone-search", "application/json", phoneImport, nil, 400, "030503", otherToken)
+	wrongPage := phoneTask.SearchURL + "&page=2"
+	call("POST", mobile+"phone-search", "application/json", phoneBody(wrongPage, productPath), nil, 400, "040004", token)
+	call("POST", mobile+"phone-search", "application/json", phoneBody(phoneTask.SearchURL, "https://example.invalid"+productPath), nil, 400, "040004", token)
+	call("POST", mobile+"mode", "application/json", `{"active":false}`, nil, 200, "200", token)
+	call("POST", mobile+"phone-search", "application/json", phoneImport, nil, 400, "040002", token)
+	call("POST", mobile+"mode", "application/json", `{"active":true}`, nil, 200, "200", token)
+	for range 2 {
+		out := call("POST", mobile+"phone-search", "application/json", phoneImport, nil, 200, "200", token)
+		if !strings.Contains(out.Body.String(), `"found":1`) {
+			t.Fatalf("unexpected phone search response: %s", out.Body)
+		}
+	}
+	discoveries := call("GET", mobile+"products", "", "", nil, 200, "200", token)
+	var products struct{ Data []mobileProduct }
+	if err := json.Unmarshal(discoveries.Body.Bytes(), &products); err != nil || len(products.Data) != 1 ||
+		products.Data[0].URL != "https://www.suruga-ya.jp"+productPath || products.Data[0].Image != "https://cdn.suruga-ya.jp/database/sample.jpg" ||
+		products.Data[0].Price != "1,000円" || len(mail.messages) != mailBeforePhone {
+		t.Fatalf("phone results must appear once in the app without email: %s", discoveries.Body)
 	}
 	call("GET", mobile+"products", "", "", nil, 200, "200", token)
 	grantPath := updatePath + "apk/" + releaseHash

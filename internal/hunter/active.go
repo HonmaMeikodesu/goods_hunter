@@ -53,6 +53,55 @@ func (s *Service) MarkActiveProductsViewed(ctx context.Context, owner string, id
 	return s.db.MarkActiveProductsViewed(ctx, owner, ids)
 }
 
+// AcceptPhoneSearch saves an authenticated account's on-device Surugaya results.
+func (s *Service) AcceptPhoneSearch(ctx context.Context, owner, taskID string, page market.PhoneSearchPage) (int, error) {
+	if taskID == "" || len(taskID) > 255 {
+		return 0, problem.InvalidRequest
+	}
+	active, err := s.db.ActiveMode(ctx, owner)
+	if err != nil {
+		return 0, err
+	}
+	if !active {
+		return 0, problem.ActiveModeOff
+	}
+	j := s.findJob(jobKey{model.Surugaya, taskID})
+	if j == nil {
+		return 0, problem.TaskNotFound
+	}
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	if j.deleted {
+		return 0, problem.TaskNotFound
+	}
+	w, err := s.db.Watcher(ctx, j.key.site, taskID)
+	if err != nil {
+		return 0, err
+	}
+	if w.Owner != owner {
+		return 0, problem.TaskPermission
+	}
+	condition, err := model.ReadCondition(w.Site, w.Condition)
+	if err != nil {
+		return 0, problem.PhoneSearchMismatch
+	}
+	items, err := market.SurugayaPhoneItems(condition, page)
+	if err != nil {
+		return 0, problem.PhoneSearchMismatch
+	}
+	// Recheck active mode in the write transaction. Phone results go to the app only.
+	if len(items) > 0 {
+		pending, err := s.db.AcceptSearch(ctx, w, condition, items, false)
+		if err != nil {
+			return 0, err
+		}
+		if len(pending) > 0 {
+			return 0, problem.ActiveModeOff
+		}
+	}
+	return len(items), nil
+}
+
 // StartScan starts all search tasks, or only the failed tasks for the selected site.
 func (s *Service) StartScan(ctx context.Context, owner string, site model.Site) (ActiveState, error) {
 	if site != "" && (!site.Valid() || site == model.Surveillance) {

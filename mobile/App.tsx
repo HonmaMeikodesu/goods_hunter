@@ -1,19 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import {
-  ActivityIndicator, AppState, FlatList, Image, Linking, Pressable, StyleSheet,
+  ActivityIndicator, AppState, FlatList, Image, Linking, NativeModules, Platform, Pressable, StyleSheet,
   Switch, Text, TextInput, View,
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import {
   ExpiredSession, login, readSession, request, saveSession, sites,
-  type ActiveState, type Product, type Session, type Site, type SiteStatus, type SiteTasks,
+  type ActiveState, type Product, type SearchTask, type Session, type Site, type SiteStatus, type SiteTasks,
 } from './api';
 import { createSessionUpdater } from './software-update';
 import { UpdatePanel } from './update-panel';
 
 const watcher = require('./assets/menma/watch.png');
 const waiting = require('./assets/menma/waiting.png');
+const phoneSearch: { search(url: string): Promise<{ pageUrl: string; items: string } | null> } | undefined =
+  Platform.OS === 'android' ? NativeModules.GoodsHunterPhoneSearch : undefined;
 
 const ink = '#222D25';
 const muted = '#58665C';
@@ -194,6 +196,28 @@ function Dashboard({ session, onExit }: { session: Session; onExit: (message?: s
     }
   }
 
+  async function searchOnPhone(task: SearchTask) {
+    if (busy.current || !state?.active || !task.searchUrl || !phoneSearch) return;
+    busy.current = true;
+    setWorking(true);
+    setNotice('');
+    setError('');
+    try {
+      const result = await phoneSearch.search(task.searchUrl);
+      if (!result) return;
+      const { found } = await request<{ found: number }>(session, 'phone-search', {
+        taskId: task.id, pageUrl: result.pageUrl, items: JSON.parse(result.items),
+      });
+      setNotice(found ? `手机读到 ${found} 件商品，已同步。` : '骏河屋这一页没有匹配商品。');
+      await refresh();
+    } catch (cause) {
+      showError(cause);
+    } finally {
+      busy.current = false;
+      setWorking(false);
+    }
+  }
+
   const siteRows = (Object.keys(sites) as Site[]).flatMap(site => {
     const group = taskGroups?.find(row => row.site === site);
     const status = state?.sites.find(row => row.site === site);
@@ -234,7 +258,8 @@ function Dashboard({ session, onExit }: { session: Session; onExit: (message?: s
           onPress={() => void act('scan', {})} /> : null}
         {siteRows.length ? <View style={styles.siteList}>
           {siteRows.map(row => <SiteRow key={row.site} {...row} tasksLoading={!taskGroups && !tasksError}
-            canRetry={state.active && !working} onRetry={site => void act('scan', { site })} onError={showError} />)}
+            canRetry={state.active && !working} onRetry={site => void act('scan', { site })} onError={showError}
+            onPhoneSearch={state.active && phoneSearch ? task => void searchOnPhone(task) : undefined} working={working} />)}
         </View> : null}
         {tasksError ? <Text accessibilityRole="alert" style={styles.error}>{tasksError}</Text> : null}
       </> : error ? <Action label="重新连接" onPress={() => void Promise.all([refresh(), refreshTasks()])} /> : <ActivityIndicator color={green} />}
@@ -252,9 +277,10 @@ function Dashboard({ session, onExit }: { session: Session; onExit: (message?: s
   />;
 }
 
-function SiteRow({ site, group, status, tasksLoading, canRetry, onRetry, onError }: {
+function SiteRow({ site, group, status, tasksLoading, canRetry, onRetry, onError, onPhoneSearch, working }: {
   site: Site; group?: SiteTasks; status?: SiteStatus; tasksLoading: boolean; canRetry: boolean;
   onRetry: (site: Site) => void; onError: (cause: unknown) => void;
+  onPhoneSearch?: (task: SearchTask) => void; working: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const count = group?.tasks.length ?? 0;
@@ -286,12 +312,15 @@ function SiteRow({ site, group, status, tasksLoading, canRetry, onRetry, onError
             <Text style={styles.keyword}>{keyword}</Text>
             {adultLabel ? <Text style={styles.adultMode}>{adultLabel}</Text> : null}
           </View>
-          {url && /^https:\/\/[^\s]+$/i.test(url) ?
+          {url && /^https:\/\/[^\s]+$/i.test(url) ? <View style={styles.taskActions}>
+            {task.phoneSearch && onPhoneSearch ? <Action label="用手机搜索" disabled={working}
+              accessibilityLabel={`用手机搜索 ${keyword}`} onPress={() => onPhoneSearch(task)} /> : null}
             <Pressable accessibilityRole="link" accessibilityLabel={`在${name}搜索 ${keyword}`}
               onPress={() => void Linking.openURL(url).catch(() => onError(new Error('无法打开站点搜索页。')))}
               style={({ pressed }) => [styles.action, pressed && styles.dim]}>
               <Text style={styles.actionText}>去原站搜索 ↗</Text>
-            </Pressable> : null}
+            </Pressable>
+          </View> : null}
         </View>;
       }) : <Text style={styles.taskPlaceholder}>{tasksLoading ? '正在读取定时任务…' : '暂无可显示的定时任务'}</Text>}
     </View> : null}
@@ -362,6 +391,7 @@ const styles = StyleSheet.create({
   adultMode: { color: warn, fontSize: 12, marginTop: 3 },
   taskList: { backgroundColor: '#F0F3E9', paddingHorizontal: 12 },
   taskRow: { flexDirection: 'row', alignItems: 'center', minHeight: 49, gap: 6, paddingVertical: 4, borderTopWidth: StyleSheet.hairlineWidth, borderColor: '#DBE0D7' },
+  taskActions: { alignItems: 'flex-end' },
   keyword: { color: ink, fontSize: 14, fontWeight: '600' },
   taskPlaceholder: { color: muted, fontSize: 13, paddingVertical: 12 },
   section: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 58, marginTop: 8 },

@@ -22,6 +22,7 @@ func (s *server) registerMobileRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/mobile/tasks", s.mobileHTTPS(s.withMobileLogin(s.mobileTasks)))
 	mux.HandleFunc("POST /api/mobile/mode", s.mobileHTTPS(s.withMobileLogin(s.mobileMode)))
 	mux.HandleFunc("POST /api/mobile/scan", s.mobileHTTPS(s.withMobileLogin(s.mobileScan)))
+	mux.HandleFunc("POST /api/mobile/phone-search", s.mobileHTTPS(s.withMobileLogin(s.mobilePhoneSearch)))
 	mux.HandleFunc("GET /api/mobile/products", s.mobileHTTPS(s.withMobileLogin(s.mobileProducts)))
 	mux.HandleFunc("POST /api/mobile/viewed", s.mobileHTTPS(s.withMobileLogin(s.mobileViewed)))
 }
@@ -112,6 +113,7 @@ type mobileSearchTask struct {
 	AdultMode             bool   `json:"adultMode,omitempty"`
 	AdultOnly             bool   `json:"adultOnly,omitempty"`
 	IncludesAdultCategory bool   `json:"includesAdultCategory,omitempty"`
+	PhoneSearch           bool   `json:"phoneSearch,omitempty"`
 }
 
 type mobileSiteTasks struct {
@@ -146,6 +148,7 @@ func (s *server) mobileTasks(r *http.Request, owner string) (any, error) {
 			case model.Surugaya:
 				task.AdultMode = condition.AdultMode
 				task.AdultOnly = task.AdultMode && condition.AdultOnly
+				task.PhoneSearch = task.SearchURL != ""
 			case model.Yahoo:
 				task.IncludesAdultCategory, task.AdultOnly = market.YahooAdultCategory(condition.Category)
 				task.AdultMode = task.AdultOnly
@@ -173,6 +176,19 @@ func (s *server) mobileScan(r *http.Request, owner string) (any, error) {
 		return nil, err
 	}
 	return s.hunters.StartScan(r.Context(), owner, input.Site)
+}
+
+func (s *server) mobilePhoneSearch(r *http.Request, owner string) (any, error) {
+	r.Body = http.MaxBytesReader(nil, r.Body, 384*1024)
+	var input struct {
+		TaskID string `json:"taskId"`
+		market.PhoneSearchPage
+	}
+	if err := decodeJSON(r, &input); err != nil {
+		return nil, err
+	}
+	found, err := s.hunters.AcceptPhoneSearch(r.Context(), owner, input.TaskID, input.PhoneSearchPage)
+	return map[string]int{"found": found}, err
 }
 
 type mobileProduct struct {
