@@ -71,8 +71,13 @@ export function createSoftwareUpdater(deps: {
     try {
       const latest = await deps.latest();
       if (latest && latest.versionCode > deps.versionCode) {
-        const cached = canDownloadApk(latest) && deps.installer ? await deps.installer.cached(latest) : false;
-        set({ status: cached ? 'apk-ready' : 'apk', message: cached ? '安装包已下载并校验，可以覆盖安装' : `发现新版本 ${latest.version}，需要安装更新`, apk: latest, notes: latest.notes, checkedAt: new Date(now()).toISOString() });
+        if (!canDownloadApk(latest) || !deps.installer) {
+          set({ status: 'error', message: deps.installer ? '服务器暂未提供新版安装包' : '此构建缺少 Android 安装组件',
+            notes: latest.notes, checkedAt: new Date(now()).toISOString() });
+          return;
+        }
+        const cached = await deps.installer.cached(latest);
+        set({ status: cached ? 'apk-ready' : 'apk', message: cached ? '安装包已下载并校验，可以覆盖安装' : `发现新版本 ${latest.version}，可在 App 内下载`, apk: latest, notes: latest.notes, checkedAt: new Date(now()).toISOString() });
         deps.record?.('apk'); return;
       }
       const result = await deps.check?.();
@@ -116,7 +121,7 @@ export function createSoftwareUpdater(deps: {
         const cancelled = (error as { code?: string })?.code === 'apk_cancelled';
         const unauthorized = (error as { code?: string })?.code === 'apk_authorization';
         set({ status: cancelled ? 'apk' : 'apk-error', message: cancelled ? '已取消下载，可重新下载' : unauthorized
-          ? '下载权限验证失败，请检查设置中的访问凭证' : '安装包下载或校验失败，请检查网络和存储空间后重试', apkProgress: null });
+          ? '下载授权失效，请重新登录后再试' : '安装包下载或校验失败，请检查网络和存储空间后重试', apkProgress: null });
         deps.record?.('apk_download', cancelled ? undefined : error);
       }).finally(() => { apkTask = null; });
       return apkTask;

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import {
   ActivityIndicator, AppState, FlatList, Image, Linking, Pressable, StyleSheet,
   Switch, Text, TextInput, View,
@@ -90,18 +90,20 @@ function SignIn({ onLogin, initialError }: { onLogin: (session: Session) => Prom
 
 function Dashboard({ session, onExit }: { session: Session; onExit: (message?: string) => void }) {
   const updater = useMemo(() => createSessionUpdater(session), [session]);
+  const update = useSyncExternalStore(updater.subscribe, updater.read, updater.read);
   const [state, setState] = useState<ActiveState | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [working, setWorking] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
+  const [panel, setPanel] = useState<'updates' | 'connection' | null>(null);
   const refreshID = useRef(0);
   const busy = useRef(false);
   const exit = useRef(onExit);
   exit.current = onExit;
   const running = state?.sites.some(site => site.running) ?? false;
+  const updateAvailable = update.apk !== null || update.status === 'ready';
 
   const showError = useCallback((cause: unknown) => {
     if (cause instanceof ExpiredSession) exit.current(cause.message);
@@ -181,11 +183,16 @@ function Dashboard({ session, onExit }: { session: Session; onExit: (message?: s
     ListHeaderComponent={<>
       <View style={styles.masthead}>
         <View style={styles.brand}><Image source={watcher} style={styles.menma} /><Text style={styles.title}>谷子猎手</Text></View>
-        <Action label={showSettings ? '收起设置' : '连接设置'} onPress={() => setShowSettings(value => !value)} />
+        <View style={styles.headerActions}>
+          <Action label={panel === 'updates' ? '收起更新' : updateAvailable ? '发现新版' : '应用更新'}
+            accessibilityLabel="应用更新" onPress={() => setPanel(value => value === 'updates' ? null : 'updates')} />
+          <Action label={panel === 'connection' ? '收起设置' : '连接设置'}
+            onPress={() => setPanel(value => value === 'connection' ? null : 'connection')} />
+        </View>
       </View>
-      {showSettings ? <View style={styles.settings}>
+      {panel === 'updates' ? <UpdatePanel updater={updater} /> : null}
+      {panel === 'connection' ? <View style={styles.settings}>
         <Text style={styles.subtle}>{state ? '已验证连接 · ' : ''}{session.server}</Text>
-        <UpdatePanel updater={updater} />
         <Action label="退出登录" onPress={() => onExit()} />
       </View> : null}
       {state ? <>
@@ -260,7 +267,8 @@ const styles = StyleSheet.create({
   loading: { flex: 1 },
   page: { width: '100%', maxWidth: 620, alignSelf: 'center', paddingHorizontal: 18, paddingTop: 10, paddingBottom: 34 },
   login: { gap: 10, paddingTop: 44 },
-  masthead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12 },
+  masthead: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12 },
+  headerActions: { flexDirection: 'row', marginLeft: 'auto' },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 9 },
   menma: { width: 48, height: 48, resizeMode: 'contain' },
   settings: { gap: 8, paddingVertical: 8 },

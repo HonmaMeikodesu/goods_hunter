@@ -98,8 +98,15 @@ func TestLegacyAccountAndWatcherRoutes(t *testing.T) {
 	cache := redis.NewClient(redisOpts)
 	defer cache.Close()
 	const connectionCode = "local-fixture-mobile-code-with-enough-length"
-	cfg := config.Config{Location: loc, PublicURL: "https://watch.example.invalid", CookieKey: "fixture-cookie-key",
-		Mobile: config.Mobile{Code: connectionCode}}
+	const origin = "https://watch.example.invalid"
+	updatesDir := t.TempDir()
+	releaseHash := strings.Repeat("a", 64)
+	release, _ := json.Marshal(apkRelease{Version: "0.2.2", VersionCode: 4, RuntimeVersion: strings.Repeat("b", 40), SHA256: releaseHash, Bytes: 100})
+	if err := os.WriteFile(filepath.Join(updatesDir, "latest.json"), release, 0600); err != nil {
+		t.Fatal(err)
+	}
+	cfg := config.Config{Location: loc, PublicURL: origin, CookieKey: "fixture-cookie-key",
+		Mobile: config.Mobile{Code: connectionCode, Origin: origin, UpdatesDir: updatesDir}}
 	mail := &mailCapture{}
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	auth := accounts.New(db, cache, mail, "operator@example.invalid", cfg.PublicURL)
@@ -127,7 +134,7 @@ func TestLegacyAccountAndWatcherRoutes(t *testing.T) {
 
 	call := func(method, path, kind, body string, cookies []*http.Cookie, status int, code string, token ...string) *httptest.ResponseRecorder {
 		t.Helper()
-		r := httptest.NewRequest(method, "https://watch.example.invalid"+path, strings.NewReader(body))
+		r := httptest.NewRequest(method, origin+path, strings.NewReader(body))
 		r.Header.Set("Content-Type", kind)
 		if len(token) > 0 {
 			r.Header.Set("Authorization", "Bearer "+token[0])
@@ -208,6 +215,14 @@ func TestLegacyAccountAndWatcherRoutes(t *testing.T) {
 		t.Fatal("mobile mode was not saved or the response allows caching")
 	}
 	call("GET", mobile+"products", "", "", nil, 200, "200", token)
+	grantPath := updatePath + "apk/" + releaseHash
+	granted := call("GET", grantPath, "", "", nil, 200, "", token)
+	var grant apkGrant
+	if err := json.Unmarshal(granted.Body.Bytes(), &grant); err != nil || grant.SHA256 != releaseHash || grant.Bytes != 100 ||
+		!strings.HasPrefix(grant.DownloadURL, origin+updatePath+"apks/"+releaseHash+"?") {
+		t.Fatal("mobile session could not authorize its APK download")
+	}
 	call("POST", mobile+"logout", "application/json", `{}`, nil, 200, "200", token)
 	call("GET", mobile+"products", "", "", nil, 401, "010102", token)
+	call("GET", grantPath, "", "", nil, 401, "", token)
 }

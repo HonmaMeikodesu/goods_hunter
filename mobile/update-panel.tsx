@@ -25,7 +25,7 @@ export function UpdatePanel({ updater: softwareUpdater }: { updater: ReturnType<
       {(state.apkProgress.received / 1e6).toFixed(1)} / {(state.apkProgress.total / 1e6).toFixed(1)} MB
     </Text> : null}
     {state.status === 'ready' ? action('重启应用，使用新版', softwareUpdater.restart) : null}
-    {['apk', 'apk-error'].includes(state.status) && state.apk?.downloadUrl ? action('下载安装包', softwareUpdater.downloadApk) : null}
+    {['apk', 'apk-error'].includes(state.status) && state.apk?.downloadUrl ? action('在 App 内下载', softwareUpdater.downloadApk) : null}
     {state.status === 'apk-downloading' ? action('取消下载', softwareUpdater.cancelApk) : null}
     {state.status === 'apk-ready' ? action('安装新版本', softwareUpdater.installApk) : null}
     {state.status !== 'ready' && state.status !== 'disabled' ? action('检查更新', () => softwareUpdater.check(true), blocked) : null}
