@@ -29,6 +29,7 @@ export type SearchTask = {
   searchUrl?: string;
   adultMode?: boolean;
   adultOnly?: boolean;
+  includesAdultCategory?: boolean;
 };
 
 export type SiteTasks = { site: Site; adultModeSupported: boolean; tasks: SearchTask[] };

@@ -106,11 +106,12 @@ func (s *server) mobileState(r *http.Request, owner string) (any, error) {
 }
 
 type mobileSearchTask struct {
-	ID        string `json:"id"`
-	Keyword   string `json:"keyword"`
-	SearchURL string `json:"searchUrl,omitempty"`
-	AdultMode bool   `json:"adultMode,omitempty"`
-	AdultOnly bool   `json:"adultOnly,omitempty"`
+	ID                    string `json:"id"`
+	Keyword               string `json:"keyword"`
+	SearchURL             string `json:"searchUrl,omitempty"`
+	AdultMode             bool   `json:"adultMode,omitempty"`
+	AdultOnly             bool   `json:"adultOnly,omitempty"`
+	IncludesAdultCategory bool   `json:"includesAdultCategory,omitempty"`
 }
 
 type mobileSiteTasks struct {
@@ -134,15 +135,21 @@ func (s *server) mobileTasks(r *http.Request, owner string) (any, error) {
 		if !found {
 			index = len(groups)
 			indices[watcher.Site] = index
-			groups = append(groups, mobileSiteTasks{Site: watcher.Site, AdultModeSupported: watcher.Site == model.Surugaya})
+			groups = append(groups, mobileSiteTasks{Site: watcher.Site, AdultModeSupported: watcher.Site == model.Surugaya || watcher.Site == model.Yahoo})
 		}
 		group := &groups[index]
 		task := mobileSearchTask{ID: watcher.ID}
 		if condition, err := model.ReadCondition(watcher.Site, watcher.Condition); err == nil {
 			task.Keyword = condition.Keyword
 			task.SearchURL = market.SearchURL(watcher.Site, condition)
-			task.AdultMode = group.AdultModeSupported && condition.AdultMode
-			task.AdultOnly = task.AdultMode && condition.AdultOnly
+			switch watcher.Site {
+			case model.Surugaya:
+				task.AdultMode = condition.AdultMode
+				task.AdultOnly = task.AdultMode && condition.AdultOnly
+			case model.Yahoo:
+				task.IncludesAdultCategory, task.AdultOnly = market.YahooAdultCategory(condition.Category)
+				task.AdultMode = task.AdultOnly
+			}
 		}
 		group.Tasks = append(group.Tasks, task)
 	}

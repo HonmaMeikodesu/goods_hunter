@@ -279,10 +279,12 @@ function SiteRow({ site, group, status, tasksLoading, canRetry, onRetry, onError
       {group ? group.tasks.map(task => {
         const keyword = task.keyword || '任务关键词不可用';
         const url = task.searchUrl;
+        let adultLabel = task.includesAdultCategory ? '含成人分类' : '';
+        if (task.adultMode) adultLabel = task.adultOnly ? '仅成人' : '成人模式';
         return <View key={task.id} style={styles.taskRow}>
           <View style={styles.grow}>
             <Text style={styles.keyword}>{keyword}</Text>
-            {task.adultMode ? <Text style={styles.adultMode}>{task.adultOnly ? '仅成人' : '成人模式'}</Text> : null}
+            {adultLabel ? <Text style={styles.adultMode}>{adultLabel}</Text> : null}
           </View>
           {url && /^https:\/\/[^\s]+$/i.test(url) ?
             <Pressable accessibilityRole="link" accessibilityLabel={`在${name}搜索 ${keyword}`}

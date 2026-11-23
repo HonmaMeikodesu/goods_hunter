@@ -103,6 +103,18 @@ func SearchURL(site model.Site, condition model.Condition) string {
 	}
 }
 
+// YahooAdultCategory classifies the selected category, using verified Yahoo category IDs.
+func YahooAdultCategory(category string) (includesAdult, adultOnly bool) {
+	switch category {
+	case "26084": // その他 contains the adult branch and ordinary categories.
+		return true, false
+	case "26146", "26156", "2084006445", "2084297892": // アダルト, books, goods, and the body pillow subcategory.
+		return true, true
+	default:
+		return false, false
+	}
+}
+
 func searchRequest(site model.Site, condition model.Condition, page int, yahooCookies []cookie) (htmlRequest, error) {
 	switch site {
 	case model.Mercari:

@@ -218,6 +218,10 @@ func TestLegacyAccountAndWatcherRoutes(t *testing.T) {
 	for _, task := range []model.Watcher{
 		{Site: model.Surugaya, Owner: legacyEmail, Condition: `{"keyword":"限定 版","adultMode":true,"adultOnly":true}`},
 		{Site: model.Surugaya, Owner: legacyEmail, Condition: `{"keyword":"通常版"}`},
+		{Site: model.Yahoo, Owner: legacyEmail, Condition: `{"keyword":"父分类","category":26084}`},
+		{Site: model.Yahoo, Owner: legacyEmail, Condition: `{"keyword":"成人分支","category":"26146"}`},
+		{Site: model.Yahoo, Owner: legacyEmail, Condition: `{"keyword":"成人子分类","category":2084297892}`},
+		{Site: model.Yahoo, Owner: legacyEmail, Condition: `{"keyword":"普通分类","category":2084023789}`},
 		{Site: model.Xianyu, Owner: newEmail, Condition: `{"keyword":"other user's keyword"}`},
 		{Site: model.Surveillance, Owner: legacyEmail, Condition: `{"type":"mercari","goodId":"m123"}`},
 	} {
@@ -229,10 +233,31 @@ func TestLegacyAccountAndWatcherRoutes(t *testing.T) {
 	tasks := call("GET", mobile+"tasks", "", "", nil, 200, "200", token)
 	var groups struct{ Data []mobileSiteTasks }
 	if err := json.Unmarshal(tasks.Body.Bytes(), &groups); err != nil || tasks.Header().Get("Cache-Control") != "no-store" ||
-		len(groups.Data) != 1 || groups.Data[0].Site != model.Surugaya || !groups.Data[0].AdultModeSupported || len(groups.Data[0].Tasks) != 2 {
+		len(groups.Data) != 2 || groups.Data[0].Site != model.Yahoo || !groups.Data[0].AdultModeSupported || len(groups.Data[0].Tasks) != 4 ||
+		groups.Data[1].Site != model.Surugaya || !groups.Data[1].AdultModeSupported || len(groups.Data[1].Tasks) != 2 {
 		t.Fatalf("unexpected mobile tasks: %s", tasks.Body)
 	}
+	wantYahoo := map[string]struct {
+		category      string
+		includesAdult bool
+		adultOnly     bool
+	}{
+		"父分类":   {"26084", true, false},
+		"成人分支":  {"26146", true, true},
+		"成人子分类": {"2084297892", true, true},
+		"普通分类":  {"2084023789", false, false},
+	}
 	for _, task := range groups.Data[0].Tasks {
+		want, found := wantYahoo[task.Keyword]
+		link, err := url.Parse(task.SearchURL)
+		if !found || err != nil || task.ID == "" || task.IncludesAdultCategory != want.includesAdult ||
+			task.AdultOnly != want.adultOnly || task.AdultMode != want.adultOnly || link.Host != "auctions.yahoo.co.jp" ||
+			link.Query().Get("p") != task.Keyword || link.Query().Get("auccat") != want.category {
+			t.Fatalf("unexpected Yahoo search task: %+v", task)
+		}
+		delete(wantYahoo, task.Keyword)
+	}
+	for _, task := range groups.Data[1].Tasks {
 		adult := task.Keyword == "限定 版"
 		link, err := url.Parse(task.SearchURL)
 		if err != nil || task.ID == "" || (!adult && task.Keyword != "通常版") || task.AdultMode != adult || task.AdultOnly != adult ||
