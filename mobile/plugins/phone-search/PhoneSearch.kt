@@ -131,7 +131,6 @@ class PhoneSearchActivity : Activity() {
     })
     extract = Button(this).apply {
       text = "提取本页"
-      isEnabled = false
       setOnClickListener { capture() }
     }
     actions.addView(extract)
@@ -164,17 +163,16 @@ class PhoneSearchActivity : Activity() {
         navigation++
         loadFailed = false
         message.text = "正在加载页面…"
-        extract.isEnabled = false
+        extract.isEnabled = true
       }
 
       override fun onPageFinished(view: WebView, url: String) {
-        if (isFinishing || loadFailed || url != view.url) return
+        if (isFinishing || loadFailed || url != view.url || !extract.isEnabled) return
         if (!matchesSavedSearch(url)) {
           showPageMismatch(url)
           return
         }
         message.text = "可先完成网页验证或登录。看到搜索结果后，点「提取本页」。"
-        extract.isEnabled = true
       }
 
       override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
@@ -193,12 +191,10 @@ class PhoneSearchActivity : Activity() {
 
   private fun failLoading(reason: String = "骏河屋页面加载失败，可点「回到搜索」重试。") {
     loadFailed = true
-    extract.isEnabled = false
     message.text = reason
   }
 
   private fun showPageMismatch(url: String) {
-    extract.isEnabled = false
     message.text = if (searchPage(Uri.parse(url))) {
       "当前搜索条件与任务不一致，请点「回到搜索」。"
     } else {
@@ -220,8 +216,11 @@ class PhoneSearchActivity : Activity() {
   }
 
   private fun capture() {
-    val url = browser.url ?: return
-    if (loadFailed) return
+    val url = browser.url
+    if (url == null || url == "about:blank") {
+      message.text = "请等搜索页显示后再提取。"
+      return
+    }
     if (!matchesSavedSearch(url)) {
       showPageMismatch(url)
       return
@@ -230,17 +229,28 @@ class PhoneSearchActivity : Activity() {
     message.text = "正在读取商品…"
     val generation = navigation
     browser.evaluateJavascript(script) { raw ->
-      if (isFinishing || isDestroyed || navigation != generation || browser.url != url || loadFailed) return@evaluateJavascript
-      val items = runCatching {
-        val result = JSONTokener(raw).nextValue() as? String
-        result?.takeIf { it.length <= MAX_RESULT_CHARS }?.let { JSONObject(it).getJSONArray(ITEMS).toString() }
-      }.getOrNull()
-      if (items == null) {
-        message.text = "尚未识别到搜索结果。请完成网页验证或登录，确认页面加载后再提取。"
-        extract.isEnabled = true
+      if (isFinishing || isDestroyed || navigation != generation) return@evaluateJavascript
+      extract.isEnabled = true
+      val current = browser.url.orEmpty()
+      if (!matchesSavedSearch(current)) {
+        showPageMismatch(current)
         return@evaluateJavascript
       }
-      setResult(RESULT_OK, Intent().putExtra(PAGE_URL, startURL).putExtra(ITEMS, items))
+      val payload = runCatching {
+        val result = JSONTokener(raw).nextValue() as? String
+        result?.takeIf { it.length <= MAX_RESULT_CHARS }?.let { JSONObject(it) }
+      }.getOrNull()
+      val items = payload?.optJSONArray(ITEMS)
+      if (payload == null || items == null) {
+        message.text = "尚未识别到搜索结果。请完成网页验证或登录，确认页面加载后再提取。"
+        return@evaluateJavascript
+      }
+      val documentURL = payload.optString(PAGE_URL)
+      if (!matchesSavedSearch(documentURL)) {
+        showPageMismatch(documentURL)
+        return@evaluateJavascript
+      }
+      setResult(RESULT_OK, Intent().putExtra(PAGE_URL, startURL).putExtra(ITEMS, items.toString()))
       finish()
     }
   }

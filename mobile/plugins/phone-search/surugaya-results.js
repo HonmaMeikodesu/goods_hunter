@@ -8,7 +8,7 @@
   const emptyTexts = ['該当件数:0件', '該当件数:0件中', '該当する商品がありません', '該当する商品はありません', '該当する商品が見つかりませんでした'];
   const notices = document.querySelectorAll('#search_header .hit, #search_result > p, #search_result > h2, #search_result > .notice');
   if ([...notices].some(node => visible(node) && emptyTexts.includes(normalize(node.textContent)))) {
-    return JSON.stringify({ items: [] });
+    return JSON.stringify({ pageUrl: location.href, items: [] });
   }
   const cards = [...document.querySelectorAll('#search_result .item_box .item')].filter(visible);
   if (cards.length === 0 || cards.length > 120) return null;
@@ -22,5 +22,5 @@
     const image = thumbnail?.getAttribute('data-src') || thumbnail?.currentSrc || thumbnail?.getAttribute('src') || '';
     items.push({ href, name, image, price: text('.item_price .price_teika strong'), marketPrice: text('.item_price .mgnB5.mgnT5 strong') });
   }
-  return JSON.stringify({ items });
+  return JSON.stringify({ pageUrl: location.href, items });
 })();
