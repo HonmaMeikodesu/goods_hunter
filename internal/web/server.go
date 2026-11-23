@@ -30,6 +30,7 @@ type server struct {
 	logger    *slog.Logger
 	cookieKey string
 	secure    bool
+	mobile    config.Mobile
 }
 
 func New(cfg config.Config, accounts *accounts.Service, hunters *hunter.Service, logger *slog.Logger) (http.Handler, error) {
@@ -38,7 +39,7 @@ func New(cfg config.Config, accounts *accounts.Service, hunters *hunter.Service,
 		return nil, err
 	}
 	s := &server{accounts: accounts, hunters: hunters, proxy: proxy, logger: logger,
-		cookieKey: cfg.CookieKey, secure: strings.HasPrefix(cfg.PublicURL, "https://")}
+		cookieKey: cfg.CookieKey, secure: strings.HasPrefix(cfg.PublicURL, "https://"), mobile: cfg.Mobile}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", s.home)
 	mux.HandleFunc("POST /login", s.login)
@@ -53,6 +54,7 @@ func New(cfg config.Config, accounts *accounts.Service, hunters *hunter.Service,
 	mux.HandleFunc("POST /goods/updateGoodsWatcher", s.withLogin(s.updateWatcher))
 	mux.HandleFunc("GET /goods/unregisterGoodsWatcher", s.withLogin(s.deleteWatcher))
 	s.registerMobileRoutes(mux)
+	s.registerUpdateRoutes(mux)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("X-Content-Type-Options", "nosniff")

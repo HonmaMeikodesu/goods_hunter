@@ -97,7 +97,9 @@ func TestLegacyAccountAndWatcherRoutes(t *testing.T) {
 	}
 	cache := redis.NewClient(redisOpts)
 	defer cache.Close()
-	cfg := config.Config{Location: loc, PublicURL: "https://watch.example.invalid", CookieKey: "fixture-cookie-key"}
+	const connectionCode = "local-fixture-mobile-code-with-enough-length"
+	cfg := config.Config{Location: loc, PublicURL: "https://watch.example.invalid", CookieKey: "fixture-cookie-key",
+		Mobile: config.Mobile{Code: connectionCode}}
 	mail := &mailCapture{}
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	auth := accounts.New(db, cache, mail, "operator@example.invalid", cfg.PublicURL)
@@ -125,7 +127,7 @@ func TestLegacyAccountAndWatcherRoutes(t *testing.T) {
 
 	call := func(method, path, kind, body string, cookies []*http.Cookie, status int, code string, token ...string) *httptest.ResponseRecorder {
 		t.Helper()
-		r := httptest.NewRequest(method, path, strings.NewReader(body))
+		r := httptest.NewRequest(method, "https://watch.example.invalid"+path, strings.NewReader(body))
 		r.Header.Set("Content-Type", kind)
 		if len(token) > 0 {
 			r.Header.Set("Authorization", "Bearer "+token[0])
@@ -187,7 +189,10 @@ func TestLegacyAccountAndWatcherRoutes(t *testing.T) {
 
 	const mobile = "/api/mobile/"
 	call("GET", mobile+"state", "", "", oldCookies, 401, "010102")
-	loginBody, _ := json.Marshal(credentials{Email: legacyEmail, Password: password})
+	call("GET", mobile+"state", "", "", nil, 401, "010102", oldToken)
+	passwordOnly, _ := json.Marshal(credentials{Email: legacyEmail, Password: password})
+	call("POST", mobile+"login", "application/json", string(passwordOnly), nil, 403, "040003")
+	loginBody, _ := json.Marshal(map[string]string{"email": legacyEmail, "password": password, "connectionCode": connectionCode})
 	loggedIn := call("POST", mobile+"login", "application/json", string(loginBody), nil, 200, "200")
 	var session struct{ Data struct{ Token string } }
 	if err := json.Unmarshal(loggedIn.Body.Bytes(), &session); err != nil || session.Data.Token == "" {
@@ -203,4 +208,6 @@ func TestLegacyAccountAndWatcherRoutes(t *testing.T) {
 		t.Fatal("mobile mode was not saved or the response allows caching")
 	}
 	call("GET", mobile+"products", "", "", nil, 200, "200", token)
+	call("POST", mobile+"logout", "application/json", `{}`, nil, 200, "200", token)
+	call("GET", mobile+"products", "", "", nil, 401, "010102", token)
 }

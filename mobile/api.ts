@@ -35,6 +35,7 @@ export type Product = {
 };
 
 export type Session = { server: string; token: string };
+export const serviceOrigin = 'https://hunter.example.invalid';
 
 const sessionKey = 'goodsHunter.session';
 
@@ -43,6 +44,10 @@ export async function readSession(): Promise<Session | null> {
   const saved = await SecureStore.getItemAsync(sessionKey);
   if (!saved) return null;
   const session = JSON.parse(saved) as Session;
+  if (!/^[A-Za-z0-9_-]{43}$/.test(session.token)) {
+    await saveSession(null);
+    return null;
+  }
   return { server: serverAddress(session.server), token: session.token };
 }
 
@@ -64,7 +69,8 @@ function serverAddress(value: string) {
     throw new Error('请输入有效的服务地址。');
   }
   const local = ['localhost', '127.0.0.1', '10.0.2.2'].includes(address.hostname);
-  if (address.protocol !== 'https:' && !(local && address.protocol === 'http:')) {
+  if (!__DEV__ && address.origin !== serviceOrigin) throw new Error('请使用谷子猎手的正式服务地址。');
+  if (address.protocol !== 'https:' && !(__DEV__ && local && address.protocol === 'http:')) {
     throw new Error('公网服务地址需要 HTTPS。');
   }
   if (!address.hostname || address.username || address.password || address.search || address.hash ||
@@ -74,9 +80,9 @@ function serverAddress(value: string) {
   return address.origin;
 }
 
-export async function login(address: string, email: string, password: string): Promise<Session> {
+export async function login(address: string, email: string, password: string, connectionCode: string): Promise<Session> {
   const server = serverAddress(address);
-  const { token } = await request<{ token: string }>({ server, token: '' }, 'login', { email, password });
+  const { token } = await request<{ token: string }>({ server, token: '' }, 'login', { email, password, connectionCode });
   return { server, token };
 }
 
@@ -102,6 +108,7 @@ export async function request<T>(session: Session, route: string, body?: object)
   if (response.status === 401) throw new ExpiredSession('登录已过期，请重新登录。');
   if (reply.code === '030301') throw new Error('邮箱或密码错误。');
   if (reply.code === '040002') throw new Error('请先开启主动模式。');
+  if (reply.code === '040003') throw new Error('连接验证失败，请核对连接码和服务地址。');
   if (!response.ok || reply.code !== '200') throw new Error('操作失败，请稍后重试。');
   return reply.data;
 }

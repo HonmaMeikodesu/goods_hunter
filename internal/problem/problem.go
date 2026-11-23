@@ -15,4 +15,5 @@ const (
 	DuplicateTask  Code = "030504"
 	InvalidRequest Code = "040001"
 	ActiveModeOff  Code = "040002"
+	ConnectionCode Code = "040003"
 )

@@ -2,8 +2,10 @@ package accounts
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -93,6 +95,18 @@ func (a *Service) Confirm(ctx context.Context, code string) error {
 }
 
 func (a *Service) Login(ctx context.Context, email, password string) (string, error) {
+	owner, err := a.verifyPassword(ctx, email, password)
+	if err != nil {
+		return "", err
+	}
+	token := model.NewID()
+	if err := a.db.SaveSession(ctx, owner, token, time.Now().AddDate(0, 0, 7)); err != nil {
+		return "", err
+	}
+	return token, nil
+}
+
+func (a *Service) verifyPassword(ctx context.Context, email, password string) (string, error) {
 	if email == "" || password == "" {
 		return "", problem.InvalidRequest
 	}
@@ -103,11 +117,43 @@ func (a *Service) Login(ctx context.Context, email, password string) (string, er
 	if subtle.ConstantTimeCompare([]byte(passwordDigest(password)), []byte(expected)) != 1 {
 		return "", problem.WrongPassword
 	}
-	token := model.NewID()
-	if err := a.db.SaveSession(ctx, owner, token, time.Now().AddDate(0, 0, 7)); err != nil {
+	return owner, nil
+}
+
+func (a *Service) MobileLogin(ctx context.Context, email, password, code string) (string, error) {
+	owner, err := a.verifyPassword(ctx, email, password)
+	if err != nil {
+		return "", err
+	}
+	var data [32]byte
+	if _, err := rand.Read(data[:]); err != nil {
+		return "", err
+	}
+	token := base64.RawURLEncoding.EncodeToString(data[:])
+	if err := a.redis.Set(ctx, mobileSessionKey(code, token), owner, 7*24*time.Hour).Err(); err != nil {
 		return "", err
 	}
 	return token, nil
+}
+
+func mobileSessionKey(code, token string) string {
+	digest := sha256.Sum256([]byte(code + "\x00" + token))
+	return "goods-hunter:mobile-session:" + hex.EncodeToString(digest[:])
+}
+
+func (a *Service) AuthenticateMobile(ctx context.Context, code, token string) (string, error) {
+	if code == "" || len(token) != 43 {
+		return "", problem.InvalidLogin
+	}
+	owner, err := a.redis.Get(ctx, mobileSessionKey(code, token)).Result()
+	if errors.Is(err, redis.Nil) {
+		return "", problem.InvalidLogin
+	}
+	return owner, err
+}
+
+func (a *Service) LogoutMobile(ctx context.Context, code, token string) error {
+	return a.redis.Del(ctx, mobileSessionKey(code, token)).Err()
 }
 
 func (a *Service) Authenticate(ctx context.Context, token string) (string, error) {

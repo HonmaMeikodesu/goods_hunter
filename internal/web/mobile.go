@@ -1,7 +1,10 @@
 package web
 
 import (
+	"crypto/sha256"
+	"crypto/subtle"
 	"errors"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -12,34 +15,77 @@ import (
 )
 
 func (s *server) registerMobileRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("POST /api/mobile/login", s.mobileLogin)
-	mux.HandleFunc("GET /api/mobile/state", s.withMobileLogin(s.mobileState))
-	mux.HandleFunc("POST /api/mobile/mode", s.withMobileLogin(s.mobileMode))
-	mux.HandleFunc("POST /api/mobile/scan", s.withMobileLogin(s.mobileScan))
-	mux.HandleFunc("GET /api/mobile/products", s.withMobileLogin(s.mobileProducts))
-	mux.HandleFunc("POST /api/mobile/viewed", s.withMobileLogin(s.mobileViewed))
+	mux.HandleFunc("POST /api/mobile/login", s.mobileHTTPS(s.mobileLogin))
+	mux.HandleFunc("POST /api/mobile/logout", s.mobileHTTPS(s.withMobileLogin(s.mobileLogout)))
+	mux.HandleFunc("GET /api/mobile/state", s.mobileHTTPS(s.withMobileLogin(s.mobileState)))
+	mux.HandleFunc("POST /api/mobile/mode", s.mobileHTTPS(s.withMobileLogin(s.mobileMode)))
+	mux.HandleFunc("POST /api/mobile/scan", s.mobileHTTPS(s.withMobileLogin(s.mobileScan)))
+	mux.HandleFunc("GET /api/mobile/products", s.mobileHTTPS(s.withMobileLogin(s.mobileProducts)))
+	mux.HandleFunc("POST /api/mobile/viewed", s.mobileHTTPS(s.withMobileLogin(s.mobileViewed)))
+}
+
+func (s *server) mobileHTTPS(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		peer, _, _ := net.SplitHostPort(r.RemoteAddr)
+		local := net.ParseIP(peer).IsLoopback()
+		if r.TLS != nil || (local && s.mobile.Origin == "") ||
+			(local && "https://"+r.Host == s.mobile.Origin && r.Header.Get("X-Forwarded-Proto") == "https") {
+			next(w, r)
+			return
+		}
+		w.Header().Set("Cache-Control", "no-store")
+		if s.mobile.Origin != "" && (r.Method == http.MethodGet || r.Method == http.MethodHead) {
+			http.Redirect(w, r, s.mobile.Origin+r.URL.EscapedPath(), http.StatusPermanentRedirect)
+			return
+		}
+		writeJSON(w, http.StatusUpgradeRequired, response{Code: string(problem.ConnectionCode), Msg: "请使用 HTTPS"})
+	}
+}
+
+func (s *server) validConnectionCode(code string) bool {
+	provided, expected := sha256.Sum256([]byte(strings.TrimSpace(code))), sha256.Sum256([]byte(s.mobile.Code))
+	return len(s.mobile.Code) >= 32 && subtle.ConstantTimeCompare(provided[:], expected[:]) == 1
 }
 
 func (s *server) mobileLogin(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
-	var input credentials
+	var input struct {
+		credentials
+		ConnectionCode string `json:"connectionCode"`
+	}
 	if err := decodeJSON(r, &input); err != nil {
 		s.respond(w, r, nil, err)
 		return
 	}
-	token, err := s.accounts.Login(r.Context(), input.Email, input.Password)
+	if !s.validConnectionCode(input.ConnectionCode) {
+		writeJSON(w, http.StatusForbidden, response{Code: string(problem.ConnectionCode)})
+		return
+	}
+	token, err := s.accounts.MobileLogin(r.Context(), input.Email, input.Password, s.mobile.Code)
 	s.respond(w, r, map[string]string{"token": token}, err)
+}
+
+func mobileToken(r *http.Request) string {
+	scheme, token, _ := strings.Cut(r.Header.Get("Authorization"), " ")
+	if strings.EqualFold(scheme, "Bearer") {
+		return token
+	}
+	return ""
+}
+
+func (s *server) mobileLogout(r *http.Request, _ string) (any, error) {
+	return nil, s.accounts.LogoutMobile(r.Context(), s.mobile.Code, mobileToken(r))
 }
 
 func (s *server) withMobileLogin(handler authedHandler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
-		scheme, token, _ := strings.Cut(r.Header.Get("Authorization"), " ")
-		if !strings.EqualFold(scheme, "Bearer") || token == "" {
+		token := mobileToken(r)
+		if token == "" {
 			writeJSON(w, http.StatusUnauthorized, response{Code: string(problem.InvalidLogin)})
 			return
 		}
-		owner, err := s.accounts.Authenticate(r.Context(), token)
+		owner, err := s.accounts.AuthenticateMobile(r.Context(), s.mobile.Code, token)
 		switch {
 		case errors.Is(err, problem.InvalidLogin), errors.Is(err, problem.ExpiredLogin):
 			writeJSON(w, http.StatusUnauthorized, response{Code: err.Error()})

@@ -6,9 +6,14 @@ import {
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import {
-  ExpiredSession, login, readSession, request, saveSession, sites,
+  ExpiredSession, login, readSession, request, saveSession, serviceOrigin, sites,
   type ActiveState, type Product, type Session, type Site, type SiteStatus,
 } from './api';
+import { softwareUpdater } from './software-update';
+import { UpdatePanel } from './update-panel';
+
+const watcher = require('./assets/menma/watch.png');
+const waiting = require('./assets/menma/waiting.png');
 
 const ink = '#222D25';
 const muted = '#58665C';
@@ -20,11 +25,19 @@ export default function App() {
   const [loginError, setLoginError] = useState('');
   useEffect(() => {
     readSession().then(setSession).catch(() => setSession(null));
+    void softwareUpdater.check();
+    const listener = AppState.addEventListener('change', status => {
+      if (status === 'active') void softwareUpdater.check();
+    });
+    return () => listener.remove();
   }, []);
 
   async function changeSession(next: Session | null, message = '') {
     if (next) await saveSession(next);
-    else await saveSession(null).catch(() => {});
+    else {
+      if (session && !message) void request(session, 'logout', {}).catch(() => {});
+      await saveSession(null).catch(() => {});
+    }
     setLoginError(message);
     setSession(next);
   }
@@ -40,18 +53,19 @@ export default function App() {
 }
 
 function SignIn({ onLogin, initialError }: { onLogin: (session: Session) => Promise<void>; initialError: string }) {
-  const [server, setServer] = useState(process.env.EXPO_PUBLIC_GOODS_HUNTER_URL ?? 'https://hunter.example.invalid');
+  const [server, setServer] = useState(__DEV__ ? process.env.EXPO_PUBLIC_GOODS_HUNTER_URL ?? serviceOrigin : serviceOrigin);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [code, setCode] = useState('');
   const [error, setError] = useState(initialError);
   const [busy, setBusy] = useState(false);
 
   async function submit() {
-    if (busy || !server.trim() || !email.trim() || !password) return;
+    if (busy || !server.trim() || !email.trim() || !password || !code.trim()) return;
     setBusy(true);
     setError('');
     try {
-      await onLogin(await login(server, email.trim(), password));
+      await onLogin(await login(server, email.trim(), password, code.trim()));
     } catch (cause) {
       setError((cause as Error).message);
     } finally {
@@ -61,18 +75,20 @@ function SignIn({ onLogin, initialError }: { onLogin: (session: Session) => Prom
 
   return <FlatList data={[]} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.page}
     ListHeaderComponent={<View style={styles.login}>
-      <Text style={styles.title}>谷子猎手</Text>
-      <Text style={styles.subtle}>用现有账号登录</Text>
+      <View style={styles.brand}><Image source={watcher} style={styles.menma} /><Text style={styles.title}>谷子猎手</Text></View>
       <Text style={styles.label}>服务地址</Text>
       <TextInput style={styles.input} value={server} onChangeText={setServer} autoCapitalize="none"
-        autoCorrect={false} keyboardType="url" placeholder="https://" placeholderTextColor={muted} accessibilityLabel="服务地址" />
+        autoCorrect={false} editable={__DEV__} keyboardType="url" accessibilityLabel="服务地址" />
       <Text style={styles.label}>邮箱</Text>
       <TextInput style={styles.input} value={email} onChangeText={setEmail} autoCapitalize="none"
         autoCorrect={false} autoComplete="email" keyboardType="email-address" accessibilityLabel="邮箱" />
       <Text style={styles.label}>密码</Text>
       <TextInput style={styles.input} value={password} onChangeText={setPassword} secureTextEntry
-        autoComplete="current-password" onSubmitEditing={() => void submit()} accessibilityLabel="密码" />
-      <Action label={busy ? '登录中…' : '登录'} primary disabled={busy || !server || !email || !password} onPress={() => void submit()} />
+        autoComplete="current-password" accessibilityLabel="密码" />
+      <Text style={styles.label}>连接码</Text>
+      <TextInput style={styles.input} value={code} onChangeText={setCode} secureTextEntry autoCapitalize="none"
+        autoCorrect={false} autoComplete="off" onSubmitEditing={() => void submit()} accessibilityLabel="连接码" />
+      <Action label={busy ? '登录中…' : '登录'} primary disabled={busy || !server || !email || !password || !code} onPress={() => void submit()} />
       {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
     </View>} renderItem={() => null} />;
 }
@@ -84,6 +100,7 @@ function Dashboard({ session, onExit }: { session: Session; onExit: (message?: s
   const [notice, setNotice] = useState('');
   const [working, setWorking] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const refreshID = useRef(0);
   const busy = useRef(false);
   const exit = useRef(onExit);
@@ -163,9 +180,14 @@ function Dashboard({ session, onExit }: { session: Session; onExit: (message?: s
     }}
     ListHeaderComponent={<>
       <View style={styles.masthead}>
-        <Text style={styles.title}>谷子猎手</Text>
-        <Action label="退出" onPress={() => onExit()} />
+        <View style={styles.brand}><Image source={watcher} style={styles.menma} /><Text style={styles.title}>谷子猎手</Text></View>
+        <Action label={showSettings ? '收起设置' : '连接设置'} onPress={() => setShowSettings(value => !value)} />
       </View>
+      {showSettings ? <View style={styles.settings}>
+        <Text style={styles.subtle}>{state ? '已验证连接 · ' : ''}{session.server}</Text>
+        <UpdatePanel />
+        <Action label="退出登录" onPress={() => onExit()} />
+      </View> : null}
       {state ? <>
         <View style={styles.mode}>
           <View style={styles.grow}>
@@ -191,7 +213,8 @@ function Dashboard({ session, onExit }: { session: Session; onExit: (message?: s
       </View>
     </>}
     renderItem={({ item }) => <ProductRow item={item} onError={showError} />}
-    ListEmptyComponent={<Text style={styles.empty}>{running ? '搜索结果会陆续出现在这里。' : '暂时没有未看的新品。'}</Text>}
+    ListEmptyComponent={<View style={styles.empty}><Image source={waiting} style={styles.menma} />
+      <Text style={styles.subtle}>{running ? '搜索结果会陆续出现在这里。' : '暂时没有未看的新品。'}</Text></View>}
   />;
 }
 
@@ -238,6 +261,9 @@ const styles = StyleSheet.create({
   page: { width: '100%', maxWidth: 620, alignSelf: 'center', paddingHorizontal: 18, paddingTop: 10, paddingBottom: 34 },
   login: { gap: 10, paddingTop: 44 },
   masthead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12 },
+  brand: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  menma: { width: 48, height: 48, resizeMode: 'contain' },
+  settings: { gap: 8, paddingVertical: 8 },
   title: { color: ink, fontSize: 30, fontWeight: '800', letterSpacing: -0.7 },
   heading: { fontSize: 20, color: ink, fontWeight: '800' },
   label: { color: ink, fontSize: 14, fontWeight: '700', marginTop: 8 },
@@ -263,5 +289,5 @@ const styles = StyleSheet.create({
   productName: { color: ink, fontSize: 15, lineHeight: 20, fontWeight: '600', marginTop: 3 },
   price: { color: green, fontWeight: '800', marginTop: 3 },
   error: { color: warn, fontSize: 13, marginTop: 8 },
-  empty: { color: muted, textAlign: 'center', paddingVertical: 30 },
+  empty: { alignItems: 'center', gap: 5, paddingVertical: 26 },
 });

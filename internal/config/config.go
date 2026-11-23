@@ -27,6 +27,13 @@ type Config struct {
 	Email     Email
 	FC        FC
 	Yahoo     Yahoo
+	Mobile    Mobile
+}
+
+type Mobile struct {
+	Origin     string
+	Code       string
+	UpdatesDir string
 }
 
 type Email struct {
@@ -107,6 +114,18 @@ func Load() (Config, error) {
 		return Config{}, errors.New("YAHOO_SESSION_MAX_AGE_SECONDS must be a positive integer")
 	}
 	cfg.Yahoo.MaxAge = time.Duration(maxAge) * time.Second
+	cfg.Mobile = Mobile{
+		Origin:     strings.TrimRight(os.Getenv("GOODS_HUNTER_MOBILE_ORIGIN"), "/"),
+		Code:       os.Getenv("GOODS_HUNTER_MOBILE_CODE"),
+		UpdatesDir: os.Getenv("GOODS_HUNTER_UPDATES_DIR"),
+	}
+	if cfg.Mobile.Origin != "" {
+		origin, err := url.Parse(cfg.Mobile.Origin)
+		if err != nil || origin.Scheme != "https" || origin.Hostname() == "" || origin.User != nil ||
+			origin.Path != "" || origin.RawQuery != "" || origin.Fragment != "" || len(cfg.Mobile.Code) < 32 {
+			return Config{}, errors.New("mobile production configuration requires an HTTPS origin and a strong connection code")
+		}
+	}
 	return cfg, nil
 }
 
