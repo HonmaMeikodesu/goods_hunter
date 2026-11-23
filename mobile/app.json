@@ -2,7 +2,7 @@
   "expo": {
     "name": "谷子猎手",
     "slug": "goods-hunter",
-    "version": "0.3.0",
+    "version": "0.3.1",
     "icon": "./assets/menma-logo.png",
     "platforms": ["android", "web"],
     "orientation": "portrait",
@@ -10,7 +10,7 @@
     "backgroundColor": "#F5F2EA",
     "android": {
       "package": "com.honmameiko.goodshunter",
-      "versionCode": 5,
+      "versionCode": 6,
       "blockedPermissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.READ_MEDIA_IMAGES",

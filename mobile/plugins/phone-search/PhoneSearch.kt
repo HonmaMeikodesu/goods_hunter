@@ -107,7 +107,6 @@ class PhoneSearchActivity : Activity() {
   private lateinit var script: String
   private var navigation = 0
   private var loadFailed = false
-  private var autoExtract = true
 
   override fun onCreate(state: Bundle?) {
     super.onCreate(state)
@@ -171,17 +170,11 @@ class PhoneSearchActivity : Activity() {
       override fun onPageFinished(view: WebView, url: String) {
         if (isFinishing || loadFailed || url != view.url) return
         if (!matchesSavedSearch(url)) {
-          message.text = "请完成原站操作，再点「回到搜索」。"
+          message.text = "请在网页内完成验证或登录，再点「回到搜索」。"
           return
         }
-        message.text = "可提取已加载的商品。"
+        message.text = "可先完成网页验证或登录。看到搜索结果后，点「提取本页」。"
         extract.isEnabled = true
-        if (autoExtract) {
-          val generation = navigation
-          browser.postDelayed({
-            if (generation == navigation && extract.isEnabled && autoExtract && !isFinishing && !isDestroyed) capture()
-          }, 350L)
-        }
       }
 
       override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
@@ -189,15 +182,19 @@ class PhoneSearchActivity : Activity() {
       }
 
       override fun onReceivedHttpError(view: WebView, request: WebResourceRequest, response: WebResourceResponse) {
-        if (request.isForMainFrame) failLoading()
+        if (!request.isForMainFrame) return
+        when (response.statusCode) {
+          401, 403 -> failLoading("若网页要求验证或登录，请完成后点「回到搜索」。")
+          else -> failLoading()
+        }
       }
     }
   }
 
-  private fun failLoading() {
+  private fun failLoading(reason: String = "骏河屋页面加载失败，可点「回到搜索」重试。") {
     loadFailed = true
     extract.isEnabled = false
-    message.text = "骏河屋页面加载失败，可点「回到搜索」重试。"
+    message.text = reason
   }
 
   private fun matchesSavedSearch(url: String): Boolean {
@@ -214,8 +211,12 @@ class PhoneSearchActivity : Activity() {
 
   private fun capture() {
     val url = browser.url ?: return
-    if (loadFailed || !matchesSavedSearch(url)) return
-    autoExtract = false
+    if (loadFailed) return
+    if (!matchesSavedSearch(url)) {
+      message.text = "请先完成原站操作，再点「回到搜索」。"
+      extract.isEnabled = false
+      return
+    }
     extract.isEnabled = false
     message.text = "正在读取商品…"
     val generation = navigation
@@ -226,7 +227,7 @@ class PhoneSearchActivity : Activity() {
         result?.takeIf { it.length <= MAX_RESULT_CHARS }?.let { JSONObject(it).getJSONArray(ITEMS).toString() }
       }.getOrNull()
       if (items == null) {
-        message.text = "尚未识别到商品或空结果。请确认页面已加载，再点「提取本页」。"
+        message.text = "尚未识别到搜索结果。请完成网页验证或登录，确认页面加载后再提取。"
         extract.isEnabled = true
         return@evaluateJavascript
       }
