@@ -1,6 +1,8 @@
+import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { copyFile, mkdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { packageHotUpdate, saveJson } from './update-package.mjs';
 
 const [kind, output, input, runtime, notes = ''] = process.argv.slice(2);
@@ -9,6 +11,13 @@ if (!['apk', 'hot'].includes(kind) || !output || !input || !/^[a-f0-9]{40,64}$/.
   throw new Error('Usage: node scripts/prepare-release.mjs apk|hot <publication-dir> <apk-or-export-dir> <runtime> [notes]');
 }
 const config = JSON.parse(await readFile(new URL('../app.json', import.meta.url), 'utf8')).expo;
+const project = fileURLToPath(new URL('../', import.meta.url));
+const fingerprintEnv = { ...process.env };
+delete fingerprintEnv.GOODS_HUNTER_RUNTIME_VERSION;
+const { runtimeVersion } = JSON.parse(execFileSync(process.execPath, [
+  'node_modules/expo-updates/bin/cli.js', 'runtimeversion:resolve', '--platform', 'android', '--workflow', 'managed',
+], { cwd: project, env: fingerprintEnv, encoding: 'utf8' }));
+if (runtimeVersion !== runtime) throw new Error('The native fingerprint does not match this source tree');
 const latest = join(output, 'latest.json');
 const current = await readFile(latest, 'utf8').then(JSON.parse).catch(error => {
   if (error.code !== 'ENOENT') throw error;
