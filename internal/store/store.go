@@ -75,6 +75,8 @@ func (s *Store) Check(ctx context.Context) error {
 		"SELECT email,password FROM `user` LIMIT 0",
 		"SELECT userEmail,loginState,expiredAt FROM login_state LIMIT 0",
 		"SELECT site,outcome,completedAt FROM search_scan_record LIMIT 0",
+		"SELECT userEmail FROM active_search_mode LIMIT 0",
+		"SELECT id,userEmail,site,itemId,item,foundAt,viewed FROM active_search_product LIMIT 0",
 	}
 	for _, site := range model.Sites {
 		table := tables[site]

@@ -14,4 +14,5 @@ const (
 	TaskPermission Code = "030503"
 	DuplicateTask  Code = "030504"
 	InvalidRequest Code = "040001"
+	ActiveModeOff  Code = "040002"
 )

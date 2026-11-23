@@ -123,10 +123,13 @@ func TestLegacyAccountAndWatcherRoutes(t *testing.T) {
 	mac := (&server{cookieKey: cfg.CookieKey}).signCookie(oldToken)
 	oldCookies := []*http.Cookie{{Name: loginCookie, Value: oldToken}, {Name: loginCookie + ".sig", Value: mac}}
 
-	call := func(method, path, kind, body string, cookies []*http.Cookie, status int, code string) *httptest.ResponseRecorder {
+	call := func(method, path, kind, body string, cookies []*http.Cookie, status int, code string, token ...string) *httptest.ResponseRecorder {
 		t.Helper()
 		r := httptest.NewRequest(method, path, strings.NewReader(body))
 		r.Header.Set("Content-Type", kind)
+		if len(token) > 0 {
+			r.Header.Set("Authorization", "Bearer "+token[0])
+		}
 		for _, cookie := range cookies {
 			r.AddCookie(cookie)
 		}
@@ -181,4 +184,23 @@ func TestLegacyAccountAndWatcherRoutes(t *testing.T) {
 	call("POST", "/goods/updateGoodsWatcher", "application/json", string(update), newCookies, 200, "200")
 	call("GET", remove, "", "", newCookies, 200, "200")
 	call("GET", remove, "", "", newCookies, 400, "030502")
+
+	const mobile = "/api/mobile/"
+	call("GET", mobile+"state", "", "", oldCookies, 401, "010102")
+	loginBody, _ := json.Marshal(credentials{Email: legacyEmail, Password: password})
+	loggedIn := call("POST", mobile+"login", "application/json", string(loginBody), nil, 200, "200")
+	var session struct{ Data struct{ Token string } }
+	if err := json.Unmarshal(loggedIn.Body.Bytes(), &session); err != nil || session.Data.Token == "" {
+		t.Fatal("mobile login did not return a session token")
+	}
+	token := session.Data.Token
+	call("POST", mobile+"scan", "application/json", `{}`, nil, 400, "040002", token)
+	call("POST", mobile+"mode", "application/json", `{"active":true}`, nil, 200, "200", token)
+	call("POST", mobile+"scan", "application/json", `{"site":"Surveillance"}`, nil, 400, "040001", token)
+	call("POST", mobile+"scan", "application/json", `{}`, nil, 200, "200", token)
+	state := call("GET", mobile+"state", "", "", nil, 200, "200", token)
+	if state.Header().Get("Cache-Control") != "no-store" || !strings.Contains(state.Body.String(), `"active":true`) {
+		t.Fatal("mobile mode was not saved or the response allows caching")
+	}
+	call("GET", mobile+"products", "", "", nil, 200, "200", token)
 }

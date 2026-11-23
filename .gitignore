@@ -2,6 +2,10 @@ logs/
 npm-debug.log
 yarn-error.log
 node_modules/
+mobile/.expo/
+mobile/.local/
+mobile/android/
+mobile/ios/
 coverage/
 dist/
 bin/

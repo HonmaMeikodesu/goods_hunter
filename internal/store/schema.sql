@@ -203,3 +203,23 @@ CREATE TABLE IF NOT EXISTS `search_scan_record` (
   INDEX `IDX_ace3807a3fa644c2b5e01c69ad` (`completedAt`),
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS `active_search_mode` (
+  `userEmail` varchar(255) NOT NULL,
+  PRIMARY KEY (`userEmail`),
+  FOREIGN KEY (`userEmail`) REFERENCES `user`(`email`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS `active_search_product` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `userEmail` varchar(255) NOT NULL,
+  `site` varchar(24) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `itemId` varchar(255) COLLATE utf8mb4_bin NOT NULL,
+  `item` json NOT NULL,
+  `foundAt` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  `viewed` tinyint NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY (`userEmail`,`site`,`itemId`),
+  KEY (`userEmail`,`viewed`,`foundAt`,`id`),
+  FOREIGN KEY (`userEmail`) REFERENCES `user`(`email`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB;

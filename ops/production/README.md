@@ -10,6 +10,10 @@
 
 发布记录可以用 `journalctl -u goods-hunter-deploy.service` 查看。服务器安装时将 `deploy.py` 放到 `/usr/local/sbin/goods-hunter-deploy`，将 `build.sh` 放到 `/usr/local/libexec/goods-hunter-build`，并安装 [systemd 单元](systemd/)。
 
+## App 的 HTTPS 入口
+
+`hunter.example.invalid` 通过专用 Cloudflare Tunnel 转发 `/api/mobile/` 到本机 `127.0.0.1:7001`。隧道由 `goods-hunter-tunnel.service` 运行，路由配置在 `/etc/goods-hunter-tunnel.yml`。专用运行凭据由 systemd 从 `/etc/goods-hunter/tunnel.env` 读取。私有凭据不提交 Git。
+
 ## Yahoo 会话
 
 `systemd/` 保存 192.0.2.10 上 wangming 用户实际启用的 Yahoo 会话单元，便于核对部署。刷新周期为每天一次，主应用通过 `YAHOO_SESSION_MAX_AGE_SECONDS=172800` 使用 48 小时快照有效期。

@@ -1,0 +1,21 @@
+{
+  "expo": {
+    "name": "谷子猎手",
+    "slug": "goods-hunter",
+    "version": "0.1.0",
+    "platforms": ["android", "web"],
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#F5F2EA",
+    "android": {
+      "package": "com.honmameiko.goodshunter",
+      "versionCode": 1,
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO"
+      ]
+    },
+    "plugins": ["expo-secure-store", "./with-local-http.cjs"]
+  }
+}

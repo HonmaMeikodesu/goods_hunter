@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -237,6 +238,114 @@ func TestStorageSchedulingAndNotifications(t *testing.T) {
 	}
 
 	checkHealth(t, s, collector, sender, raw)
+	checkActiveSearch(t, s, collector, sender, owner, mercariID)
+}
+
+func checkActiveSearch(t *testing.T, s *Service, collector *fixtureCollector, sender *fixtureSender, owner, mercariID string) {
+	t.Helper()
+	ctx := t.Context()
+	if _, err := s.StartScan(ctx, owner, ""); err != problem.ActiveModeOff {
+		t.Fatalf("passive mode start = %v", err)
+	}
+	if err := s.SetActiveMode(ctx, owner, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Register(ctx, model.Watcher{Site: model.Mercari, Owner: owner, Schedule: "* * * * *",
+		Condition: `{"keyword":"overlapping query"}`}); err != nil {
+		t.Fatal(err)
+	}
+	outbox := len(sender.outbox)
+	var mercariCalls atomic.Int32
+	var fail atomic.Bool
+	fail.Store(true)
+	collector.search = func(site model.Site, _ model.Condition) ([]model.Item, error) {
+		switch site {
+		case model.Mercari:
+			mercariCalls.Add(1)
+			return []model.Item{{ID: "m-app", Name: "Shared discovery", Image: "https://example.invalid/figure.jpg"}}, nil
+		case model.Xianyu:
+			if fail.Load() {
+				return nil, market.ConnectionClosed
+			}
+			return []model.Item{{ID: "456", Name: "Retried discovery", Amount: 2500}}, nil
+		default:
+			return nil, nil
+		}
+	}
+	if _, err := s.StartScan(ctx, owner, ""); err != nil {
+		t.Fatal(err)
+	}
+	done := waitForScans(t, s, owner)
+	if len(done.Sites) != 3 || done.Sites[0].Succeeded != 2 || done.Sites[2].Failed != 1 ||
+		done.Sites[2].Error != market.Labels[market.ConnectionClosed] {
+		t.Fatalf("unexpected partial result: %+v", done)
+	}
+	products, err := s.ActiveProducts(ctx, owner)
+	if err != nil || len(products) != 1 || products[0].Item.Image != "https://example.invalid/figure.jpg" {
+		t.Fatalf("overlapping tasks did not retain one image-backed item: %v, %v", products, err)
+	}
+	firstID := products[0].ID
+	fail.Store(false)
+	if _, err := s.StartScan(ctx, owner, model.Xianyu); err != nil {
+		t.Fatal(err)
+	}
+	done = waitForScans(t, s, owner)
+	if done.Sites[2].Succeeded != 1 || done.Sites[2].Failed != 0 || mercariCalls.Load() != 2 {
+		t.Fatalf("retry affected other sites: %+v (%d Mercari scans)", done, mercariCalls.Load())
+	}
+	if err := s.MarkActiveProductsViewed(ctx, "different@example.invalid", []uint64{firstID}); err != nil {
+		t.Fatal(err)
+	}
+	if products, err = s.ActiveProducts(ctx, owner); err != nil || len(products) != 2 {
+		t.Fatalf("unexpected products after retry: %v, %v", products, err)
+	}
+	if err := s.MarkActiveProductsViewed(ctx, owner, []uint64{firstID}); err != nil {
+		t.Fatal(err)
+	}
+	if products, err = s.ActiveProducts(ctx, owner); err != nil || len(products) != 1 || products[0].Site != model.Xianyu {
+		t.Fatalf("viewed operation changed the wrong discoveries: %v, %v", products, err)
+	}
+
+	job := s.findJob(jobKey{model.Mercari, mercariID})
+	collector.search = func(model.Site, model.Condition) ([]model.Item, error) {
+		return []model.Item{{ID: "m-scheduled-app", Name: "Scheduled discovery"}}, nil
+	}
+	s.run(ctx, job, job.generation)
+	if products, err = s.ActiveProducts(ctx, owner); err != nil || len(products) != 2 || len(sender.outbox) != outbox {
+		t.Fatalf("active cron did not accumulate without email: %v, %v", products, err)
+	}
+	if err := s.SetActiveMode(ctx, owner, false); err != nil {
+		t.Fatal(err)
+	}
+	collector.search = func(model.Site, model.Condition) ([]model.Item, error) {
+		return []model.Item{{ID: "m-scheduled-app", Name: "Previously discovered"}, {ID: "m-email", Name: "Email discovery"}}, nil
+	}
+	s.run(ctx, job, job.generation)
+	if len(sender.outbox) != outbox+1 || !strings.Contains(sender.outbox[outbox].HTML, "Email discovery") ||
+		strings.Contains(sender.outbox[outbox].HTML, "Previously discovered") {
+		t.Fatal("switching back to email changed legacy deduplication")
+	}
+}
+
+func waitForScans(t *testing.T, s *Service, owner string) ActiveState {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		state, err := s.ActiveState(t.Context(), owner)
+		if err != nil {
+			t.Fatal(err)
+		}
+		running := false
+		for _, status := range state.Sites {
+			running = running || status.Running
+		}
+		if !running {
+			return state
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatal("manual scans did not finish")
+	return ActiveState{}
 }
 
 func seedSQL(t *testing.T, db *sql.DB, statement string, args ...any) {

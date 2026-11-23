@@ -52,12 +52,13 @@ func New(cfg config.Config, accounts *accounts.Service, hunters *hunter.Service,
 	mux.HandleFunc("GET /goods/listGoodsWatcher", s.withLogin(s.listWatchers))
 	mux.HandleFunc("POST /goods/updateGoodsWatcher", s.withLogin(s.updateWatcher))
 	mux.HandleFunc("GET /goods/unregisterGoodsWatcher", s.withLogin(s.deleteWatcher))
+	s.registerMobileRoutes(mux)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		if r.Method == http.MethodOptions && r.Header.Get("Access-Control-Request-Method") != "" {
 			w.Header().Set("Access-Control-Allow-Methods", "GET, HEAD, PUT, POST, DELETE, PATCH")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-CSRF-Token")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-CSRF-Token, Authorization")
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}

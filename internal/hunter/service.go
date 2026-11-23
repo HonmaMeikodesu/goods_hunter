@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -39,6 +38,9 @@ type Service struct {
 	queue     chan struct{}
 	mu        sync.Mutex
 	jobs      map[jobKey]*job
+	scanMu    sync.Mutex
+	scans     map[string]map[model.Site]*siteScan
+	scanSlots chan struct{}
 }
 
 type jobKey struct {
@@ -48,7 +50,7 @@ type jobKey struct {
 
 type job struct {
 	key        jobKey
-	busy       atomic.Bool
+	slot       chan struct{}
 	mu         sync.Mutex // Protects setup and finalization from concurrent edits.
 	entry      cron.EntryID
 	generation uint64
@@ -60,6 +62,7 @@ func New(ctx context.Context, cfg config.Config, db *store.Store, cache *redis.C
 		ctx: ctx, cfg: cfg, db: db, cache: cache, collector: collector, sender: sender, logger: logger,
 		cron: cron.New(cron.WithLocation(cfg.Location)),
 		jobs: make(map[jobKey]*job), queue: make(chan struct{}, 1),
+		scans: make(map[string]map[model.Site]*siteScan), scanSlots: make(chan struct{}, 3),
 	}
 }
 
@@ -69,7 +72,7 @@ func (s *Service) Restore(ctx context.Context) error {
 		return err
 	}
 	for _, w := range watchers {
-		j := &job{key: jobKey{w.Site, w.ID}}
+		j := &job{key: jobKey{w.Site, w.ID}, slot: make(chan struct{}, 1)}
 		s.jobs[j.key] = j
 		schedule, err := parseSchedule(w.Schedule)
 		if err != nil {
@@ -113,7 +116,7 @@ func (s *Service) Register(ctx context.Context, w model.Watcher) error {
 		raw := string(encoded)
 		w.Snapshot = &raw
 	}
-	j := &job{key: jobKey{w.Site, w.ID}}
+	j := &job{key: jobKey{w.Site, w.ID}, slot: make(chan struct{}, 1)}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if err := s.db.CreateWatcher(ctx, w); err != nil {
@@ -243,35 +246,45 @@ func frozen(w model.Watcher, now time.Time) bool {
 }
 
 func (s *Service) run(ctx context.Context, j *job, generation uint64) {
-	if ctx.Err() != nil || !j.busy.CompareAndSwap(false, true) {
+	select {
+	case j.slot <- struct{}{}:
+		defer func() { <-j.slot }()
+	default:
 		return
 	}
-	defer j.busy.Store(false)
+	_ = s.runWatcher(ctx, j, generation, false)
+}
+
+// The caller holds the watcher slot for the whole scan and its delivery.
+func (s *Service) runWatcher(ctx context.Context, j *job, generation uint64, manual bool) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if j.key.site == model.Xianyu {
 		select {
 		case s.queue <- struct{}{}:
 			defer func() { <-s.queue }()
 		case <-ctx.Done():
-			return
+			return ctx.Err()
 		}
 	}
 	j.mu.Lock()
 	if j.deleted || generation != j.generation {
 		j.mu.Unlock()
-		return
+		return problem.TaskNotFound
 	}
 	w, err := s.db.Watcher(ctx, j.key.site, j.key.id)
 	j.mu.Unlock()
 	if err != nil {
 		s.logWatcherError(j, err)
-		return
+		return err
 	}
-	if frozen(w, time.Now().In(s.cfg.Location)) {
-		return
+	if !manual && frozen(w, time.Now().In(s.cfg.Location)) {
+		return nil
 	}
 	if w.Site == model.Surveillance {
 		s.surveil(ctx, j, generation, w)
-		return
+		return nil
 	}
 	condition, err := model.ReadCondition(w.Site, w.Condition)
 	var items []model.Item
@@ -281,7 +294,7 @@ func (s *Service) run(ctx context.Context, j *job, generation uint64) {
 		items, err = s.collector.Search(ctx, w.Site, condition)
 	}
 	if ctx.Err() != nil {
-		return
+		return ctx.Err()
 	}
 	outcome := market.FailureOf(err)
 	if recordErr := s.db.RecordScan(ctx, w.Site, string(outcome), time.Now()); recordErr != nil {
@@ -289,20 +302,22 @@ func (s *Service) run(ctx context.Context, j *job, generation uint64) {
 	}
 	if err != nil {
 		s.logger.Warn("Search scan failed", "site", w.Site, "id", w.ID, "outcome", outcome)
-		return
+		return err
 	}
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	if j.deleted || generation != j.generation {
-		return
+		return problem.TaskNotFound
 	}
-	if err := s.deliverSearch(ctx, w, condition, items); err != nil {
+	if err := s.deliverSearch(ctx, w, condition, items, manual); err != nil {
 		s.logWatcherError(j, err)
+		return err
 	}
+	return nil
 }
 
-func (s *Service) deliverSearch(ctx context.Context, w model.Watcher, condition model.Condition, items []model.Item) error {
-	pending, err := s.db.AcceptSearch(ctx, w, condition, items)
+func (s *Service) deliverSearch(ctx context.Context, w model.Watcher, condition model.Condition, items []model.Item, manual bool) error {
+	pending, err := s.db.AcceptSearch(ctx, w, condition, items, manual)
 	if err != nil || len(pending) == 0 {
 		return err
 	}

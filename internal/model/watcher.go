@@ -1,8 +1,10 @@
 package model
 
 import (
+	"cmp"
 	"crypto/rand"
 	"fmt"
+	"strconv"
 	"time"
 )
 
@@ -59,6 +61,23 @@ type Item struct {
 	BidCount    *int64
 	Status      string
 	PublishedAt *string
+}
+
+func (i Item) SearchPrice(site Site) string {
+	switch site {
+	case Mercari:
+		return cmp.Or(i.Price, "价格暂缺")
+	case Surugaya:
+		return cmp.Or(i.Price, i.MarketPrice)
+	case Yahoo:
+		return strconv.FormatInt(i.Amount, 10)
+	case YahooFleamarket:
+		return fmt.Sprintf("¥%d", i.Amount)
+	case Xianyu:
+		return fmt.Sprintf("人民币 ¥%d.%02d", i.Amount/100, i.Amount%100)
+	default:
+		return i.Price
+	}
 }
 
 type Snapshot struct {

@@ -2,6 +2,8 @@
 
 谷子猎手订阅 Mercari、Yahoo!オークション、骏河屋、Mandarake、Yahoo!フリマ和闲鱼的商品搜索，定时去重并发送邮件。Mercari、Yahoo!オークション、骏河屋和 Mandarake 还支持单品监控。
 
+[Android App](mobile/README.md) 支持主动搜索和按站点重试。开启主动模式后，定时采集到的新品也会累积在 App 中，供你一次查看。
+
 ## 构建与运行
 
 构建需要 Go 1.25 或以上版本。使用现有的 MySQL、Redis、SMTP 和阿里云 FC。Go 版沿用 Midway 的 MySQL 表和 Redis 键，可直接读取现有账号、登录态、任务、扫描记录和待发邮件。
@@ -15,7 +17,9 @@ bin/goods-hunter -check
 bin/goods-hunter
 ```
 
-默认监听 `:7001`。生产环境请保留 Redis 的认证设置和库号，例如 `redis://:<URL 编码后的密码>@127.0.0.1:6379/0`。新环境先创建字符集为 `utf8mb4` 的 MySQL 数据库，然后运行 `bin/goods-hunter -init-db` 建表。已有数据库可直接运行 `-check`。
+默认监听 `:7001`。生产环境请保留 Redis 的认证设置和库号，例如 `redis://:<URL 编码后的密码>@127.0.0.1:6379/0`。新环境先创建字符集为 `utf8mb4` 的 MySQL 数据库，然后运行 `bin/goods-hunter -init-db` 建表。
+
+升级到支持主动模式的版本时，先用新版二进制运行一次 `-init-db` 创建两张新表，再运行 `-check` 并切换版本。原有的账号、任务和商品记录可直接沿用。
 
 ## 配置
 

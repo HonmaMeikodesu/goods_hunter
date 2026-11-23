@@ -10,9 +10,8 @@ import (
 	"github.com/HonmaMeikodesu/goods_hunter/internal/problem"
 )
 
-// AcceptSearch returns notifications after validating the current watcher. For
-// baseline sites it also commits the first successful scan and the mail queue.
-func (s *Store) AcceptSearch(ctx context.Context, w model.Watcher, search model.Condition, items []model.Item) ([]model.Item, error) {
+// AcceptSearch records app discoveries and returns items due for email delivery.
+func (s *Store) AcceptSearch(ctx context.Context, w model.Watcher, search model.Condition, items []model.Item, manual bool) ([]model.Item, error) {
 	var pending []model.Item
 	table := tables[w.Site]
 	err := s.transaction(ctx, func(tx *sql.Tx) error {
@@ -30,37 +29,57 @@ func (s *Store) AcceptSearch(ctx context.Context, w model.Watcher, search model.
 		if err != nil {
 			return err
 		}
-		if !table.baseline {
+		if table.baseline {
+			pending, err = acceptBaselineSearch(ctx, tx, current, search, items, seen)
+		} else {
 			for _, item := range items {
 				if !seen[item.ID] {
 					pending = append(pending, item)
 				}
 			}
-			return nil
 		}
-		for _, item := range items {
-			if seen[item.ID] {
-				if w.Site == model.Xianyu && item.Image != "" {
-					if _, err := tx.ExecContext(ctx, "UPDATE xianyu_goods_record SET thumbnailImageUrl=?"+
-						" WHERE hunterInstanceId=? AND id=? AND thumbnailImageUrl=''", item.Image, w.ID, item.ID); err != nil {
-						return err
-					}
-				}
-				continue
-			}
-			if err := insertItem(ctx, tx, w, item, current.Initialized || search.NotifyExisting); err != nil {
+		if err != nil || len(pending) == 0 {
+			return err
+		}
+		if !manual {
+			active, err := activeMode(ctx, tx, w.Owner)
+			if err != nil || !active {
 				return err
 			}
 		}
-		if !current.Initialized {
-			if _, err := tx.ExecContext(ctx, "UPDATE "+table.watchers+" SET initialized=1 WHERE hunterInstanceId=?", w.ID); err != nil {
-				return err
-			}
+		if err := saveActiveProducts(ctx, tx, w, pending); err != nil {
+			return err
 		}
-		pending, err = readPending(ctx, tx, w)
-		return err
+		if err := resolveSearchItems(ctx, tx, w, pending, false); err != nil {
+			return err
+		}
+		pending = nil
+		return nil
 	})
 	return pending, err
+}
+
+func acceptBaselineSearch(ctx context.Context, tx *sql.Tx, w model.Watcher, search model.Condition, items []model.Item, seen map[string]bool) ([]model.Item, error) {
+	for _, item := range items {
+		if !seen[item.ID] {
+			if err := insertItem(ctx, tx, w, item, w.Initialized || search.NotifyExisting); err != nil {
+				return nil, err
+			}
+			continue
+		}
+		if w.Site == model.Xianyu && item.Image != "" {
+			if _, err := tx.ExecContext(ctx, "UPDATE xianyu_goods_record SET thumbnailImageUrl=?"+
+				" WHERE hunterInstanceId=? AND id=? AND thumbnailImageUrl=''", item.Image, w.ID, item.ID); err != nil {
+				return nil, err
+			}
+		}
+	}
+	if !w.Initialized {
+		if _, err := tx.ExecContext(ctx, "UPDATE "+tables[w.Site].watchers+" SET initialized=1 WHERE hunterInstanceId=?", w.ID); err != nil {
+			return nil, err
+		}
+	}
+	return readPending(ctx, tx, w)
 }
 
 func existingIDs(ctx context.Context, tx *sql.Tx, table siteTables, watcherID string, items []model.Item) (map[string]bool, error) {
@@ -147,32 +166,39 @@ func (s *Store) AcknowledgeDelivery(ctx context.Context, w model.Watcher, items 
 	if len(items) == 0 {
 		return nil
 	}
-	table := tables[w.Site]
 	return s.transaction(ctx, func(tx *sql.Tx) error {
-		if table.baseline {
-			const batchSize = 500
-			for start := 0; start < len(items); start += batchSize {
-				batch := items[start:min(len(items), start+batchSize)]
-				args := make([]any, 1, len(batch)+1)
-				args[0] = w.ID
-				for _, item := range batch {
-					args = append(args, item.ID)
-				}
-				if _, err := tx.ExecContext(ctx, "UPDATE "+table.records+
-					" SET notificationPending=0, notifiedAt=CURRENT_TIMESTAMP WHERE hunterInstanceId=? AND id IN ("+
-					placeholders(len(batch))+")", args...); err != nil {
-					return err
-				}
-			}
-			return nil
-		}
+		return resolveSearchItems(ctx, tx, w, items, true)
+	})
+}
+
+func resolveSearchItems(ctx context.Context, tx *sql.Tx, w model.Watcher, items []model.Item, emailed bool) error {
+	table := tables[w.Site]
+	if !table.baseline {
 		for _, item := range items {
 			if err := insertItem(ctx, tx, w, item, false); err != nil {
 				return err
 			}
 		}
 		return nil
-	})
+	}
+	fields := "notificationPending=0"
+	if emailed {
+		fields += ", notifiedAt=CURRENT_TIMESTAMP"
+	}
+	const batchSize = 500
+	for start := 0; start < len(items); start += batchSize {
+		batch := items[start:min(len(items), start+batchSize)]
+		args := make([]any, 1, len(batch)+1)
+		args[0] = w.ID
+		for _, item := range batch {
+			args = append(args, item.ID)
+		}
+		if _, err := tx.ExecContext(ctx, "UPDATE "+table.records+" SET "+fields+
+			" WHERE hunterInstanceId=? AND id IN ("+placeholders(len(batch))+")", args...); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 type ScanCount struct {

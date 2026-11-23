@@ -1,0 +1,267 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  ActivityIndicator, AppState, FlatList, Image, Linking, Pressable, StyleSheet,
+  Switch, Text, TextInput, View,
+} from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
+import {
+  ExpiredSession, login, readSession, request, saveSession, sites,
+  type ActiveState, type Product, type Session, type Site, type SiteStatus,
+} from './api';
+
+const ink = '#222D25';
+const muted = '#58665C';
+const green = '#1A5B47';
+const warn = '#92432E';
+
+export default function App() {
+  const [session, setSession] = useState<Session | null | undefined>();
+  const [loginError, setLoginError] = useState('');
+  useEffect(() => {
+    readSession().then(setSession).catch(() => setSession(null));
+  }, []);
+
+  async function changeSession(next: Session | null, message = '') {
+    if (next) await saveSession(next);
+    else await saveSession(null).catch(() => {});
+    setLoginError(message);
+    setSession(next);
+  }
+
+  return <SafeAreaProvider>
+    <StatusBar style="dark" />
+    <SafeAreaView style={styles.root}>
+      {session === undefined ? <ActivityIndicator color={green} style={styles.loading} /> :
+        session ? <Dashboard session={session} onExit={message => void changeSession(null, message)} /> :
+          <SignIn onLogin={changeSession} initialError={loginError} />}
+    </SafeAreaView>
+  </SafeAreaProvider>;
+}
+
+function SignIn({ onLogin, initialError }: { onLogin: (session: Session) => Promise<void>; initialError: string }) {
+  const [server, setServer] = useState(process.env.EXPO_PUBLIC_GOODS_HUNTER_URL ?? 'https://hunter.example.invalid');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState(initialError);
+  const [busy, setBusy] = useState(false);
+
+  async function submit() {
+    if (busy || !server.trim() || !email.trim() || !password) return;
+    setBusy(true);
+    setError('');
+    try {
+      await onLogin(await login(server, email.trim(), password));
+    } catch (cause) {
+      setError((cause as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return <FlatList data={[]} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.page}
+    ListHeaderComponent={<View style={styles.login}>
+      <Text style={styles.title}>谷子猎手</Text>
+      <Text style={styles.subtle}>用现有账号登录</Text>
+      <Text style={styles.label}>服务地址</Text>
+      <TextInput style={styles.input} value={server} onChangeText={setServer} autoCapitalize="none"
+        autoCorrect={false} keyboardType="url" placeholder="https://" placeholderTextColor={muted} accessibilityLabel="服务地址" />
+      <Text style={styles.label}>邮箱</Text>
+      <TextInput style={styles.input} value={email} onChangeText={setEmail} autoCapitalize="none"
+        autoCorrect={false} autoComplete="email" keyboardType="email-address" accessibilityLabel="邮箱" />
+      <Text style={styles.label}>密码</Text>
+      <TextInput style={styles.input} value={password} onChangeText={setPassword} secureTextEntry
+        autoComplete="current-password" onSubmitEditing={() => void submit()} accessibilityLabel="密码" />
+      <Action label={busy ? '登录中…' : '登录'} primary disabled={busy || !server || !email || !password} onPress={() => void submit()} />
+      {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
+    </View>} renderItem={() => null} />;
+}
+
+function Dashboard({ session, onExit }: { session: Session; onExit: (message?: string) => void }) {
+  const [state, setState] = useState<ActiveState | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [working, setWorking] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const refreshID = useRef(0);
+  const busy = useRef(false);
+  const exit = useRef(onExit);
+  exit.current = onExit;
+  const running = state?.sites.some(site => site.running) ?? false;
+
+  const showError = useCallback((cause: unknown) => {
+    if (cause instanceof ExpiredSession) exit.current(cause.message);
+    else setError((cause as Error).message);
+  }, []);
+
+  const refresh = useCallback(async () => {
+    const id = ++refreshID.current;
+    try {
+      const [next, items] = await Promise.all([
+        request<ActiveState>(session, 'state'), request<Product[]>(session, 'products'),
+      ]);
+      if (refreshID.current !== id) return;
+      setState(next);
+      setProducts(items);
+      setError('');
+    } catch (cause) {
+      if (refreshID.current === id) showError(cause);
+    }
+  }, [session, showError]);
+
+  useEffect(() => {
+    void refresh();
+    const listener = AppState.addEventListener('change', status => {
+      if (status === 'active') void refresh();
+    });
+    return () => { listener.remove(); refreshID.current++; };
+  }, [refresh]);
+
+  useEffect(() => {
+    if (!running) return;
+    // Keep the previous request alive on slow connections.
+    let timer: ReturnType<typeof setTimeout>;
+    let finished = false;
+    const tick = async () => {
+      if (!busy.current) await refresh();
+      if (!finished) timer = setTimeout(tick, 2500);
+    };
+    timer = setTimeout(tick, 2500);
+    return () => { finished = true; clearTimeout(timer); };
+  }, [refresh, running]);
+
+  async function act(route: string, body: object) {
+    if (busy.current) return;
+    busy.current = true;
+    setWorking(true);
+    setNotice('');
+    setError('');
+    refreshID.current++;
+    try {
+      if (route === 'viewed') {
+        await request(session, route, body);
+      } else {
+        const next = await request<ActiveState>(session, route, body);
+        setState(next);
+        if (route === 'scan' && next.sites.length === 0) setNotice('当前没有搜索订阅。');
+      }
+      await refresh();
+    } catch (cause) {
+      showError(cause);
+    } finally {
+      busy.current = false;
+      setWorking(false);
+    }
+  }
+
+  return <FlatList data={products} keyExtractor={item => item.id} contentContainerStyle={styles.page}
+    refreshing={refreshing} onRefresh={async () => {
+      setRefreshing(true);
+      await refresh();
+      setRefreshing(false);
+    }}
+    ListHeaderComponent={<>
+      <View style={styles.masthead}>
+        <Text style={styles.title}>谷子猎手</Text>
+        <Action label="退出" onPress={() => onExit()} />
+      </View>
+      {state ? <>
+        <View style={styles.mode}>
+          <View style={styles.grow}>
+            <Text style={styles.modeTitle}>{state.active ? '主动模式' : '被动模式'}</Text>
+            <Text style={styles.subtle}>{state.active ? '定时采集的新品会攒在这里，随时可以手动搜索。' : '定时采集，新发现的商品通过邮件通知。'}</Text>
+          </View>
+          <Switch value={state.active} onValueChange={active => void act('mode', { active })} disabled={working}
+            accessibilityLabel="主动模式" trackColor={{ false: '#A4B0A6', true: green }} />
+        </View>
+        {state.active ? <Action primary label={running ? '正在搜索…' : '搜索最新商品'} disabled={working || running}
+          onPress={() => void act('scan', {})} /> : null}
+        {state.sites.length ? <View style={styles.siteList}>
+          {state.sites.map(status => <SiteRow key={status.site} status={status} canRetry={state.active && !working}
+            onRetry={site => void act('scan', { site })} />)}
+        </View> : null}
+      </> : error ? <Action label="重新连接" onPress={() => void refresh()} /> : <ActivityIndicator color={green} />}
+      {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
+      {notice ? <Text style={styles.subtle}>{notice}</Text> : null}
+      <View style={styles.section}>
+        <Text style={styles.heading}>最新发现{products.length ? ` · ${products.length}` : ''}</Text>
+        {products.length ? <Action label="全部标为已看" disabled={working}
+          onPress={() => void act('viewed', { ids: products.map(item => item.id) })} /> : null}
+      </View>
+    </>}
+    renderItem={({ item }) => <ProductRow item={item} onError={showError} />}
+    ListEmptyComponent={<Text style={styles.empty}>{running ? '搜索结果会陆续出现在这里。' : '暂时没有未看的新品。'}</Text>}
+  />;
+}
+
+function SiteRow({ status, canRetry, onRetry }: { status: SiteStatus; canRetry: boolean; onRetry: (site: Site) => void }) {
+  const { site, running, succeeded, failed, total, error } = status;
+  return <View style={styles.siteRow}>
+    <View style={styles.grow}>
+      <Text style={styles.siteName}>{sites[site]}</Text>
+      {error ? <Text style={styles.siteError}>{error}</Text> : null}
+    </View>
+    <Text style={styles.siteCount}>{running ? `${succeeded + failed}/${total} 进行中` : failed ? `${succeeded} 成功 · ${failed} 失败` : `${succeeded} 项完成`}</Text>
+    {!running && failed > 0 && canRetry ? <Action label="重试" accessibilityLabel={`重试${sites[site]}`} onPress={() => onRetry(site)} /> : null}
+  </View>;
+}
+
+function ProductRow({ item, onError }: { item: Product; onError: (cause: unknown) => void }) {
+  const [badImage, setBadImage] = useState(false);
+  const canOpen = /^https?:\/\/[^\s]+$/i.test(item.url);
+  return <Pressable style={styles.product} disabled={!canOpen} accessibilityRole="link"
+    onPress={() => void Linking.openURL(item.url).catch(() => onError(new Error('无法打开商品链接。')))}>
+    {item.image && !badImage && /^https?:\/\//i.test(item.image) ?
+      <Image source={{ uri: item.image }} style={styles.thumbnail} resizeMode="cover" onError={() => setBadImage(true)} /> :
+      <View style={[styles.thumbnail, styles.noImage]}><Text style={styles.siteCount}>暂无图</Text></View>}
+    <View style={styles.grow}>
+      <Text style={styles.siteCount}>{sites[item.site]}{item.sold ? ' · 已售出' : ''}</Text>
+      <Text style={styles.productName} numberOfLines={2}>{item.name}</Text>
+      {item.price ? <Text style={styles.price}>{item.price}</Text> : null}
+    </View>
+  </Pressable>;
+}
+
+function Action({ label, onPress, disabled, primary, accessibilityLabel }: {
+  label: string; onPress: () => void; disabled?: boolean; primary?: boolean; accessibilityLabel?: string;
+}) {
+  return <Pressable accessibilityRole="button" accessibilityLabel={accessibilityLabel} accessibilityState={{ disabled }}
+    disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.action, primary && styles.primary, (pressed || disabled) && styles.dim]}>
+    <Text style={primary ? styles.primaryText : styles.actionText}>{label}</Text>
+  </Pressable>;
+}
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: '#F5F2EA' },
+  loading: { flex: 1 },
+  page: { width: '100%', maxWidth: 620, alignSelf: 'center', paddingHorizontal: 18, paddingTop: 10, paddingBottom: 34 },
+  login: { gap: 10, paddingTop: 44 },
+  masthead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12 },
+  title: { color: ink, fontSize: 30, fontWeight: '800', letterSpacing: -0.7 },
+  heading: { fontSize: 20, color: ink, fontWeight: '800' },
+  label: { color: ink, fontSize: 14, fontWeight: '700', marginTop: 8 },
+  input: { borderWidth: 1, borderColor: '#BDC9BC', borderRadius: 12, minHeight: 50, paddingHorizontal: 14, color: ink, backgroundColor: '#FFFEF8' },
+  mode: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#E4EBDF', borderRadius: 16, padding: 15, marginVertical: 10 },
+  modeTitle: { fontSize: 16, fontWeight: '800', color: ink, marginBottom: 4 },
+  subtle: { color: muted, fontSize: 13, lineHeight: 19 },
+  grow: { flex: 1, minWidth: 0 },
+  action: { minHeight: 44, justifyContent: 'center', alignItems: 'center', borderRadius: 10, paddingHorizontal: 10 },
+  actionText: { color: green, fontSize: 14, fontWeight: '700' },
+  primary: { backgroundColor: green, minHeight: 49, marginTop: 4 },
+  primaryText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
+  dim: { opacity: 0.56 },
+  siteList: { borderRadius: 14, borderColor: '#D6DDD1', borderWidth: 1, backgroundColor: '#FCFAF4', marginTop: 12, overflow: 'hidden' },
+  siteRow: { minHeight: 47, alignItems: 'center', flexDirection: 'row', gap: 6, paddingHorizontal: 11, paddingVertical: 3, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: '#DBE0D7' },
+  siteName: { fontWeight: '700', color: ink, fontSize: 13 },
+  siteCount: { color: muted, fontSize: 12 },
+  siteError: { color: warn, fontSize: 11, marginTop: 3 },
+  section: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 58, marginTop: 8 },
+  product: { flexDirection: 'row', gap: 13, alignItems: 'center', backgroundColor: '#FFFEF8', borderRadius: 14, borderWidth: 1, borderColor: '#E2E2D7', padding: 9, marginBottom: 9 },
+  thumbnail: { width: 76, height: 76, borderRadius: 9, backgroundColor: '#E8ECE2' },
+  noImage: { alignItems: 'center', justifyContent: 'center' },
+  productName: { color: ink, fontSize: 15, lineHeight: 20, fontWeight: '600', marginTop: 3 },
+  price: { color: green, fontWeight: '800', marginTop: 3 },
+  error: { color: warn, fontSize: 13, marginTop: 8 },
+  empty: { color: muted, textAlign: 'center', paddingVertical: 30 },
+});

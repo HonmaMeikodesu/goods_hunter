@@ -1,0 +1,22 @@
+[Unit]
+Description=Goods Hunter mobile HTTPS tunnel
+Wants=network-online.target
+After=network-online.target goods-hunter.service
+
+[Service]
+Type=simple
+DynamicUser=yes
+EnvironmentFile=/etc/goods-hunter/tunnel.env
+ExecStart=/usr/local/libexec/goods-hunter-cloudflared tunnel --config /etc/goods-hunter-tunnel.yml --no-autoupdate run
+Restart=on-failure
+RestartSec=5s
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+CapabilityBoundingSet=
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+[Install]
+WantedBy=multi-user.target
