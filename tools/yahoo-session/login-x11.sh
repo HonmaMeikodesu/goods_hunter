@@ -15,9 +15,8 @@ If already logged in, the browser may close after a few seconds.
          opening Chrome or changing cookies.
 
 Environment overrides:
-  YAHOO_SSH_HOST               Default: root@192.0.2.10
-  YAHOO_SSH_KEY                Default: $HOME/.ssh/jingdong.pem if it exists;
-                              otherwise use SSH config / agent.
+  YAHOO_SSH_HOST               Required SSH alias or user@host.
+  YAHOO_SSH_KEY                Optional key path. Otherwise use SSH config / agent.
   YAHOO_REMOTE_USER            Default: wangming
   YAHOO_REMOTE_APP             Default: /home/wangming/project/goods_hunter
   YAHOO_LOGIN_TIMEOUT_SECONDS  Default: 14400 (4 hours)
@@ -43,7 +42,7 @@ if command -v xdpyinfo >/dev/null; then
   xdpyinfo -display "$DISPLAY" >/dev/null 2>&1 || { echo 'Cannot connect to the local X server; check DISPLAY and Xauthority.' >&2; exit 1; }
 fi
 
-server="${YAHOO_SSH_HOST:-root@192.0.2.10}"
+server="${YAHOO_SSH_HOST:?Set YAHOO_SSH_HOST to an SSH alias or user@host.}"
 remote_user="${YAHOO_REMOTE_USER:-wangming}"
 remote_app="${YAHOO_REMOTE_APP:-/home/wangming/project/goods_hunter}"
 timeout="${YAHOO_LOGIN_TIMEOUT_SECONDS:-14400}"
@@ -53,7 +52,6 @@ timeout="${YAHOO_LOGIN_TIMEOUT_SECONDS:-14400}"
 ssh_options=(-X -T -o BatchMode=yes -o ConnectTimeout=15
   -o "ForwardX11Timeout=$((timeout + 300))s" -o ServerAliveInterval=30 -o ServerAliveCountMax=3)
 key="${YAHOO_SSH_KEY:-}"
-if [[ -z "$key" && -f "$HOME/.ssh/jingdong.pem" ]]; then key="$HOME/.ssh/jingdong.pem"; fi
 if [[ -n "$key" ]]; then
   [[ -r "$key" ]] || { echo 'Cannot read YAHOO_SSH_KEY.' >&2; exit 1; }
   ssh_options+=(-i "$key" -o IdentitiesOnly=yes)

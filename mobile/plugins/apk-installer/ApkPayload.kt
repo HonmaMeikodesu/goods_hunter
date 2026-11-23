@@ -47,7 +47,7 @@ data class ApkPayload(val version: String, val versionCode: Long, val downloadUr
   companion object {
     fun secureUrl(value: String): Boolean = try {
       val uri = URI(value)
-      uri.scheme == "https" && uri.host == "hunter.example.invalid" && (uri.port == -1 || uri.port == 443) &&
+      uri.scheme.equals("https", ignoreCase = true) && !uri.host.isNullOrBlank() &&
         uri.rawUserInfo == null && uri.rawFragment == null && uri.rawPath.startsWith("/api/mobile/updates/")
     } catch (_: Exception) { false }
     fun hex(bytes: ByteArray) = bytes.joinToString("") { "%02x".format(it.toInt() and 255) }

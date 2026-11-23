@@ -46,7 +46,7 @@ export YAHOO_SESSION_MAX_AGE_SECONDS=172800
 ./tools/yahoo-session/login-x11.sh --check
 ```
 
-脚本默认连接 `root@192.0.2.10`，优先使用本机 `$HOME/.ssh/jingdong.pem`（不存在时使用 SSH 配置或 agent），以服务器上的 `wangming` 用户启动 Chrome。它读取该用户已有的 `~/.config/goods-hunter/yahoo-session.env`，复用日常刷新的 profile、代理和 HTTP/1.1 配置。该环境文件使用兼容 Bash 的 `KEY=value` 写法；由应用用户读取，不以 root 身份执行。
+使用 `YAHOO_SSH_HOST` 配置 SSH 别名或 `user@host`，密钥由 SSH 配置、agent 或 `YAHOO_SSH_KEY` 提供。脚本以服务器上的应用用户启动 Chrome，读取该用户的 `~/.config/goods-hunter/yahoo-session.env`，复用日常刷新的 profile、代理和 HTTP/1.1 配置。该环境文件采用 Bash 的 `KEY=value` 写法，由应用用户读取。
 
 在弹出的浏览器中自行完成密码、短信或其他验证，最终回到个人页。验证成功后自动保存并关闭；如果登录态仍有效，窗口可能只显示几秒。保持终端连接，勿提前关闭。默认等待四小时，真正掉登录时才需要重新执行；每天的 headless 刷新会自动复用新会话。刷新期间执行登录会返回 `PROFILE_BUSY`，稍后再试即可。
 

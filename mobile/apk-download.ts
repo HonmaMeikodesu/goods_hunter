@@ -10,10 +10,9 @@ const authorizationError = () => Object.assign(new Error('下载权限验证失�
 
 export async function authorizeApk(release: DownloadableApk, serviceUrl: string, token: string, signal: AbortSignal,
   request: typeof fetch = fetch, now = Date.now()): Promise<DownloadableApk> {
-  if (!release.privateDownload) return release;
   const endpoint = `${serviceUrl}/api/mobile/updates/apk/${release.sha256}`;
   // The configured service is the only recipient of the user's credential.
-  if (release.downloadUrl !== endpoint || !token || token.length > 4096 || /\s/.test(token)) throw authorizationError();
+  if (!release.privateDownload || release.downloadUrl !== endpoint || !token || token.length > 4096 || /\s/.test(token)) throw authorizationError();
   const response = await request(endpoint, { signal, redirect: 'error', headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } });
   if ([401, 403].includes(response.status)) throw authorizationError();
   if (!response.ok) throw new Error('下载授权暂不可用');

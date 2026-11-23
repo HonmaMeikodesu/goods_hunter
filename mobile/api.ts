@@ -35,7 +35,6 @@ export type Product = {
 };
 
 export type Session = { server: string; token: string };
-export const serviceOrigin = 'https://hunter.example.invalid';
 
 const sessionKey = 'goodsHunter.session';
 
@@ -69,7 +68,6 @@ function serverAddress(value: string) {
     throw new Error('请输入有效的服务地址。');
   }
   const local = ['localhost', '127.0.0.1', '10.0.2.2'].includes(address.hostname);
-  if (!__DEV__ && address.origin !== serviceOrigin) throw new Error('请使用谷子猎手的正式服务地址。');
   if (address.protocol !== 'https:' && !(__DEV__ && local && address.protocol === 'http:')) {
     throw new Error('公网服务地址需要 HTTPS。');
   }

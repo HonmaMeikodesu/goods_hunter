@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator, AppState, FlatList, Image, Linking, Pressable, StyleSheet,
   Switch, Text, TextInput, View,
@@ -6,10 +6,10 @@ import {
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import {
-  ExpiredSession, login, readSession, request, saveSession, serviceOrigin, sites,
+  ExpiredSession, login, readSession, request, saveSession, sites,
   type ActiveState, type Product, type Session, type Site, type SiteStatus,
 } from './api';
-import { softwareUpdater } from './software-update';
+import { createSessionUpdater } from './software-update';
 import { UpdatePanel } from './update-panel';
 
 const watcher = require('./assets/menma/watch.png');
@@ -25,11 +25,6 @@ export default function App() {
   const [loginError, setLoginError] = useState('');
   useEffect(() => {
     readSession().then(setSession).catch(() => setSession(null));
-    void softwareUpdater.check();
-    const listener = AppState.addEventListener('change', status => {
-      if (status === 'active') void softwareUpdater.check();
-    });
-    return () => listener.remove();
   }, []);
 
   async function changeSession(next: Session | null, message = '') {
@@ -53,7 +48,7 @@ export default function App() {
 }
 
 function SignIn({ onLogin, initialError }: { onLogin: (session: Session) => Promise<void>; initialError: string }) {
-  const [server, setServer] = useState(__DEV__ ? process.env.EXPO_PUBLIC_GOODS_HUNTER_URL ?? serviceOrigin : serviceOrigin);
+  const [server, setServer] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
@@ -78,7 +73,7 @@ function SignIn({ onLogin, initialError }: { onLogin: (session: Session) => Prom
       <View style={styles.brand}><Image source={watcher} style={styles.menma} /><Text style={styles.title}>谷子猎手</Text></View>
       <Text style={styles.label}>服务地址</Text>
       <TextInput style={styles.input} value={server} onChangeText={setServer} autoCapitalize="none"
-        autoCorrect={false} editable={__DEV__} keyboardType="url" accessibilityLabel="服务地址" />
+        autoCorrect={false} keyboardType="url" placeholder="https://" placeholderTextColor={muted} accessibilityLabel="服务地址" />
       <Text style={styles.label}>邮箱</Text>
       <TextInput style={styles.input} value={email} onChangeText={setEmail} autoCapitalize="none"
         autoCorrect={false} autoComplete="email" keyboardType="email-address" accessibilityLabel="邮箱" />
@@ -94,6 +89,7 @@ function SignIn({ onLogin, initialError }: { onLogin: (session: Session) => Prom
 }
 
 function Dashboard({ session, onExit }: { session: Session; onExit: (message?: string) => void }) {
+  const updater = useMemo(() => createSessionUpdater(session), [session]);
   const [state, setState] = useState<ActiveState | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [error, setError] = useState('');
@@ -129,11 +125,15 @@ function Dashboard({ session, onExit }: { session: Session; onExit: (message?: s
 
   useEffect(() => {
     void refresh();
+    void updater.check();
     const listener = AppState.addEventListener('change', status => {
-      if (status === 'active') void refresh();
+      if (status === 'active') {
+        void refresh();
+        void updater.check();
+      }
     });
-    return () => { listener.remove(); refreshID.current++; };
-  }, [refresh]);
+    return () => { listener.remove(); refreshID.current++; void updater.cancelApk(); };
+  }, [refresh, updater]);
 
   useEffect(() => {
     if (!running) return;
@@ -185,7 +185,7 @@ function Dashboard({ session, onExit }: { session: Session; onExit: (message?: s
       </View>
       {showSettings ? <View style={styles.settings}>
         <Text style={styles.subtle}>{state ? '已验证连接 · ' : ''}{session.server}</Text>
-        <UpdatePanel />
+        <UpdatePanel updater={updater} />
         <Action label="退出登录" onPress={() => onExit()} />
       </View> : null}
       {state ? <>

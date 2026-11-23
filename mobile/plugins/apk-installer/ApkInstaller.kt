@@ -84,11 +84,13 @@ class ApkInstallerModule(private val context: ReactApplicationContext) : ReactCo
         directory.listFiles()?.forEach { if (it.isFile) it.delete() }
         check(directory.usableSpace > release.bytes + 16 * 1024 * 1024)
         val partial = File(directory, "pending-${release.filename}"); part = partial
-        var url = URL(release.downloadUrl)
+        val origin = URL(release.downloadUrl)
+        var url = origin
         val started = System.nanoTime()
         for (redirect in 0..5) {
           if (cancelled.get()) throw CancellationException()
-          require(ApkPayload.secureUrl(url.toString()))
+          require(ApkPayload.secureUrl(url.toString()) && url.host.equals(origin.host, ignoreCase = true) &&
+            effectivePort(url) == effectivePort(origin))
           val request = url.openConnection() as HttpURLConnection
           connection = request
           request.instanceFollowRedirects = false; request.connectTimeout = 15000; request.readTimeout = 20000
@@ -158,6 +160,8 @@ class ApkInstallerModule(private val context: ReactApplicationContext) : ReactCo
   override fun invalidate() {
     cancelled.set(true); connection?.disconnect(); worker.shutdownNow(); super.invalidate()
   }
+
+  private fun effectivePort(url: URL) = if (url.port == -1) url.defaultPort else url.port
 }
 
 class ApkInstallerPackage : ReactPackage {

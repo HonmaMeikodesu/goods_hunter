@@ -1,10 +1,10 @@
 import { useSyncExternalStore } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
-import { softwareUpdater } from './software-update';
+import type { createSessionUpdater } from './software-update';
 
 const menma = require('./assets/menma/settings.png');
 
-export function UpdatePanel() {
+export function UpdatePanel({ updater: softwareUpdater }: { updater: ReturnType<typeof createSessionUpdater> }) {
   const state = useSyncExternalStore(softwareUpdater.subscribe, softwareUpdater.read, softwareUpdater.read);
   const blocked = ['checking', 'downloading', 'apk-downloading'].includes(state.status);
   const action = (title: string, run: () => Promise<void>, disabled = false) => (

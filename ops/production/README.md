@@ -12,13 +12,13 @@
 
 ## App 的 HTTPS 入口
 
-`hunter.example.invalid` 通过专用 Cloudflare Tunnel 转发 `/api/mobile/` 到本机 `127.0.0.1:7001`。隧道由 `goods-hunter-tunnel.service` 运行，路由配置在 `/etc/goods-hunter-tunnel.yml`。专用运行凭据由 systemd 从 `/etc/goods-hunter/tunnel.env` 读取。私有凭据不提交 Git。
+App 的 HTTPS 入口通过专用 Cloudflare Tunnel 转发 `/api/mobile/` 到本机 `127.0.0.1:7001`。隧道由 `goods-hunter-tunnel.service` 运行。部署域名放在 `/etc/goods-hunter-tunnel.yml`，专用运行凭据放在 `/etc/goods-hunter/tunnel.env`。
 
 App 连接码和更新目录通过 `/etc/goods-hunter/production.env` 配置。`/opt/goods-hunter/mobile-updates` 由 root 管理，供 Go 服务只读分发安装包和签名热更新。发布步骤见 [Android App](../../mobile/README.md)。
 
 ## Yahoo 会话
 
-`systemd/` 保存 192.0.2.10 上 wangming 用户实际启用的 Yahoo 会话单元，便于核对部署。刷新周期为每天一次，主应用通过 `YAHOO_SESSION_MAX_AGE_SECONDS=172800` 使用 48 小时快照有效期。
+`systemd/` 保存 `wangming` 用户启用的 Yahoo 会话单元，便于核对部署。刷新周期为每天一次，主应用通过 `YAHOO_SESSION_MAX_AGE_SECONDS=172800` 使用 48 小时快照有效期。
 
 这些生产单元启用了本机私有代理；通用安装模板仍位于 `tools/yahoo-session/`，可以按其他环境选择不同代理。
 

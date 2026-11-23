@@ -4,9 +4,10 @@ import { copyFile, mkdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { packageHotUpdate, saveJson } from './update-package.mjs';
+import { updateOrigin } from '../update-origin.cjs';
 
 const [kind, output, input, runtime, notes = ''] = process.argv.slice(2);
-const origin = 'https://hunter.example.invalid';
+const origin = updateOrigin();
 if (!['apk', 'hot'].includes(kind) || !output || !input || !/^[a-f0-9]{40,64}$/.test(runtime ?? '') || notes.length > 2000) {
   throw new Error('Usage: node scripts/prepare-release.mjs apk|hot <publication-dir> <apk-or-export-dir> <runtime> [notes]');
 }
@@ -37,12 +38,14 @@ if (kind === 'apk') {
     runtimeVersion: runtime, sha256, bytes: apk.length, notes });
   console.log(`Prepared APK ${config.version} · ${apk.length} bytes · ${sha256}`);
 } else {
+  if (!origin) throw new Error('Set GOODS_HUNTER_UPDATES_ORIGIN to the HTTPS origin used to build the APK');
   if (!current || current.runtimeVersion !== runtime) throw new Error('This native runtime has no published APK');
   const keyFile = process.env.GOODS_HUNTER_UPDATES_KEY;
   if (!keyFile) throw new Error('Set GOODS_HUNTER_UPDATES_KEY to the local code-signing private key');
   const privateKey = await readFile(keyFile);
   const certificate = await readFile(new URL('../updates-certificate.pem', import.meta.url));
   const result = await packageHotUpdate({ directory: output, exportDirectory: input,
-    config: { ...config, runtimeVersion: runtime }, serviceUrl: origin, privateKey, certificate, notes });
+    config: { ...config, extra: { ...config.extra, updatesOrigin: origin }, runtimeVersion: runtime },
+    serviceUrl: origin, privateKey, certificate, notes });
   console.log(`Prepared signed update ${JSON.parse(result.manifest).id}`);
 }

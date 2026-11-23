@@ -49,14 +49,14 @@ function updateNotes(manifest: unknown) {
 export function createSoftwareUpdater(deps: {
   enabled: boolean; version: string; versionCode: number; revision: string;
   latest: () => Promise<ApkRelease | null>;
-  check: () => Promise<UpdateResult>; download: () => Promise<UpdateResult>; reload: () => Promise<void>;
+  check?: () => Promise<UpdateResult>; download: () => Promise<UpdateResult>; reload: () => Promise<void>;
   installer?: ApkInstaller;
   record?: (action: string, error?: unknown) => void;
   now?: () => number;
 }) {
   const now = deps.now ?? Date.now;
   let state: SoftwareUpdateState = { version: deps.version, revision: deps.revision,
-    status: deps.enabled ? 'idle' : 'disabled', message: deps.enabled ? '启动时自动检查更新' : '此开发版本不支持热更新',
+    status: deps.enabled ? 'idle' : 'disabled', message: deps.enabled ? '登录后自动检查更新' : '此环境不支持应用更新',
     notes: '', checkedAt: null, apk: null, apkProgress: null };
   let lastAttempt: number | null = null;
   let checking: Promise<void> | null = null;
@@ -75,8 +75,8 @@ export function createSoftwareUpdater(deps: {
         set({ status: cached ? 'apk-ready' : 'apk', message: cached ? '安装包已下载并校验，可以覆盖安装' : `发现新版本 ${latest.version}，需要安装更新`, apk: latest, notes: latest.notes, checkedAt: new Date(now()).toISOString() });
         deps.record?.('apk'); return;
       }
-      const result = await deps.check();
-      if (result.isAvailable || result.isRollBackToEmbedded) {
+      const result = await deps.check?.();
+      if (result?.isAvailable || result?.isRollBackToEmbedded) {
         set({ status: 'downloading', message: '正在下载更新…', notes: updateNotes(result.manifest) });
         const downloaded = await deps.download();
         if (downloaded.isNew || downloaded.isRollBackToEmbedded) {
@@ -84,7 +84,7 @@ export function createSoftwareUpdater(deps: {
           deps.record?.('download'); return;
         }
       }
-      set({ status: 'current', message: '已是最新版本', checkedAt: new Date(now()).toISOString() });
+      set({ status: 'current', message: deps.check ? '已是最新版本' : '暂无可用安装包更新', checkedAt: new Date(now()).toISOString() });
       deps.record?.('check');
     } catch (error) {
       set({ status: 'error', message: '更新检查或下载失败，请稍后重试' });
