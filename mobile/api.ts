@@ -23,6 +23,16 @@ export type SiteStatus = {
 
 export type ActiveState = { active: boolean; sites: SiteStatus[] };
 
+export type SearchTask = {
+  id: string;
+  keyword: string;
+  searchUrl?: string;
+  adultMode?: boolean;
+  adultOnly?: boolean;
+};
+
+export type SiteTasks = { site: Site; adultModeSupported: boolean; tasks: SearchTask[] };
+
 export type Product = {
   id: string;
   site: Site;

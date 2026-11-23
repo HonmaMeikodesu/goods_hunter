@@ -197,6 +197,7 @@ func TestLegacyAccountAndWatcherRoutes(t *testing.T) {
 	const mobile = "/api/mobile/"
 	call("GET", mobile+"state", "", "", oldCookies, 401, "010102")
 	call("GET", mobile+"state", "", "", nil, 401, "010102", oldToken)
+	call("GET", mobile+"tasks", "", "", oldCookies, 401, "010102")
 	passwordOnly, _ := json.Marshal(credentials{Email: legacyEmail, Password: password})
 	call("POST", mobile+"login", "application/json", string(passwordOnly), nil, 403, "040003")
 	loginBody, _ := json.Marshal(map[string]string{"email": legacyEmail, "password": password, "connectionCode": connectionCode})
@@ -213,6 +214,31 @@ func TestLegacyAccountAndWatcherRoutes(t *testing.T) {
 	state := call("GET", mobile+"state", "", "", nil, 200, "200", token)
 	if state.Header().Get("Cache-Control") != "no-store" || !strings.Contains(state.Body.String(), `"active":true`) {
 		t.Fatal("mobile mode was not saved or the response allows caching")
+	}
+	for _, task := range []model.Watcher{
+		{Site: model.Surugaya, Owner: legacyEmail, Condition: `{"keyword":"限定 版","adultMode":true,"adultOnly":true}`},
+		{Site: model.Surugaya, Owner: legacyEmail, Condition: `{"keyword":"通常版"}`},
+		{Site: model.Xianyu, Owner: newEmail, Condition: `{"keyword":"other user's keyword"}`},
+		{Site: model.Surveillance, Owner: legacyEmail, Condition: `{"type":"mercari","goodId":"m123"}`},
+	} {
+		task.ID, task.Schedule = model.NewID(), "0 0 31 12 *"
+		if err := db.CreateWatcher(t.Context(), task); err != nil {
+			t.Fatal(err)
+		}
+	}
+	tasks := call("GET", mobile+"tasks", "", "", nil, 200, "200", token)
+	var groups struct{ Data []mobileSiteTasks }
+	if err := json.Unmarshal(tasks.Body.Bytes(), &groups); err != nil || tasks.Header().Get("Cache-Control") != "no-store" ||
+		len(groups.Data) != 1 || groups.Data[0].Site != model.Surugaya || !groups.Data[0].AdultModeSupported || len(groups.Data[0].Tasks) != 2 {
+		t.Fatalf("unexpected mobile tasks: %s", tasks.Body)
+	}
+	for _, task := range groups.Data[0].Tasks {
+		adult := task.Keyword == "限定 版"
+		link, err := url.Parse(task.SearchURL)
+		if err != nil || task.ID == "" || (!adult && task.Keyword != "通常版") || task.AdultMode != adult || task.AdultOnly != adult ||
+			link.Host != "www.suruga-ya.jp" || link.Query().Get("search_word") != task.Keyword || (link.Query().Get("adult_s") == "3") != adult {
+			t.Fatalf("unexpected search task: %+v", task)
+		}
 	}
 	call("GET", mobile+"products", "", "", nil, 200, "200", token)
 	grantPath := updatePath + "apk/" + releaseHash

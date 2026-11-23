@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/HonmaMeikodesu/goods_hunter/internal/market"
 	"github.com/HonmaMeikodesu/goods_hunter/internal/model"
 	"github.com/HonmaMeikodesu/goods_hunter/internal/problem"
 )
@@ -18,6 +19,7 @@ func (s *server) registerMobileRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/mobile/login", s.mobileHTTPS(s.mobileLogin))
 	mux.HandleFunc("POST /api/mobile/logout", s.mobileHTTPS(s.withMobileLogin(s.mobileLogout)))
 	mux.HandleFunc("GET /api/mobile/state", s.mobileHTTPS(s.withMobileLogin(s.mobileState)))
+	mux.HandleFunc("GET /api/mobile/tasks", s.mobileHTTPS(s.withMobileLogin(s.mobileTasks)))
 	mux.HandleFunc("POST /api/mobile/mode", s.mobileHTTPS(s.withMobileLogin(s.mobileMode)))
 	mux.HandleFunc("POST /api/mobile/scan", s.mobileHTTPS(s.withMobileLogin(s.mobileScan)))
 	mux.HandleFunc("GET /api/mobile/products", s.mobileHTTPS(s.withMobileLogin(s.mobileProducts)))
@@ -101,6 +103,50 @@ func (s *server) withMobileLogin(handler authedHandler) http.HandlerFunc {
 
 func (s *server) mobileState(r *http.Request, owner string) (any, error) {
 	return s.hunters.ActiveState(r.Context(), owner)
+}
+
+type mobileSearchTask struct {
+	ID        string `json:"id"`
+	Keyword   string `json:"keyword"`
+	SearchURL string `json:"searchUrl,omitempty"`
+	AdultMode bool   `json:"adultMode,omitempty"`
+	AdultOnly bool   `json:"adultOnly,omitempty"`
+}
+
+type mobileSiteTasks struct {
+	Site               model.Site         `json:"site"`
+	AdultModeSupported bool               `json:"adultModeSupported"`
+	Tasks              []mobileSearchTask `json:"tasks"`
+}
+
+func (s *server) mobileTasks(r *http.Request, owner string) (any, error) {
+	watchers, err := s.hunters.List(r.Context(), owner)
+	if err != nil {
+		return nil, err
+	}
+	groups := make([]mobileSiteTasks, 0, len(model.Sites))
+	indices := make(map[model.Site]int, len(model.Sites))
+	for _, watcher := range watchers {
+		if watcher.Site == model.Surveillance {
+			continue
+		}
+		index, found := indices[watcher.Site]
+		if !found {
+			index = len(groups)
+			indices[watcher.Site] = index
+			groups = append(groups, mobileSiteTasks{Site: watcher.Site, AdultModeSupported: watcher.Site == model.Surugaya})
+		}
+		group := &groups[index]
+		task := mobileSearchTask{ID: watcher.ID}
+		if condition, err := model.ReadCondition(watcher.Site, watcher.Condition); err == nil {
+			task.Keyword = condition.Keyword
+			task.SearchURL = market.SearchURL(watcher.Site, condition)
+			task.AdultMode = group.AdultModeSupported && condition.AdultMode
+			task.AdultOnly = task.AdultMode && condition.AdultOnly
+		}
+		group.Tasks = append(group.Tasks, task)
+	}
+	return groups, nil
 }
 
 func (s *server) mobileMode(r *http.Request, owner string) (any, error) {

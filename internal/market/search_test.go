@@ -60,6 +60,48 @@ func TestAuthorizationMatchesAliCloudUtility(t *testing.T) {
 	}
 }
 
+func TestSearchURLPreservesKeywordAndSiteOptions(t *testing.T) {
+	const keyword = "面码+/谷子 & #2"
+	for _, tc := range []struct {
+		site   model.Site
+		schema string
+		host   string
+		path   string
+		query  map[string]string
+	}{
+		{model.Mercari, `{"keyword":"` + keyword + `"}`, "jp.mercari.com", "/search",
+			map[string]string{"keyword": keyword, "sort": "created_time", "order": "desc"}},
+		{model.Yahoo, `{"keyword":"` + keyword + `","category":26084,"epoch":2}`, "auctions.yahoo.co.jp", "/search/search",
+			map[string]string{"p": keyword, "auccat": "26084", "b": "1"}},
+		{model.Surugaya, `{"keyword":"` + keyword + `","adultMode":true,"adultOnly":true,"category":"10"}`, "www.suruga-ya.jp", "/search",
+			map[string]string{"search_word": keyword, "category": "10", "adult_s": "3"}},
+		{model.Surugaya, `{"keyword":"` + keyword + `","adultOnly":true}`, "www.suruga-ya.jp", "/search",
+			map[string]string{"search_word": keyword, "adult_s": ""}},
+		{model.Mandarake, `{"keyword":"` + keyword + `","page":2}`, "order.mandarake.co.jp", "/order/listPage/list",
+			map[string]string{"keyword": keyword, "page": "2"}},
+		{model.YahooFleamarket, `{"keyword":"` + keyword + `"}`, "paypayfleamarket.yahoo.co.jp", "/search/" + keyword,
+			map[string]string{"open": "1", "sort": "openTime", "order": "desc", "page": "1"}},
+		{model.Xianyu, `{"keyword":"` + keyword + `"}`, "www.goofish.com", "/search",
+			map[string]string{"q": keyword}},
+	} {
+		t.Run(string(tc.site), func(t *testing.T) {
+			link := SearchURL(tc.site, condition(t, tc.site, tc.schema))
+			target, err := url.Parse(link)
+			if err != nil || target.Scheme != "https" || target.Host != tc.host || target.Path != tc.path || target.Fragment != "" || target.User != nil {
+				t.Fatalf("unexpected search link: %q (%v)", link, err)
+			}
+			if tc.site == model.YahooFleamarket && strings.Count(target.EscapedPath(), "/") != 2 {
+				t.Fatalf("keyword must stay in a single path segment: %q", link)
+			}
+			for key, want := range tc.query {
+				if got := target.Query().Get(key); got != want {
+					t.Errorf("%s = %q, want %q", key, got, want)
+				}
+			}
+		})
+	}
+}
+
 func TestSearchHTMLFixtures(t *testing.T) {
 	for _, tc := range []struct {
 		name, fixture string

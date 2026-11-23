@@ -88,6 +88,21 @@ func (c *Client) Search(ctx context.Context, site model.Site, condition model.Co
 	return deduplicate(items), nil
 }
 
+// SearchURL returns the marketplace search page that can be opened in a browser.
+func SearchURL(site model.Site, condition model.Condition) string {
+	switch site {
+	case model.YahooFleamarket:
+		query := url.Values{"withSpeller": {"0"}, "sort": {"openTime"}, "order": {"desc"}, "open": {"1"}, "page": {"1"}}
+		return fleaURL + "/search/" + url.PathEscape(condition.Keyword) + "?" + query.Encode()
+	case model.Xianyu:
+		query := url.Values{"q": {condition.Keyword}}
+		return xianyuURL + "/search?" + query.Encode()
+	default:
+		request, _ := searchRequest(site, condition, 1, nil)
+		return request.TargetURL
+	}
+}
+
 func searchRequest(site model.Site, condition model.Condition, page int, yahooCookies []cookie) (htmlRequest, error) {
 	switch site {
 	case model.Mercari:

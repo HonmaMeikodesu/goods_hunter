@@ -7,7 +7,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import {
   ExpiredSession, login, readSession, request, saveSession, sites,
-  type ActiveState, type Product, type Session, type Site, type SiteStatus,
+  type ActiveState, type Product, type Session, type Site, type SiteStatus, type SiteTasks,
 } from './api';
 import { createSessionUpdater } from './software-update';
 import { UpdatePanel } from './update-panel';
@@ -93,12 +93,15 @@ function Dashboard({ session, onExit }: { session: Session; onExit: (message?: s
   const update = useSyncExternalStore(updater.subscribe, updater.read, updater.read);
   const [state, setState] = useState<ActiveState | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
+  const [taskGroups, setTaskGroups] = useState<SiteTasks[] | null>(null);
+  const [tasksError, setTasksError] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [working, setWorking] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [panel, setPanel] = useState<'updates' | 'connection' | null>(null);
   const refreshID = useRef(0);
+  const tasksRequestID = useRef(0);
   const busy = useRef(false);
   const exit = useRef(onExit);
   exit.current = onExit;
@@ -125,17 +128,33 @@ function Dashboard({ session, onExit }: { session: Session; onExit: (message?: s
     }
   }, [session, showError]);
 
+  const refreshTasks = useCallback(async () => {
+    const id = ++tasksRequestID.current;
+    try {
+      const groups = await request<SiteTasks[]>(session, 'tasks');
+      if (tasksRequestID.current !== id) return;
+      setTaskGroups(groups);
+      setTasksError('');
+    } catch (cause) {
+      if (tasksRequestID.current !== id) return;
+      if (cause instanceof ExpiredSession) showError(cause);
+      else setTasksError('暂时无法读取定时任务，下拉可刷新。');
+    }
+  }, [session, showError]);
+
   useEffect(() => {
     void refresh();
+    void refreshTasks();
     void updater.check();
     const listener = AppState.addEventListener('change', status => {
       if (status === 'active') {
         void refresh();
+        void refreshTasks();
         void updater.check();
       }
     });
-    return () => { listener.remove(); refreshID.current++; void updater.cancelApk(); };
-  }, [refresh, updater]);
+    return () => { listener.remove(); refreshID.current++; tasksRequestID.current++; void updater.cancelApk(); };
+  }, [refresh, refreshTasks, updater]);
 
   useEffect(() => {
     if (!running) return;
@@ -165,7 +184,8 @@ function Dashboard({ session, onExit }: { session: Session; onExit: (message?: s
         setState(next);
         if (route === 'scan' && next.sites.length === 0) setNotice('当前没有搜索订阅。');
       }
-      await refresh();
+      if (route === 'scan' && !('site' in body)) await Promise.all([refresh(), refreshTasks()]);
+      else await refresh();
     } catch (cause) {
       showError(cause);
     } finally {
@@ -174,10 +194,16 @@ function Dashboard({ session, onExit }: { session: Session; onExit: (message?: s
     }
   }
 
+  const siteRows = (Object.keys(sites) as Site[]).flatMap(site => {
+    const group = taskGroups?.find(row => row.site === site);
+    const status = state?.sites.find(row => row.site === site);
+    return group || status ? [{ site, group, status }] : [];
+  });
+
   return <FlatList data={products} keyExtractor={item => item.id} contentContainerStyle={styles.page}
     refreshing={refreshing} onRefresh={async () => {
       setRefreshing(true);
-      await refresh();
+      await Promise.all([refresh(), refreshTasks()]);
       setRefreshing(false);
     }}
     ListHeaderComponent={<>
@@ -206,11 +232,12 @@ function Dashboard({ session, onExit }: { session: Session; onExit: (message?: s
         </View>
         {state.active ? <Action primary label={running ? '正在搜索…' : '搜索最新商品'} disabled={working || running}
           onPress={() => void act('scan', {})} /> : null}
-        {state.sites.length ? <View style={styles.siteList}>
-          {state.sites.map(status => <SiteRow key={status.site} status={status} canRetry={state.active && !working}
-            onRetry={site => void act('scan', { site })} />)}
+        {siteRows.length ? <View style={styles.siteList}>
+          {siteRows.map(row => <SiteRow key={row.site} {...row} tasksLoading={!taskGroups && !tasksError}
+            canRetry={state.active && !working} onRetry={site => void act('scan', { site })} onError={showError} />)}
         </View> : null}
-      </> : error ? <Action label="重新连接" onPress={() => void refresh()} /> : <ActivityIndicator color={green} />}
+        {tasksError ? <Text accessibilityRole="alert" style={styles.error}>{tasksError}</Text> : null}
+      </> : error ? <Action label="重新连接" onPress={() => void Promise.all([refresh(), refreshTasks()])} /> : <ActivityIndicator color={green} />}
       {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
       {notice ? <Text style={styles.subtle}>{notice}</Text> : null}
       <View style={styles.section}>
@@ -225,16 +252,54 @@ function Dashboard({ session, onExit }: { session: Session; onExit: (message?: s
   />;
 }
 
-function SiteRow({ status, canRetry, onRetry }: { status: SiteStatus; canRetry: boolean; onRetry: (site: Site) => void }) {
-  const { site, running, succeeded, failed, total, error } = status;
-  return <View style={styles.siteRow}>
-    <View style={styles.grow}>
-      <Text style={styles.siteName}>{sites[site]}</Text>
-      {error ? <Text style={styles.siteError}>{error}</Text> : null}
+function SiteRow({ site, group, status, tasksLoading, canRetry, onRetry, onError }: {
+  site: Site; group?: SiteTasks; status?: SiteStatus; tasksLoading: boolean; canRetry: boolean;
+  onRetry: (site: Site) => void; onError: (cause: unknown) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const count = group?.tasks.length ?? 0;
+  const name = sites[site];
+  return <View style={styles.siteGroup}>
+    <View style={styles.siteRow}>
+      <Pressable accessibilityRole="button" accessibilityLabel={`${name}，${count} 个定时任务${group?.adultModeSupported ? '，支持成人模式' : ''}`}
+        aria-expanded={expanded} onPress={() => setExpanded(value => !value)}
+        style={({ pressed }) => [styles.siteToggle, pressed && styles.dim]}>
+        <Text style={styles.siteCount}>{expanded ? '▾' : '▸'}</Text>
+        <View style={styles.grow}>
+          <Text style={styles.siteName}>{name}</Text>
+          {group?.adultModeSupported ? <Text style={styles.adultMode}>支持成人模式</Text> : null}
+          {status?.error ? <Text style={styles.siteError}>{status.error}</Text> : null}
+        </View>
+        <Text style={styles.siteCount}>{status ? siteProgress(status) : `${count} 个任务`}</Text>
+      </Pressable>
+      {status && !status.running && status.failed > 0 && canRetry ?
+        <Action label="重试" accessibilityLabel={`重试${name}`} onPress={() => onRetry(site)} /> : null}
     </View>
-    <Text style={styles.siteCount}>{running ? `${succeeded + failed}/${total} 进行中` : failed ? `${succeeded} 成功 · ${failed} 失败` : `${succeeded} 项完成`}</Text>
-    {!running && failed > 0 && canRetry ? <Action label="重试" accessibilityLabel={`重试${sites[site]}`} onPress={() => onRetry(site)} /> : null}
+    {expanded ? <View style={styles.taskList}>
+      {group ? group.tasks.map(task => {
+        const keyword = task.keyword || '任务关键词不可用';
+        const url = task.searchUrl;
+        return <View key={task.id} style={styles.taskRow}>
+          <View style={styles.grow}>
+            <Text style={styles.keyword}>{keyword}</Text>
+            {task.adultMode ? <Text style={styles.adultMode}>{task.adultOnly ? '仅成人' : '成人模式'}</Text> : null}
+          </View>
+          {url && /^https:\/\/[^\s]+$/i.test(url) ?
+            <Pressable accessibilityRole="link" accessibilityLabel={`在${name}搜索 ${keyword}`}
+              onPress={() => void Linking.openURL(url).catch(() => onError(new Error('无法打开站点搜索页。')))}
+              style={({ pressed }) => [styles.action, pressed && styles.dim]}>
+              <Text style={styles.actionText}>去原站搜索 ↗</Text>
+            </Pressable> : null}
+        </View>;
+      }) : <Text style={styles.taskPlaceholder}>{tasksLoading ? '正在读取定时任务…' : '暂无可显示的定时任务'}</Text>}
+    </View> : null}
   </View>;
+}
+
+function siteProgress({ running, succeeded, failed, total }: SiteStatus) {
+  if (running) return `${succeeded + failed}/${total} 进行中`;
+  if (failed) return `${succeeded} 成功 · ${failed} 失败`;
+  return `${succeeded} 项完成`;
 }
 
 function ProductRow({ item, onError }: { item: Product; onError: (cause: unknown) => void }) {
@@ -286,10 +351,17 @@ const styles = StyleSheet.create({
   primaryText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
   dim: { opacity: 0.56 },
   siteList: { borderRadius: 14, borderColor: '#D6DDD1', borderWidth: 1, backgroundColor: '#FCFAF4', marginTop: 12, overflow: 'hidden' },
-  siteRow: { minHeight: 47, alignItems: 'center', flexDirection: 'row', gap: 6, paddingHorizontal: 11, paddingVertical: 3, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: '#DBE0D7' },
+  siteGroup: { borderBottomWidth: StyleSheet.hairlineWidth, borderColor: '#DBE0D7' },
+  siteRow: { flexDirection: 'row', alignItems: 'center', paddingRight: 4 },
+  siteToggle: { flex: 1, minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 11, paddingVertical: 9 },
   siteName: { fontWeight: '700', color: ink, fontSize: 13 },
   siteCount: { color: muted, fontSize: 12 },
   siteError: { color: warn, fontSize: 11, marginTop: 3 },
+  adultMode: { color: warn, fontSize: 12, marginTop: 3 },
+  taskList: { backgroundColor: '#F0F3E9', paddingHorizontal: 12 },
+  taskRow: { flexDirection: 'row', alignItems: 'center', minHeight: 49, gap: 6, paddingVertical: 4, borderTopWidth: StyleSheet.hairlineWidth, borderColor: '#DBE0D7' },
+  keyword: { color: ink, fontSize: 14, fontWeight: '600' },
+  taskPlaceholder: { color: muted, fontSize: 13, paddingVertical: 12 },
   section: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 58, marginTop: 8 },
   product: { flexDirection: 'row', gap: 13, alignItems: 'center', backgroundColor: '#FFFEF8', borderRadius: 14, borderWidth: 1, borderColor: '#E2E2D7', padding: 9, marginBottom: 9 },
   thumbnail: { width: 76, height: 76, borderRadius: 9, backgroundColor: '#E8ECE2' },

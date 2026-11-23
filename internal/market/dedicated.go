@@ -14,8 +14,12 @@ import (
 	"github.com/HonmaMeikodesu/goods_hunter/internal/model"
 )
 
-const fleaItem = "https://paypayfleamarket.yahoo.co.jp/item/"
-const xianyuItem = "https://www.goofish.com/item?id="
+const (
+	fleaURL    = "https://paypayfleamarket.yahoo.co.jp"
+	xianyuURL  = "https://www.goofish.com"
+	fleaItem   = fleaURL + "/item/"
+	xianyuItem = xianyuURL + "/item?id="
+)
 
 type fleaResponse struct {
 	Success               bool
