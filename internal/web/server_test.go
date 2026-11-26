@@ -267,7 +267,8 @@ func TestLegacyAccountAndWatcherRoutes(t *testing.T) {
 		adult := task.Keyword == "限定 版"
 		link, err := url.Parse(task.SearchURL)
 		if err != nil || task.ID == "" || !task.PhoneSearch || (!adult && task.Keyword != "通常版") || task.AdultMode != adult || task.AdultOnly != adult ||
-			link.Host != "www.suruga-ya.jp" || link.Query().Get("search_word") != task.Keyword || (link.Query().Get("adult_s") == "3") != adult {
+			link.Host != "www.suruga-ya.jp" || link.Query().Get("search_word") != task.Keyword ||
+			link.Query().Has("is_marketplace") || (link.Query().Get("adult_s") == "3") != adult {
 			t.Fatalf("unexpected search task: %+v", task)
 		}
 		if adult {

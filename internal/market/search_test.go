@@ -102,6 +102,52 @@ func TestSearchURLPreservesKeywordAndSiteOptions(t *testing.T) {
 	}
 }
 
+func TestSurugayaPhoneSearchDefaultsToAllListings(t *testing.T) {
+	const keyword = "测试 版+徽章"
+	for _, mode := range []struct {
+		name, schema, pageQuery string
+	}{
+		{"adult-mode", `{"keyword":"` + keyword + `","adultMode":true}`, "category="},
+		{"adult-only", `{"keyword":"` + keyword + `","adultMode":true,"adultOnly":true,"category":"110000"}`, "category=110000&adult_s=3"},
+	} {
+		t.Run(mode.name, func(t *testing.T) {
+			saved := condition(t, model.Surugaya, mode.schema)
+			pageURL := surugayaURL + "/search?search_word=" + url.QueryEscape(keyword) +
+				"&rankBy=modificationTime:descending&" + mode.pageQuery
+			for _, tc := range []struct {
+				name, suffix string
+				want         error
+			}{
+				{"all-listings", "", nil},
+				{"marketplace-priority", "&is_marketplace=1", TargetMismatch},
+				{"duplicate-priority", "&is_marketplace=&is_marketplace=", TargetMismatch},
+				{"another-page", "&page=2", TargetMismatch},
+			} {
+				t.Run(tc.name, func(t *testing.T) {
+					_, err := SurugayaPhoneItems(saved, PhoneSearchPage{
+						PageURL: pageURL + tc.suffix,
+						Items:   []PhoneSearchItem{},
+					})
+					if err != tc.want {
+						t.Fatalf("phone search validation = %v, want %v", err, tc.want)
+					}
+				})
+			}
+			request, err := searchRequest(model.Surugaya, saved, 2, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			link, err := url.Parse(request.TargetURL)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if query := link.Query(); query.Get("is_marketplace") != "0" || query.Get("page") != "2" {
+				t.Fatalf("unexpected collector search query: %v", query)
+			}
+		})
+	}
+}
+
 func TestSearchHTMLFixtures(t *testing.T) {
 	for _, tc := range []struct {
 		name, fixture string

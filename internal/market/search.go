@@ -97,6 +97,9 @@ func SearchURL(site model.Site, condition model.Condition) string {
 	case model.Xianyu:
 		query := url.Values{"q": {condition.Keyword}}
 		return xianyuURL + "/search?" + query.Encode()
+	case model.Surugaya:
+		// Omit the marketplace priority to open the site's default all-listings view.
+		return surugayaURL + "/search?" + surugayaSearchQuery(condition, 1).Encode()
 	default:
 		request, _ := searchRequest(site, condition, 1, nil)
 		return request.TargetURL
@@ -137,14 +140,8 @@ func searchRequest(site model.Site, condition model.Condition, page int, yahooCo
 		}
 		return request, nil
 	case model.Surugaya:
-		query := url.Values{"category": {condition.Category}, "search_word": {condition.Keyword},
-			"is_marketplace": {"0"}, "rankBy": {"modificationTime:descending"}}
-		if page > 1 {
-			query.Set("page", strconv.Itoa(page))
-		}
-		if condition.AdultMode && condition.AdultOnly {
-			query.Set("adult_s", "3")
-		}
+		query := surugayaSearchQuery(condition, page)
+		query.Set("is_marketplace", "0")
 		return htmlRequest{TargetURL: surugayaURL + "/search?" + query.Encode(), Assertion: "search_result",
 			Cookies: &surugayaCookies, Retries: 2 * condition.Epoch, Search: &surugayaRules}, nil
 	case model.Mandarake:
@@ -155,6 +152,21 @@ func searchRequest(site model.Site, condition model.Condition, page int, yahooCo
 	default:
 		return htmlRequest{}, InvalidRequest
 	}
+}
+
+func surugayaSearchQuery(condition model.Condition, page int) url.Values {
+	query := url.Values{
+		"category":    {condition.Category},
+		"search_word": {condition.Keyword},
+		"rankBy":      {"modificationTime:descending"},
+	}
+	if page > 1 {
+		query.Set("page", strconv.Itoa(page))
+	}
+	if condition.AdultMode && condition.AdultOnly {
+		query.Set("adult_s", "3")
+	}
+	return query
 }
 
 func retryMercari(response htmlResponse) bool {
