@@ -47,7 +47,7 @@ func surugayaPhoneItem(row PhoneSearchItem) (model.Item, error) {
 	link := resolveURL(surugayaURL, row.Href)
 	target, err := url.Parse(link)
 	if len(row.Href) > 255 || match == nil || err != nil || !isSurugayaHTTPS(target) || target.Hostname() != "www.suruga-ya.jp" ||
-		strings.TrimSuffix(target.Path, "/") != "/product/detail/"+match[1] ||
+		strings.TrimSuffix(target.Path, "/") != match[1] ||
 		name == "" || utf8.RuneCountInString(name) > 255 || utf8.RuneCountInString(price) > 255 || utf8.RuneCountInString(marketPrice) > 255 {
 		return model.Item{}, InvalidItems
 	}
@@ -58,7 +58,7 @@ func surugayaPhoneItem(row PhoneSearchItem) (model.Item, error) {
 			image = resolved
 		}
 	}
-	// The cloud parser and existing database records use the page's raw href as the ID.
+	// Keep the raw href for existing records and distinguish the detail and shop offer links.
 	return model.Item{ID: row.Href, URL: link, Name: name, Image: image, Price: price, MarketPrice: marketPrice}, nil
 }
 

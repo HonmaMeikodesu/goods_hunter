@@ -148,6 +148,78 @@ func TestSurugayaPhoneSearchDefaultsToAllListings(t *testing.T) {
 	}
 }
 
+func TestSurugayaPhoneSearchKeepsShopOffersSeparate(t *testing.T) {
+	const detail = "/product/detail/Sample123"
+	const offers = "/product/other/Sample123"
+	saved := condition(t, model.Surugaya, `{"keyword":"sample","adultMode":true}`)
+	page := PhoneSearchPage{
+		PageURL: SearchURL(model.Surugaya, saved),
+		Items: []PhoneSearchItem{
+			{Href: detail, Name: "Official item"},
+			{Href: offers, Name: "Other shop offers"},
+			{Href: offers, Name: "Other shop offers"},
+		},
+	}
+	items, err := SurugayaPhoneItems(saved, page)
+	if err != nil || len(items) != 2 {
+		t.Fatalf("mixed phone page: got %d items, error %v", len(items), err)
+	}
+	for i, href := range []string{detail, offers} {
+		if items[i].ID != href || items[i].URL != surugayaURL+href {
+			t.Errorf("item %d: got ID %q and URL %q", i, items[i].ID, items[i].URL)
+		}
+	}
+	for _, path := range []string{
+		"/product/cart/Sample123",
+		"/product/other/Sample123/extra",
+		"http://www.suruga-ya.jp" + offers,
+		"https://example.test" + offers,
+	} {
+		page.Items = []PhoneSearchItem{{Href: path, Name: "Invalid link"}}
+		if _, err := SurugayaPhoneItems(saved, page); err != InvalidItems {
+			t.Errorf("invalid phone link %q: got %v, want InvalidItems", path, err)
+		}
+	}
+}
+
+func TestSurugayaSearchParsesSavedPageWithShopOffers(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("..", "..", "resources", "surugaya.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	client := fakeFC(t, func(r *http.Request) (int, any) {
+		var payload htmlRequest
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			t.Fatal(err)
+		}
+		return http.StatusOK, map[string]any{"success": true, "content": string(raw), "url": payload.TargetURL}
+	})
+	saved := condition(t, model.Surugaya, `{"keyword":"sample","adultMode":true}`)
+	items, err := client.Search(t.Context(), model.Surugaya, saved)
+	if err != nil || len(items) != 24 {
+		t.Fatalf("saved Surugaya page: got %d items, error %v", len(items), err)
+	}
+	offers := 0
+	page := PhoneSearchPage{PageURL: SearchURL(model.Surugaya, saved), Items: make([]PhoneSearchItem, 0, len(items))}
+	for _, item := range items {
+		target, err := url.Parse(item.URL)
+		if err != nil || target.Hostname() != "www.suruga-ya.jp" || item.URL != resolveURL(surugayaURL, item.ID) {
+			t.Fatal("saved Surugaya listing lost its original URL")
+		}
+		if strings.HasPrefix(target.Path, "/product/other/") {
+			offers++
+		}
+		page.Items = append(page.Items, PhoneSearchItem{Href: item.ID, Name: item.Name})
+	}
+	if offers != 3 {
+		t.Fatalf("saved Surugaya page: got %d shop offer links, want 3", offers)
+	}
+	phoneItems, err := SurugayaPhoneItems(saved, page)
+	if err != nil || len(phoneItems) != 24 {
+		t.Fatalf("import of saved Surugaya page: got %d items, error %v", len(phoneItems), err)
+	}
+}
+
 func TestSearchHTMLFixtures(t *testing.T) {
 	for _, tc := range []struct {
 		name, fixture string

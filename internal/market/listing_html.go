@@ -56,7 +56,7 @@ var (
 	plainID         = regexp.MustCompile(`^[a-zA-Z0-9]+$`)
 	labeledYen      = regexp.MustCompile(`^\s*([\d,]+)\s*円`)
 	leadingInteger  = regexp.MustCompile(`^[+-]?[0-9]+`)
-	surugayaProduct = regexp.MustCompile(`^(?:https://www\.suruga-ya\.jp)?/product/detail/([a-zA-Z0-9]+)(?:[/?#]|$)`)
+	surugayaProduct = regexp.MustCompile(`^(?:https://www\.suruga-ya\.jp)?(/product/(?:detail|other)/[a-zA-Z0-9]+)/?(?:[?#]|$)`)
 	mandarakeCode   = regexp.MustCompile(`itemCode=(\d+)`)
 )
 
