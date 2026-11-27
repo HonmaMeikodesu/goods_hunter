@@ -2,6 +2,7 @@ package market
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -182,29 +183,43 @@ func TestSurugayaPhoneSearchKeepsShopOffersSeparate(t *testing.T) {
 	}
 }
 
-func TestSurugayaSearchParsesSavedPageWithShopOffers(t *testing.T) {
-	raw, err := os.ReadFile(filepath.Join("..", "..", "resources", "surugaya.html"))
-	if err != nil {
-		t.Fatal(err)
+func TestSurugayaSearchParsesPageWithShopOffers(t *testing.T) {
+	// Match the first-page layout with 21 detail links and 3 other shop links.
+	var fixture strings.Builder
+	fixture.WriteString(`<div id="search_result"><div class="item_box">`)
+	for i := 1; i <= 24; i++ {
+		route := "detail"
+		switch i {
+		case 6, 15, 18:
+			route = "other"
+		}
+		fmt.Fprintf(&fixture, `
+			<div class="item">
+				<div class="item_detail">
+					<h3 class="title product-name"><a href="/product/%s/Sample%d">Item %d</a></h3>
+				</div>
+			</div>`, route, i, i)
 	}
+	fixture.WriteString(`</div></div>`)
+	pageHTML := fixture.String()
 	client := fakeFC(t, func(r *http.Request) (int, any) {
 		var payload htmlRequest
 		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 			t.Fatal(err)
 		}
-		return http.StatusOK, map[string]any{"success": true, "content": string(raw), "url": payload.TargetURL}
+		return http.StatusOK, map[string]any{"success": true, "content": pageHTML, "url": payload.TargetURL}
 	})
 	saved := condition(t, model.Surugaya, `{"keyword":"sample","adultMode":true}`)
 	items, err := client.Search(t.Context(), model.Surugaya, saved)
 	if err != nil || len(items) != 24 {
-		t.Fatalf("saved Surugaya page: got %d items, error %v", len(items), err)
+		t.Fatalf("mixed Surugaya page: got %d items, error %v", len(items), err)
 	}
 	offers := 0
 	page := PhoneSearchPage{PageURL: SearchURL(model.Surugaya, saved), Items: make([]PhoneSearchItem, 0, len(items))}
 	for _, item := range items {
 		target, err := url.Parse(item.URL)
 		if err != nil || target.Hostname() != "www.suruga-ya.jp" || item.URL != resolveURL(surugayaURL, item.ID) {
-			t.Fatal("saved Surugaya listing lost its original URL")
+			t.Fatal("Surugaya listing lost its original URL")
 		}
 		if strings.HasPrefix(target.Path, "/product/other/") {
 			offers++
@@ -212,11 +227,11 @@ func TestSurugayaSearchParsesSavedPageWithShopOffers(t *testing.T) {
 		page.Items = append(page.Items, PhoneSearchItem{Href: item.ID, Name: item.Name})
 	}
 	if offers != 3 {
-		t.Fatalf("saved Surugaya page: got %d shop offer links, want 3", offers)
+		t.Fatalf("mixed Surugaya page: got %d shop offer links, want 3", offers)
 	}
 	phoneItems, err := SurugayaPhoneItems(saved, page)
 	if err != nil || len(phoneItems) != 24 {
-		t.Fatalf("import of saved Surugaya page: got %d items, error %v", len(phoneItems), err)
+		t.Fatalf("import of mixed Surugaya page: got %d items, error %v", len(phoneItems), err)
 	}
 }
 
